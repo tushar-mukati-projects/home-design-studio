@@ -327,6 +327,7 @@ export const designChatStream = async (
   userId: string,
   email: string | undefined,
   messages: ChatMessage[],
+  canvasOverride: Partial<CanvasState> | undefined,
   res: Response,
 ) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -347,18 +348,35 @@ export const designChatStream = async (
         const design = await getDesignById(designId, userId, email);
         if (!design) return { summary: "Design not found or access denied." };
 
-        const cd = design.canvasData as Record<string, unknown>;
-        canvasState.walls = (cd.walls as Wall[]) ?? [];
-        canvasState.doors = (cd.doors as Door[]) ?? [];
-        canvasState.windows = (cd.windows as Win[]) ?? [];
-        canvasState.rooms = (design.rooms as unknown as Room[]) ?? [];
-        canvasState.furniture = (design.furniture as unknown as PlacedFurniture[]) ?? [];
-        viewportState = {
-          gridSize: (cd.gridSize as number) ?? 20,
-          zoom: (cd.zoom as number) ?? 1,
-          panX: (cd.panX as number) ?? 0,
-          panY: (cd.panY as number) ?? 0,
-        };
+        // If the client provided a canvasState payload (unsaved local canvas), prefer it
+        if (canvasOverride) {
+          const cd = canvasOverride as Record<string, unknown>;
+          canvasState.walls = (cd.walls as Wall[]) ?? [];
+          canvasState.doors = (cd.doors as Door[]) ?? [];
+          canvasState.windows = (cd.windows as Win[]) ?? [];
+          canvasState.rooms = (cd.rooms as Room[]) ?? [];
+          canvasState.furniture = (cd.furniture as PlacedFurniture[]) ?? [];
+          viewportState = {
+            gridSize: (cd.gridSize as number) ?? 20,
+            zoom: (cd.zoom as number) ?? 1,
+            panX: (cd.panX as number) ?? 0,
+            panY: (cd.panY as number) ?? 0,
+          };
+        } else {
+          const cd = design.canvasData as Record<string, unknown>;
+          canvasState.walls = (cd.walls as Wall[]) ?? [];
+          canvasState.doors = (cd.doors as Door[]) ?? [];
+          canvasState.windows = (cd.windows as Win[]) ?? [];
+          canvasState.rooms = (design.rooms as unknown as Room[]) ?? [];
+          canvasState.furniture = (design.furniture as unknown as PlacedFurniture[]) ?? [];
+          viewportState = {
+            gridSize: (cd.gridSize as number) ?? 20,
+            zoom: (cd.zoom as number) ?? 1,
+            panX: (cd.panX as number) ?? 0,
+            panY: (cd.panY as number) ?? 0,
+          };
+        }
+
         designFetched = true;
 
         if (
@@ -378,7 +396,8 @@ export const designChatStream = async (
             `${canvasState.rooms.length} room(s): ${canvasState.rooms.map((r) => r.name).join(", ") || "none"}`,
             `${canvasState.furniture.length} furniture: ${canvasState.furniture.map((f) => f.furnitureItem.name).join(", ") || "none"}`,
             `${canvasState.doors.length} door(s), ${canvasState.windows.length} window(s)`,
-          ].join("; "),
+            canvasOverride ? "(using client canvas state - unsaved)" : "",
+          ].filter(Boolean).join("; "),
         };
       },
     }),

@@ -89,7 +89,7 @@ export const useDesignChat = (designId: string) => {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             signal: controller.signal,
-            body: JSON.stringify({ designId, messages: history }),
+            body: JSON.stringify({ designId, messages: history, canvasState: useEditorStore.getState().getCanvasData() }),
           },
         );
 
