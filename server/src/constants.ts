@@ -24,7 +24,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 200,
     height: 85,
     depth: 90,
-    color: "#7B6B5A",
+    color: "#9ca3af",
     icon: "sofa",
   },
   {
@@ -33,7 +33,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 85,
     height: 80,
     depth: 85,
-    color: "#8B7D6B",
+    color: "#9ca3af",
     icon: "armchair",
   },
   {
@@ -42,7 +42,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 120,
     height: 45,
     depth: 60,
-    color: "#A0522D",
+    color: "#a1a1aa",
     icon: "coffee-table",
   },
   {
@@ -51,7 +51,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 150,
     height: 50,
     depth: 40,
-    color: "#4A4A4A",
+    color: "#52525b",
     icon: "tv-stand",
   },
   {
@@ -60,7 +60,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 80,
     height: 200,
     depth: 30,
-    color: "#8B7355",
+    color: "#71717a",
     icon: "bookshelf",
   },
   {
@@ -69,7 +69,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 30,
     height: 150,
     depth: 30,
-    color: "#C4A35A",
+    color: "#d4d4d8",
     icon: "floor-lamp",
   },
 
@@ -79,7 +79,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 200,
     height: 45,
     depth: 160,
-    color: "#D2B48C",
+    color: "#b4b4bc",
     icon: "double-bed",
   },
   {
@@ -88,7 +88,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 200,
     height: 45,
     depth: 90,
-    color: "#D2B48C",
+    color: "#b4b4bc",
     icon: "single-bed",
   },
   {
@@ -97,7 +97,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 50,
     height: 55,
     depth: 40,
-    color: "#8B7355",
+    color: "#a1a1aa",
     icon: "nightstand",
   },
   {
@@ -106,7 +106,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 120,
     height: 200,
     depth: 60,
-    color: "#6B4226",
+    color: "#71717a",
     icon: "wardrobe",
   },
   {
@@ -115,7 +115,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 100,
     height: 80,
     depth: 45,
-    color: "#8B7355",
+    color: "#a1a1aa",
     icon: "dresser",
   },
   {
@@ -124,7 +124,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 120,
     height: 75,
     depth: 60,
-    color: "#A0522D",
+    color: "#a1a1aa",
     icon: "desk",
   },
 
@@ -134,7 +134,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 160,
     height: 75,
     depth: 90,
-    color: "#8B6914",
+    color: "#a1a1aa",
     icon: "dining-table",
   },
   {
@@ -143,7 +143,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 45,
     height: 90,
     depth: 45,
-    color: "#8B7355",
+    color: "#9ca3af",
     icon: "dining-chair",
   },
   {
@@ -152,7 +152,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 120,
     height: 90,
     depth: 80,
-    color: "#F5F5DC",
+    color: "#d4d4d8",
     icon: "kitchen-island",
   },
   {
@@ -161,7 +161,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 70,
     height: 180,
     depth: 70,
-    color: "#C0C0C0",
+    color: "#e4e4e7",
     icon: "refrigerator",
   },
   {
@@ -170,7 +170,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 60,
     height: 85,
     depth: 60,
-    color: "#808080",
+    color: "#52525b",
     icon: "stove",
   },
 
@@ -180,7 +180,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 170,
     height: 60,
     depth: 75,
-    color: "#F0F0F0",
+    color: "#f4f4f5",
     icon: "bathtub",
   },
   {
@@ -189,7 +189,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 40,
     height: 40,
     depth: 65,
-    color: "#FFFFFF",
+    color: "#f4f4f5",
     icon: "toilet",
   },
   {
@@ -198,7 +198,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 60,
     height: 85,
     depth: 45,
-    color: "#F0F0F0",
+    color: "#f4f4f5",
     icon: "sink",
   },
   {
@@ -207,7 +207,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 90,
     height: 200,
     depth: 90,
-    color: "#E8E8E8",
+    color: "#e4e4e7",
     icon: "shower",
   },
 
@@ -217,7 +217,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 140,
     height: 75,
     depth: 70,
-    color: "#5C4033",
+    color: "#a1a1aa",
     icon: "office-desk",
   },
   {
@@ -226,7 +226,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 60,
     height: 110,
     depth: 60,
-    color: "#333333",
+    color: "#52525b",
     icon: "office-chair",
   },
   {
@@ -235,7 +235,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 40,
     height: 70,
     depth: 50,
-    color: "#808080",
+    color: "#71717a",
     icon: "filing-cabinet",
   },
   {
@@ -244,7 +244,7 @@ export const DEFAULT_FURNITURE_ITEMS = [
     width: 90,
     height: 180,
     depth: 35,
-    color: "#8B7355",
+    color: "#a1a1aa",
     icon: "bookcase",
   },
 ];

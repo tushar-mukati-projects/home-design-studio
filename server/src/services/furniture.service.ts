@@ -114,15 +114,6 @@ export const removePlacement = async (id: string, userId: string) => {
 };
 
 export const seedDefaultFurniture = async () => {
-  const existingCount = await prisma.furnitureItem.count({
-    where: { isDefault: true },
-  });
-
-  if (existingCount >= DEFAULT_FURNITURE_ITEMS.length) {
-    logger.info("Default furniture items already seeded");
-    return;
-  }
-
   await prisma.furnitureItem.deleteMany({ where: { isDefault: true } });
 
   await prisma.furnitureItem.createMany({
@@ -132,5 +123,5 @@ export const seedDefaultFurniture = async () => {
     })),
   });
 
-  logger.info(`Seeded ${DEFAULT_FURNITURE_ITEMS.length} default furniture items`);
+  logger.info(`Default furniture seeded`);
 };
