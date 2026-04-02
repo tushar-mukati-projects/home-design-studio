@@ -21,9 +21,8 @@ interface CategoryTab {
 const CATEGORIES: CategoryTab[] = [
   { label: "All", value: "all" },
   { label: "Apartment", value: "apartment" },
-  { label: "Kitchen", value: "kitchen" },
+  { label: "House", value: "house" },
   { label: "Office", value: "office" },
-  { label: "Bathroom", value: "bathroom" },
 ];
 
 interface TemplatePreviewProps {
@@ -33,11 +32,25 @@ interface TemplatePreviewProps {
 const TemplatePreview = ({ template }: TemplatePreviewProps) => {
   const { width, height, canvasData } = template;
   const walls: Wall[] = canvasData?.walls ?? [];
+  const rooms = canvasData?.rooms;
+  const furniture = canvasData?.furniture;
   const aspectRatio = width / height;
   const svgWidth = 400;
   const svgHeight = svgWidth / aspectRatio;
   const scaleX = svgWidth / width;
   const scaleY = svgHeight / height;
+
+  const ROOM_FILLS: Record<string, string> = {
+    living_room: "#e8e8ec",
+    bedroom: "#e4e0ec",
+    kitchen: "#ece8e4",
+    bathroom: "#e0e8ec",
+    dining: "#ece8e0",
+    office: "#e4ece4",
+    hallway: "#f0f0f4",
+    closet: "#eaeaee",
+    generic: "#eaeaee",
+  };
 
   return (
     <svg
@@ -46,6 +59,18 @@ const TemplatePreview = ({ template }: TemplatePreviewProps) => {
       preserveAspectRatio="xMidYMid meet"
     >
       <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="var(--secondary)" rx={4} />
+      {rooms?.map((room) => {
+        if (!room.points || room.points.length < 3) return null;
+        const pts = room.points.map((p) => `${p.x * scaleX},${p.y * scaleY}`).join(" ");
+        return (
+          <polygon
+            key={room.id}
+            points={pts}
+            fill={ROOM_FILLS[room.type] || ROOM_FILLS.generic}
+            stroke="none"
+          />
+        );
+      })}
       {walls.map((wall) => (
         <line
           key={wall.id}
@@ -58,6 +83,22 @@ const TemplatePreview = ({ template }: TemplatePreviewProps) => {
           strokeLinecap="round"
         />
       ))}
+      {furniture?.map((f) => {
+        const w = (f.furnitureItem?.width ?? 40) * (f.scaleX ?? 1) * scaleX;
+        const h = (f.furnitureItem?.height ?? 40) * (f.scaleY ?? 1) * scaleY;
+        return (
+          <rect
+            key={f.id}
+            x={f.x * scaleX - w / 2}
+            y={f.y * scaleY - h / 2}
+            width={w}
+            height={h}
+            rx={2}
+            fill="#b4b4bc"
+            opacity={0.5}
+          />
+        );
+      })}
     </svg>
   );
 };

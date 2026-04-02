@@ -79,6 +79,8 @@ export interface CanvasData {
   walls: Wall[];
   doors: Door[];
   windows: Window[];
+  rooms?: Room[];
+  furniture?: PlacedFurniture[];
   gridSize: number;
   zoom: number;
   panX: number;
