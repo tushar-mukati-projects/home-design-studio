@@ -1,12 +1,25 @@
 "use client";
 
 import { useMemo } from "react";
-import { Shape, ExtrudeGeometry, MeshStandardMaterial } from "three";
+import { Shape, ShapeGeometry, MeshStandardMaterial, DoubleSide } from "three";
 import { Text } from "@react-three/drei";
 import type { Room } from "@/types";
 
 const SCALE = 0.01;
-const FLOOR_ELEVATION = 0.005;
+const FLOOR_ELEVATION = 0.02;
+
+const ROOM_3D_COLORS: Record<string, string> = {
+  "living-room": "#c8c8ce",
+  living_room: "#c8c8ce",
+  bedroom: "#c4c0cc",
+  kitchen: "#ccc8c4",
+  bathroom: "#c0c8d0",
+  office: "#c4ccc4",
+  dining: "#ccc8c0",
+  hallway: "#d0d0d4",
+  garage: "#b8b8bc",
+  generic: "#c8c8cc",
+};
 
 interface Room3DProps {
   room: Room;
@@ -29,24 +42,26 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
     }
     shape.closePath();
 
-    const extrudeSettings = {
-      depth: 0.01,
-      bevelEnabled: false,
-    };
-
-    return new ExtrudeGeometry(shape, extrudeSettings);
+    return new ShapeGeometry(shape);
   }, [room.points, offsetX, offsetZ]);
+
+  const roomColor = ROOM_3D_COLORS[room.type] || ROOM_3D_COLORS.generic;
 
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: showColor ? room.color || "#c0c0c8" : "#d0d0d4",
-        roughness: 0.85,
+        color: showColor ? roomColor : "#d4d4d8",
+        roughness: 0.9,
         metalness: 0,
         transparent: true,
-        opacity: showColor ? 0.5 : 0.2,
+        opacity: showColor ? 0.35 : 0.12,
+        depthWrite: false,
+        side: DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
       }),
-    [room.color, showColor],
+    [roomColor, showColor],
   );
 
   const center = useMemo(() => {

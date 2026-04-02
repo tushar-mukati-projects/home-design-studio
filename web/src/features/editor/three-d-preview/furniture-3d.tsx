@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Text, RoundedBox, Cylinder, Sphere } from "@react-three/drei";
+import { RoundedBox, Cylinder, Sphere } from "@react-three/drei";
 import { MeshStandardMaterial, Color } from "three";
 import type { PlacedFurniture } from "@/types";
 
@@ -686,16 +686,6 @@ export const Furniture3D = ({
           material={material}
         />
       </group>
-      <Text
-        position={[0, dimensions.h / 2 + 0.15, 0]}
-        fontSize={0.12}
-        color="#52525b"
-        anchorX="center"
-        anchorY="bottom"
-        maxWidth={2}
-      >
-        {item.name}
-      </Text>
     </group>
   );
 };
