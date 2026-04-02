@@ -184,7 +184,7 @@ export const TemplateGallery = ({
         <LayoutTemplate className="h-5 w-5 text-[var(--primary)]" />
         <h2
           className="text-xl text-[var(--foreground)]"
-          style={{ fontFamily: "'DM Serif Display', serif" }}
+          style={{ fontFamily: "var(--font-heading)" }}
         >
           Start from a Template
         </h2>

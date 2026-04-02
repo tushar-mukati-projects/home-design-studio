@@ -39,7 +39,7 @@ export const GridLayer = memo(function GridLayer({ width, height }: GridLayerPro
             ctx.moveTo(startX, y);
             ctx.lineTo(endX, y);
           }
-          ctx.strokeStyle = "#1A1815";
+          ctx.strokeStyle = "#e2e3e8";
           ctx.lineWidth = 0.4 / zoom;
           ctx.stroke();
 
@@ -56,7 +56,7 @@ export const GridLayer = memo(function GridLayer({ width, height }: GridLayerPro
               ctx.lineTo(endX, y);
             }
           }
-          ctx.strokeStyle = "#2A2520";
+          ctx.strokeStyle = "#cfd0d6";
           ctx.lineWidth = 0.8 / zoom;
           ctx.stroke();
 
@@ -65,7 +65,7 @@ export const GridLayer = memo(function GridLayer({ width, height }: GridLayerPro
           ctx.lineTo(0, endY);
           ctx.moveTo(startX, 0);
           ctx.lineTo(endX, 0);
-          ctx.strokeStyle = "#4A4540";
+          ctx.strokeStyle = "#a0a1a8";
           ctx.lineWidth = 1.5 / zoom;
           ctx.stroke();
         }}

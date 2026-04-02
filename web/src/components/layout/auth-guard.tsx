@@ -20,7 +20,7 @@ const LoadingScreen = () => {
         </div>
         <span
           className="text-3xl text-[var(--foreground)]"
-          style={{ fontFamily: "'DM Serif Display', serif" }}
+          style={{ fontFamily: "var(--font-heading)" }}
         >
           DesignStudio
         </span>

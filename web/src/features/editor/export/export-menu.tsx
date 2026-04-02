@@ -35,20 +35,20 @@ const ExportMenu = ({ stageRef, designName, designId }: ExportMenuProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onSelect={() => exportAsPng(stageRef, designName)}>
-            <ImageIcon className="mr-2 h-4 w-4 text-[#D4A853]" />
+            <ImageIcon className="mr-2 h-4 w-4 text-[#52525b]" />
             Export as PNG
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setPdfDialogOpen(true)}>
-            <FileText className="mr-2 h-4 w-4 text-[#D4A853]" />
+            <FileText className="mr-2 h-4 w-4 text-[#52525b]" />
             Export as PDF
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => copyShareLink(designId)}>
-            <Link className="mr-2 h-4 w-4 text-[#D4A853]" />
+            <Link className="mr-2 h-4 w-4 text-[#52525b]" />
             Copy Share Link
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => printFloorPlan(stageRef)}>
-            <Printer className="mr-2 h-4 w-4 text-[#D4A853]" />
+            <Printer className="mr-2 h-4 w-4 text-[#52525b]" />
             Print
           </DropdownMenuItem>
         </DropdownMenuContent>

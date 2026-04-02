@@ -113,11 +113,11 @@ const SceneContents = ({
 
   return (
     <>
-      <ambientLight intensity={ambientIntensity} color="#FFF5E6" />
+      <ambientLight intensity={ambientIntensity} color="#FFF8F0" />
       <directionalLight
         position={[bounds.size * 0.7, bounds.size * 1.2, bounds.size * 0.5]}
         intensity={1.2}
-        color="#FFF0D4"
+        color="#FFF5E8"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -132,7 +132,7 @@ const SceneContents = ({
       <pointLight
         position={[0, 2.5, 0]}
         intensity={0.3}
-        color="#D4A853"
+        color="#94a3b8"
         distance={bounds.size * 2}
       />
 
@@ -180,14 +180,14 @@ const SceneContents = ({
         scale={bounds.size * 3}
         blur={2}
         far={bounds.size * 2}
-        color="#1A1510"
+        color="#1a1a2e"
       />
 
       {!hasContent && (
         <Text
           position={[0, 1.5, 0]}
           fontSize={0.3}
-          color="#8A8278"
+          color="#6b6b78"
           anchorX="center"
           anchorY="middle"
           maxWidth={6}
@@ -197,7 +197,7 @@ const SceneContents = ({
       )}
 
       <Environment preset="apartment" />
-      <fog attach="fog" args={["#0C0C0C", bounds.size * 3, bounds.size * 8]} />
+      <fog attach="fog" args={["#0f172a", bounds.size * 3, bounds.size * 8]} />
     </>
   );
 };
@@ -287,7 +287,7 @@ export const PreviewScene = ({
         alpha: false,
         powerPreference: "high-performance",
       }}
-      style={{ background: "#0C0C0C" }}
+      style={{ background: "#0f172a" }}
       onCreated={({ camera }) => {
         camera.position.set(...preset.position);
         camera.lookAt(...preset.target);

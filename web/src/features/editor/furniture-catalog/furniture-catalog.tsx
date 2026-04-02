@@ -116,7 +116,7 @@ export const FurnitureCatalog = () => {
                 className={cn(
                   "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-all duration-150 active:scale-[0.98]",
                   activeCategory === cat.id
-                    ? "bg-[#D4A853] text-[var(--primary-foreground)] shadow-sm"
+                    ? "bg-[#2c2c2e] text-[var(--primary-foreground)] shadow-sm"
                     : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]/80 hover:text-[var(--foreground)]",
                 )}
               >

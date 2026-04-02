@@ -5,7 +5,7 @@ export const mockRooms: Room[] = [
     id: "room_01",
     name: "Living Room",
     type: "living-room",
-    color: "#D4A85330",
+    color: "#52525b30",
     points: [
       { x: 50, y: 50 },
       { x: 400, y: 50 },

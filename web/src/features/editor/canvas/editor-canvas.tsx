@@ -95,32 +95,12 @@ export const EditorCanvas = ({
   const lastPanPosRef = useRef({ x: 0, y: 0 });
   const wallLayerRedrawRef = useRef<() => void>(null);
   const doorWindowPriorityRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
+  // Only subscribe to values the Stage JSX needs for rendering
   const zoom = useEditorStore((s) => s.zoom);
   const panX = useEditorStore((s) => s.panX);
   const panY = useEditorStore((s) => s.panY);
-  const activeTool = useEditorStore((s) => s.activeTool);
-  const isDrawing = useEditorStore((s) => s.isDrawing);
-  const currentWallStart = useEditorStore((s) => s.currentWallStart);
-  const setZoom = useEditorStore((s) => s.setZoom);
-  const setPan = useEditorStore((s) => s.setPan);
-  const setIsDrawing = useEditorStore((s) => s.setIsDrawing);
-  const setCurrentWallStart = useEditorStore((s) => s.setCurrentWallStart);
-  const addWall = useEditorStore((s) => s.addWall);
-  const clearSelection = useEditorStore((s) => s.clearSelection);
-  const snapPoint = useEditorStore((s) => s.snapPoint);
-  const removeWall = useEditorStore((s) => s.removeWall);
-  const removeFurniture = useEditorStore((s) => s.removeFurniture);
-  const addDoor = useEditorStore((s) => s.addDoor);
-  const addWindow = useEditorStore((s) => s.addWindow);
-  const removeDoor = useEditorStore((s) => s.removeDoor);
-  const removeWindow = useEditorStore((s) => s.removeWindow);
-  const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
-  const setTool = useEditorStore((s) => s.setTool);
-  const walls = useEditorStore((s) => s.walls);
-  const doors = useEditorStore((s) => s.doors);
-  const windows = useEditorStore((s) => s.windows);
-  const furniture = useEditorStore((s) => s.furniture);
 
   useEffect(() => {
     const updateSize = () => {
@@ -135,19 +115,23 @@ export const EditorCanvas = ({
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [containerRef]);
 
   const getCanvasPoint = useCallback(
     (stage: Konva.Stage) => {
       const pointer = stage.getPointerPosition();
       if (!pointer) return null;
+      const s = useEditorStore.getState();
       return {
-        x: (pointer.x - panX) / zoom,
-        y: (pointer.y - panY) / zoom,
+        x: (pointer.x - s.panX) / s.zoom,
+        y: (pointer.y - s.panY) / s.zoom,
       };
     },
-    [panX, panY, zoom],
+    [],
   );
 
   const handleWheel = useCallback(
@@ -159,122 +143,124 @@ export const EditorCanvas = ({
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
 
+      const s = useEditorStore.getState();
       const scaleBy = 1.08;
-      const oldZoom = zoom;
+      const oldZoom = s.zoom;
       const direction = e.evt.deltaY > 0 ? -1 : 1;
       const newZoom = direction > 0 ? oldZoom * scaleBy : oldZoom / scaleBy;
       const clampedZoom = Math.max(0.1, Math.min(5, newZoom));
 
       const mousePointTo = {
-        x: (pointer.x - panX) / oldZoom,
-        y: (pointer.y - panY) / oldZoom,
+        x: (pointer.x - s.panX) / oldZoom,
+        y: (pointer.y - s.panY) / oldZoom,
       };
 
       const newPanX = pointer.x - mousePointTo.x * clampedZoom;
       const newPanY = pointer.y - mousePointTo.y * clampedZoom;
 
-      setZoom(clampedZoom);
-      setPan(newPanX, newPanY);
+      s.setZoom(clampedZoom);
+      s.setPan(newPanX, newPanY);
     },
-    [zoom, panX, panY, setZoom, setPan, stageRef],
+    [stageRef],
   );
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       const stage = stageRef.current;
       if (!stage) return;
+      const s = useEditorStore.getState();
 
-      if (e.evt.button === 1 || activeTool === "pan") {
+      if (e.evt.button === 1 || s.activeTool === "pan") {
         isPanningRef.current = true;
         lastPanPosRef.current = { x: e.evt.clientX, y: e.evt.clientY };
         stage.container().style.cursor = "grabbing";
         return;
       }
 
-      if (activeTool === "wall") {
+      if (s.activeTool === "wall") {
         const point = getCanvasPoint(stage);
         if (!point) return;
-        const snapped = snapPoint(point);
+        const snapped = s.snapPoint(point);
 
-        if (!isDrawing) {
-          setIsDrawing(true);
-          setCurrentWallStart(snapped);
-        } else if (currentWallStart) {
+        if (!s.isDrawing) {
+          s.setIsDrawing(true);
+          s.setCurrentWallStart(snapped);
+        } else if (s.currentWallStart) {
           const wallLength = Math.sqrt(
-            (snapped.x - currentWallStart.x) ** 2 + (snapped.y - currentWallStart.y) ** 2,
+            (snapped.x - s.currentWallStart.x) ** 2 + (snapped.y - s.currentWallStart.y) ** 2,
           );
           if (wallLength > 5) {
-            addWall({
+            s.addWall({
               id: crypto.randomUUID(),
-              x1: currentWallStart.x,
-              y1: currentWallStart.y,
+              x1: s.currentWallStart.x,
+              y1: s.currentWallStart.y,
               x2: snapped.x,
               y2: snapped.y,
               thickness: 8,
-              color: "#6B5B4D",
+              color: "#3a3a4a",
             });
           }
-          setCurrentWallStart(snapped);
+          s.setCurrentWallStart(snapped);
         }
         return;
       }
 
-      if (activeTool === "door") {
+      if (s.activeTool === "door") {
         const point = getCanvasPoint(stage);
         if (!point) return;
-        const result = findNearestWall(point.x, point.y, walls, 20 / zoom);
+        const result = findNearestWall(point.x, point.y, s.walls, 20 / s.zoom);
         if (result) {
           const id = crypto.randomUUID();
-          addDoor({
+          s.addDoor({
             id,
             wallId: result.wall.id,
             position: result.position,
             width: 80,
             type: "single",
           });
-          setTool("select");
-          setSelectedElement(id);
+          s.setTool("select");
+          s.setSelectedElement(id);
         }
         return;
       }
 
-      if (activeTool === "window") {
+      if (s.activeTool === "window") {
         const point = getCanvasPoint(stage);
         if (!point) return;
-        const result = findNearestWall(point.x, point.y, walls, 20 / zoom);
+        const result = findNearestWall(point.x, point.y, s.walls, 20 / s.zoom);
         if (result) {
           const id = crypto.randomUUID();
-          addWindow({
+          s.addWindow({
             id,
             wallId: result.wall.id,
             position: result.position,
             width: 60,
           });
-          setTool("select");
-          setSelectedElement(id);
+          s.setTool("select");
+          s.setSelectedElement(id);
         }
         return;
       }
 
-      if (activeTool === "eraser") {
+      if (s.activeTool === "eraser") {
         const point = getCanvasPoint(stage);
         if (!point) return;
 
         const hitDoorOrWindow = findNearestDoorOrWindow(
           point.x,
           point.y,
-          doors,
-          windows,
-          walls,
-          20 / zoom,
+          s.doors,
+          s.windows,
+          s.walls,
+          20 / s.zoom,
         );
         if (hitDoorOrWindow) {
-          if (hitDoorOrWindow.kind === "door") removeDoor(hitDoorOrWindow.id);
-          else removeWindow(hitDoorOrWindow.id);
+          if (hitDoorOrWindow.kind === "door") s.removeDoor(hitDoorOrWindow.id);
+          else s.removeWindow(hitDoorOrWindow.id);
           return;
         }
 
-        const hitWall = walls.find((wall) => {
+        const hitWall = s.walls.find((wall) => {
           const dx = wall.x2 - wall.x1;
           const dy = wall.y2 - wall.y1;
           const len = Math.sqrt(dx * dx + dy * dy);
@@ -286,15 +272,15 @@ export const EditorCanvas = ({
           const projX = wall.x1 + t * dx;
           const projY = wall.y1 + t * dy;
           const dist = Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
-          return dist < wall.thickness / 2 + 10 / zoom;
+          return dist < wall.thickness / 2 + 10 / s.zoom;
         });
 
         if (hitWall) {
-          removeWall(hitWall.id);
+          s.removeWall(hitWall.id);
           return;
         }
 
-        const hitFurniture = furniture.find((f) => {
+        const hitFurniture = s.furniture.find((f) => {
           const hw = (f.furnitureItem.width * f.scaleX) / 2;
           const hh = (f.furnitureItem.height * f.scaleY) / 2;
           return (
@@ -303,26 +289,26 @@ export const EditorCanvas = ({
         });
 
         if (hitFurniture) {
-          removeFurniture(hitFurniture.id);
+          s.removeFurniture(hitFurniture.id);
           return;
         }
         return;
       }
 
-      if (activeTool === "select") {
+      if (s.activeTool === "select") {
         const point = getCanvasPoint(stage);
         if (point) {
           const hitDoorOrWindow = findNearestDoorOrWindow(
             point.x,
             point.y,
-            doors,
-            windows,
-            walls,
-            20 / zoom,
+            s.doors,
+            s.windows,
+            s.walls,
+            20 / s.zoom,
           );
           if (hitDoorOrWindow) {
             doorWindowPriorityRef.current = true;
-            setSelectedElement(hitDoorOrWindow.id);
+            s.setSelectedElement(hitDoorOrWindow.id);
             return;
           }
         }
@@ -330,47 +316,24 @@ export const EditorCanvas = ({
 
         const clickedOnEmpty = e.target === stage || e.target.getParent() === stage;
         if (clickedOnEmpty) {
-          clearSelection();
+          s.clearSelection();
         }
       }
     },
-    [
-      activeTool,
-      isDrawing,
-      currentWallStart,
-      getCanvasPoint,
-      snapPoint,
-      setIsDrawing,
-      setCurrentWallStart,
-      addWall,
-      addDoor,
-      addWindow,
-      clearSelection,
-      setSelectedElement,
-      setTool,
-      removeWall,
-      removeFurniture,
-      removeDoor,
-      removeWindow,
-      walls,
-      doors,
-      windows,
-      furniture,
-      zoom,
-      stageRef,
-    ],
+    [getCanvasPoint, stageRef],
   );
 
   const handleMouseMove = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
       const stage = stageRef.current;
       if (!stage) return;
+      const s = useEditorStore.getState();
 
       if (isPanningRef.current) {
         const dx = e.evt.clientX - lastPanPosRef.current.x;
         const dy = e.evt.clientY - lastPanPosRef.current.y;
         lastPanPosRef.current = { x: e.evt.clientX, y: e.evt.clientY };
-        setPan(panX + dx, panY + dy);
+        s.setPan(s.panX + dx, s.panY + dy);
         return;
       }
 
@@ -378,22 +341,27 @@ export const EditorCanvas = ({
       if (point) {
         mousePosRef.current = point;
         onCursorMove?.(point.x, point.y);
-        if (activeTool === "wall" && isDrawing) {
-          wallLayerRedrawRef.current?.();
+
+        // Use RAF for wall preview redraws to avoid flooding renders
+        if (s.activeTool === "wall" && s.isDrawing) {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(() => {
+            wallLayerRedrawRef.current?.();
+          });
         }
       }
 
-      if (activeTool === "wall" || activeTool === "door" || activeTool === "window") {
+      if (s.activeTool === "wall" || s.activeTool === "door" || s.activeTool === "window") {
         stage.container().style.cursor = "crosshair";
-      } else if (activeTool === "pan") {
+      } else if (s.activeTool === "pan") {
         stage.container().style.cursor = isPanningRef.current ? "grabbing" : "grab";
-      } else if (activeTool === "eraser") {
+      } else if (s.activeTool === "eraser") {
         stage.container().style.cursor = "not-allowed";
       } else {
         stage.container().style.cursor = "default";
       }
     },
-    [activeTool, isDrawing, getCanvasPoint, panX, panY, setPan, stageRef, onCursorMove],
+    [getCanvasPoint, stageRef, onCursorMove],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -401,33 +369,36 @@ export const EditorCanvas = ({
       isPanningRef.current = false;
       const stage = stageRef.current;
       if (stage) {
-        stage.container().style.cursor = activeTool === "pan" ? "grab" : "default";
+        const s = useEditorStore.getState();
+        stage.container().style.cursor = s.activeTool === "pan" ? "grab" : "default";
       }
     }
-  }, [activeTool, stageRef]);
+  }, [stageRef]);
 
   const handleDblClick = useCallback(() => {
-    if (activeTool === "wall" && isDrawing) {
-      setIsDrawing(false);
-      setCurrentWallStart(null);
+    const s = useEditorStore.getState();
+    if (s.activeTool === "wall" && s.isDrawing) {
+      s.setIsDrawing(false);
+      s.setCurrentWallStart(null);
     }
-  }, [activeTool, isDrawing, setIsDrawing, setCurrentWallStart]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (isDrawing) {
-          setIsDrawing(false);
-          setCurrentWallStart(null);
+        const s = useEditorStore.getState();
+        if (s.isDrawing) {
+          s.setIsDrawing(false);
+          s.setCurrentWallStart(null);
         } else {
-          clearSelection();
+          s.clearSelection();
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDrawing, setIsDrawing, setCurrentWallStart, clearSelection]);
+  }, []);
 
   return (
     <Stage

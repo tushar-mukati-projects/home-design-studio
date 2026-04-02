@@ -41,7 +41,7 @@ const FURNITURE_PRESETS = [
   { color: "#2C2C2C", label: "Black" },
   { color: "#F5F5F5", label: "White" },
   { color: "#654321", label: "Dark Wood" },
-  { color: "#D4A853", label: "Gold" },
+  { color: "#B8860B", label: "Gold" },
   { color: "#4A6741", label: "Forest Green" },
 ];
 
@@ -60,7 +60,7 @@ interface ColorPickerRowProps {
 const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps) => {
   return (
     <div>
-      <span className="text-[10px] font-medium tracking-wider text-[#8A8278] uppercase">
+      <span className="text-[10px] font-medium tracking-wider text-[#6b6b78] uppercase">
         {label}
       </span>
       <div className="mt-1.5 flex items-center gap-1.5">
@@ -74,7 +74,7 @@ const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps
               backgroundColor: preset.color,
               boxShadow:
                 value === preset.color
-                  ? "0 0 0 2px #141414, 0 0 0 3.5px #D4A853"
+                  ? "0 0 0 2px #1e293b, 0 0 0 3.5px #64748b"
                   : "0 0 0 1px rgba(255,255,255,0.1)",
             }}
           />
@@ -87,7 +87,7 @@ const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
           <span
-            className="block h-6 w-6 rounded border border-[#2A2520] transition-transform hover:scale-110"
+            className="block h-6 w-6 rounded border border-[#334155] transition-transform hover:scale-110"
             style={{ backgroundColor: value }}
           />
         </label>
@@ -110,10 +110,10 @@ const CAMERA_OPTIONS = [
 
 const LoadingFallback = () => {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#0C0C0C]">
+    <div className="flex h-full w-full items-center justify-center bg-[#0f172a]">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#D4A853] border-t-transparent" />
-        <p className="text-sm text-[#8A8278]">Loading 3D scene...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#64748b] border-t-transparent" />
+        <p className="text-sm text-[#6b6b78]">Loading 3D scene...</p>
       </div>
     </div>
   );
@@ -176,22 +176,22 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
           transition={{ duration: 0.3 }}
           className="fixed inset-0 z-[100] flex flex-col"
         >
-          <div className="absolute inset-0 bg-[#0C0C0C]/95 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-[#0f172a]/95 backdrop-blur-sm" />
 
-          <div className="relative z-10 flex items-center justify-between border-b border-[#2A2520]/60 px-5 py-3">
+          <div className="relative z-10 flex items-center justify-between border-b border-[#334155]/60 px-5 py-3">
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-[#D4A853]" />
-              <h2 className="text-lg font-semibold tracking-tight text-[#F5F0EB]">3D Preview</h2>
+              <div className="h-2 w-2 rounded-full bg-[#64748b]" />
+              <h2 className="text-lg font-semibold tracking-tight text-[#f1f5f9]">3D Preview</h2>
             </div>
             <div className="flex items-center gap-3">
-              <span className="hidden text-xs text-[#8A8278] sm:block">
+              <span className="hidden text-xs text-[#6b6b78] sm:block">
                 Click and drag to orbit, scroll to zoom, right-click to pan
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="text-[#8A8278] hover:bg-[#1F1F1F] hover:text-[#F5F0EB]"
+                className="text-[#6b6b78] hover:bg-[#1e293b] hover:text-[#f1f5f9]"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -222,27 +222,27 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                   variant="outline"
                   size="sm"
                   onClick={() => setPanelCollapsed(false)}
-                  className="border-[#2A2520] bg-[#141414]/90 text-[#C4B99A] backdrop-blur-md hover:bg-[#1A1A1A] hover:text-[#F5F0EB]"
+                  className="border-[#334155] bg-[#1e293b]/90 text-[#94a3b8] backdrop-blur-md hover:bg-[#1A1A1A] hover:text-[#f1f5f9]"
                 >
                   View Options
                 </Button>
               ) : (
-                <div className="w-64 rounded-lg border border-[#2A2520] bg-[#141414]/90 shadow-2xl backdrop-blur-md">
-                  <div className="flex items-center justify-between border-b border-[#2A2520]/60 px-3 py-2">
-                    <span className="text-xs font-medium tracking-wider text-[#C4B99A] uppercase">
+                <div className="w-64 rounded-lg border border-[#334155] bg-[#1e293b]/90 shadow-2xl backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-[#334155]/60 px-3 py-2">
+                    <span className="text-xs font-medium tracking-wider text-[#94a3b8] uppercase">
                       View Options
                     </span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={handleReset}
-                        className="rounded p-1 text-[#8A8278] transition-colors hover:text-[#D4A853]"
+                        className="rounded p-1 text-[#6b6b78] transition-colors hover:text-[#64748b]"
                         title="Reset to defaults"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setPanelCollapsed(true)}
-                        className="rounded p-1 text-[#8A8278] transition-colors hover:text-[#F5F0EB]"
+                        className="rounded p-1 text-[#6b6b78] transition-colors hover:text-[#f1f5f9]"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -251,7 +251,7 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
 
                   <div className="space-y-3 p-3">
                     <div>
-                      <span className="text-[10px] font-medium tracking-wider text-[#8A8278] uppercase">
+                      <span className="text-[10px] font-medium tracking-wider text-[#6b6b78] uppercase">
                         Camera
                       </span>
                       <div className="mt-1.5 grid grid-cols-2 gap-1.5">
@@ -264,8 +264,8 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                               onClick={() => setCameraPreset(opt.id)}
                               className={`flex items-center gap-1.5 rounded px-2 py-1.5 text-[11px] font-medium transition-all ${
                                 active
-                                  ? "bg-[#D4A853]/15 text-[#D4A853] ring-1 ring-[#D4A853]/30"
-                                  : "text-[#8A8278] hover:bg-[#1F1F1F] hover:text-[#C4B99A]"
+                                  ? "bg-[#64748b]/15 text-[#64748b] ring-1 ring-[#64748b]/30"
+                                  : "text-[#6b6b78] hover:bg-[#1e293b] hover:text-[#94a3b8]"
                               }`}
                             >
                               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -276,21 +276,21 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                       </div>
                     </div>
 
-                    <div className="space-y-2 border-t border-[#2A2520]/40 pt-1">
+                    <div className="space-y-2 border-t border-[#334155]/40 pt-1">
                       <button
                         onClick={() => setShowFurniture((v) => !v)}
-                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#C4B99A] transition-colors hover:bg-[#1F1F1F]"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#94a3b8] transition-colors hover:bg-[#1e293b]"
                       >
                         <span className="flex items-center gap-2">
                           {showFurniture ? (
-                            <Eye className="h-3.5 w-3.5 text-[#D4A853]" />
+                            <Eye className="h-3.5 w-3.5 text-[#64748b]" />
                           ) : (
-                            <EyeOff className="h-3.5 w-3.5 text-[#8A8278]" />
+                            <EyeOff className="h-3.5 w-3.5 text-[#6b6b78]" />
                           )}
                           Furniture
                         </span>
                         <span
-                          className={`text-[10px] ${showFurniture ? "text-[#D4A853]" : "text-[#8A8278]"}`}
+                          className={`text-[10px] ${showFurniture ? "text-[#64748b]" : "text-[#6b6b78]"}`}
                         >
                           {showFurniture ? "ON" : "OFF"}
                         </span>
@@ -298,29 +298,29 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
 
                       <button
                         onClick={() => setShowRoomColors((v) => !v)}
-                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#C4B99A] transition-colors hover:bg-[#1F1F1F]"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#94a3b8] transition-colors hover:bg-[#1e293b]"
                       >
                         <span className="flex items-center gap-2">
                           <Palette
-                            className={`h-3.5 w-3.5 ${showRoomColors ? "text-[#D4A853]" : "text-[#8A8278]"}`}
+                            className={`h-3.5 w-3.5 ${showRoomColors ? "text-[#64748b]" : "text-[#6b6b78]"}`}
                           />
                           Room Colors
                         </span>
                         <span
-                          className={`text-[10px] ${showRoomColors ? "text-[#D4A853]" : "text-[#8A8278]"}`}
+                          className={`text-[10px] ${showRoomColors ? "text-[#64748b]" : "text-[#6b6b78]"}`}
                         >
                           {showRoomColors ? "ON" : "OFF"}
                         </span>
                       </button>
                     </div>
 
-                    <div className="border-t border-[#2A2520]/40 pt-1">
+                    <div className="border-t border-[#334155]/40 pt-1">
                       <div className="mb-1.5 flex items-center justify-between px-2">
-                        <span className="flex items-center gap-2 text-[11px] font-medium text-[#C4B99A]">
-                          <Sun className="h-3.5 w-3.5 text-[#D4A853]" />
+                        <span className="flex items-center gap-2 text-[11px] font-medium text-[#94a3b8]">
+                          <Sun className="h-3.5 w-3.5 text-[#64748b]" />
                           Ambient Light
                         </span>
-                        <span className="text-[10px] text-[#8A8278]">{ambientIntensity}%</span>
+                        <span className="text-[10px] text-[#6b6b78]">{ambientIntensity}%</span>
                       </div>
                       <div className="px-2">
                         <Slider
@@ -333,10 +333,10 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                       </div>
                     </div>
 
-                    <div className="space-y-3 border-t border-[#2A2520]/40 px-2 pt-1">
+                    <div className="space-y-3 border-t border-[#334155]/40 px-2 pt-1">
                       <div className="mb-1 flex items-center gap-2">
-                        <Palette className="h-3.5 w-3.5 text-[#D4A853]" />
-                        <span className="text-[11px] font-medium text-[#C4B99A]">Colors</span>
+                        <Palette className="h-3.5 w-3.5 text-[#64748b]" />
+                        <span className="text-[11px] font-medium text-[#94a3b8]">Colors</span>
                       </div>
                       <ColorPickerRow
                         label="Floor"

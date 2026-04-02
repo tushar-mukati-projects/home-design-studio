@@ -241,7 +241,7 @@ export const mockDesigns: Design[] = [
         id: "room_01",
         name: "Living Room",
         type: "living-room",
-        color: "#D4A85330",
+        color: "#52525b30",
         points: [
           { x: 50, y: 50 },
           { x: 300, y: 50 },
