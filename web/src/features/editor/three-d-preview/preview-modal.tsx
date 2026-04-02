@@ -19,30 +19,30 @@ import { Slider } from "@/components/ui/slider";
 import { PreviewScene } from "./preview-scene";
 
 const FLOOR_PRESETS = [
-  { color: "#4A4540", label: "Dark Brown" },
-  { color: "#8B7355", label: "Wood" },
-  { color: "#D4C5B2", label: "Light Oak" },
-  { color: "#2C2C2C", label: "Dark Gray" },
-  { color: "#E8DCC8", label: "Cream" },
-  { color: "#654321", label: "Walnut" },
+  { color: "#d4d4d8", label: "Light Gray" },
+  { color: "#a1a1aa", label: "Medium Gray" },
+  { color: "#e8dcc8", label: "Cream" },
+  { color: "#52525b", label: "Charcoal" },
+  { color: "#d4c5b2", label: "Light Oak" },
+  { color: "#71717a", label: "Slate" },
 ];
 
 const WALL_PRESETS = [
-  { color: "#F5EDE0", label: "Beige" },
-  { color: "#FFFFFF", label: "White" },
-  { color: "#E8E0D0", label: "Warm White" },
-  { color: "#D5C4A1", label: "Sand" },
-  { color: "#C9D6DF", label: "Light Blue" },
-  { color: "#D4E6D4", label: "Light Green" },
+  { color: "#f4f4f5", label: "Light" },
+  { color: "#ffffff", label: "White" },
+  { color: "#e4e4e7", label: "Soft Gray" },
+  { color: "#d4d4d8", label: "Gray" },
+  { color: "#c9d6df", label: "Light Blue" },
+  { color: "#d4e6d4", label: "Light Green" },
 ];
 
 const FURNITURE_PRESETS = [
-  { color: "#8B7355", label: "Wood" },
-  { color: "#2C2C2C", label: "Black" },
-  { color: "#F5F5F5", label: "White" },
-  { color: "#654321", label: "Dark Wood" },
-  { color: "#B8860B", label: "Gold" },
-  { color: "#4A6741", label: "Forest Green" },
+  { color: "#a1a1aa", label: "Gray" },
+  { color: "#52525b", label: "Charcoal" },
+  { color: "#f4f4f5", label: "White" },
+  { color: "#71717a", label: "Slate" },
+  { color: "#d4d4d8", label: "Silver" },
+  { color: "#2c2c2e", label: "Dark" },
 ];
 
 interface ColorPreset {
@@ -60,7 +60,7 @@ interface ColorPickerRowProps {
 const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps) => {
   return (
     <div>
-      <span className="text-[10px] font-medium tracking-wider text-[#6b6b78] uppercase">
+      <span className="text-[10px] font-medium tracking-wider text-[#71717a] uppercase">
         {label}
       </span>
       <div className="mt-1.5 flex items-center gap-1.5">
@@ -74,8 +74,8 @@ const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps
               backgroundColor: preset.color,
               boxShadow:
                 value === preset.color
-                  ? "0 0 0 2px #1e293b, 0 0 0 3.5px #64748b"
-                  : "0 0 0 1px rgba(255,255,255,0.1)",
+                  ? "0 0 0 2px #ffffff, 0 0 0 3.5px #2c2c2e"
+                  : "0 0 0 1px rgba(0,0,0,0.08)",
             }}
           />
         ))}
@@ -87,7 +87,7 @@ const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           />
           <span
-            className="block h-6 w-6 rounded border border-[#334155] transition-transform hover:scale-110"
+            className="block h-6 w-6 rounded border border-[#e4e4e7] transition-transform hover:scale-110"
             style={{ backgroundColor: value }}
           />
         </label>
@@ -110,10 +110,10 @@ const CAMERA_OPTIONS = [
 
 const LoadingFallback = () => {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#0f172a]">
+    <div className="flex h-full w-full items-center justify-center bg-[#f5f6f8]">
       <div className="flex flex-col items-center gap-4">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#64748b] border-t-transparent" />
-        <p className="text-sm text-[#6b6b78]">Loading 3D scene...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#2c2c2e] border-t-transparent" />
+        <p className="text-sm text-[#71717a]">Loading 3D scene...</p>
       </div>
     </div>
   );
@@ -130,9 +130,9 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
   const [showRoomColors, setShowRoomColors] = useState(true);
   const [ambientIntensity, setAmbientIntensity] = useState(60);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [floorColor, setFloorColor] = useState("#4A4540");
-  const [wallColor, setWallColor] = useState("#F5EDE0");
-  const [furnitureColor, setFurnitureColor] = useState("#8B7355");
+  const [floorColor, setFloorColor] = useState("#d4d4d8");
+  const [wallColor, setWallColor] = useState("#f4f4f5");
+  const [furnitureColor, setFurnitureColor] = useState("#a1a1aa");
 
   useEffect(() => {
     if (!open) return;
@@ -159,9 +159,9 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
     setShowFurniture(true);
     setShowRoomColors(true);
     setAmbientIntensity(60);
-    setFloorColor("#4A4540");
-    setWallColor("#F5EDE0");
-    setFurnitureColor("#8B7355");
+    setFloorColor("#d4d4d8");
+    setWallColor("#f4f4f5");
+    setFurnitureColor("#a1a1aa");
   }, []);
 
   if (!mounted) return null;
@@ -176,22 +176,22 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
           transition={{ duration: 0.3 }}
           className="fixed inset-0 z-[100] flex flex-col"
         >
-          <div className="absolute inset-0 bg-[#0f172a]/95 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-[#f5f6f8]/98 backdrop-blur-sm" />
 
-          <div className="relative z-10 flex items-center justify-between border-b border-[#334155]/60 px-5 py-3">
+          <div className="relative z-10 flex items-center justify-between border-b border-[#e4e4e7]/60 px-5 py-3">
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-[#64748b]" />
-              <h2 className="text-lg font-semibold tracking-tight text-[#f1f5f9]">3D Preview</h2>
+              <div className="h-2 w-2 rounded-full bg-[#2c2c2e]" />
+              <h2 className="text-lg font-semibold tracking-tight text-[#18181b]">3D Preview</h2>
             </div>
             <div className="flex items-center gap-3">
-              <span className="hidden text-xs text-[#6b6b78] sm:block">
+              <span className="hidden text-xs text-[#71717a] sm:block">
                 Click and drag to orbit, scroll to zoom, right-click to pan
               </span>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="text-[#6b6b78] hover:bg-[#1e293b] hover:text-[#f1f5f9]"
+                className="text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#18181b]"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -222,27 +222,27 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                   variant="outline"
                   size="sm"
                   onClick={() => setPanelCollapsed(false)}
-                  className="border-[#334155] bg-[#1e293b]/90 text-[#94a3b8] backdrop-blur-md hover:bg-[#1A1A1A] hover:text-[#f1f5f9]"
+                  className="border-[#e4e4e7] bg-[#ffffff]/90 text-[#71717a] backdrop-blur-md hover:bg-[#f4f4f5] hover:text-[#18181b]"
                 >
                   View Options
                 </Button>
               ) : (
-                <div className="w-64 rounded-lg border border-[#334155] bg-[#1e293b]/90 shadow-2xl backdrop-blur-md">
-                  <div className="flex items-center justify-between border-b border-[#334155]/60 px-3 py-2">
-                    <span className="text-xs font-medium tracking-wider text-[#94a3b8] uppercase">
+                <div className="w-64 rounded-lg border border-[#e4e4e7] bg-[#ffffff]/90 shadow-2xl backdrop-blur-md">
+                  <div className="flex items-center justify-between border-b border-[#e4e4e7]/60 px-3 py-2">
+                    <span className="text-xs font-medium tracking-wider text-[#71717a] uppercase">
                       View Options
                     </span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={handleReset}
-                        className="rounded p-1 text-[#6b6b78] transition-colors hover:text-[#64748b]"
+                        className="rounded p-1 text-[#71717a] transition-colors hover:text-[#2c2c2e]"
                         title="Reset to defaults"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setPanelCollapsed(true)}
-                        className="rounded p-1 text-[#6b6b78] transition-colors hover:text-[#f1f5f9]"
+                        className="rounded p-1 text-[#71717a] transition-colors hover:text-[#18181b]"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -251,7 +251,7 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
 
                   <div className="space-y-3 p-3">
                     <div>
-                      <span className="text-[10px] font-medium tracking-wider text-[#6b6b78] uppercase">
+                      <span className="text-[10px] font-medium tracking-wider text-[#71717a] uppercase">
                         Camera
                       </span>
                       <div className="mt-1.5 grid grid-cols-2 gap-1.5">
@@ -264,8 +264,8 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                               onClick={() => setCameraPreset(opt.id)}
                               className={`flex items-center gap-1.5 rounded px-2 py-1.5 text-[11px] font-medium transition-all ${
                                 active
-                                  ? "bg-[#64748b]/15 text-[#64748b] ring-1 ring-[#64748b]/30"
-                                  : "text-[#6b6b78] hover:bg-[#1e293b] hover:text-[#94a3b8]"
+                                  ? "bg-[#2c2c2e]/15 text-[#2c2c2e] ring-1 ring-[#2c2c2e]/30"
+                                  : "text-[#71717a] hover:bg-[#f4f4f5] hover:text-[#71717a]"
                               }`}
                             >
                               <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -276,21 +276,21 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                       </div>
                     </div>
 
-                    <div className="space-y-2 border-t border-[#334155]/40 pt-1">
+                    <div className="space-y-2 border-t border-[#e4e4e7]/40 pt-1">
                       <button
                         onClick={() => setShowFurniture((v) => !v)}
-                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#94a3b8] transition-colors hover:bg-[#1e293b]"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#71717a] transition-colors hover:bg-[#f4f4f5]"
                       >
                         <span className="flex items-center gap-2">
                           {showFurniture ? (
-                            <Eye className="h-3.5 w-3.5 text-[#64748b]" />
+                            <Eye className="h-3.5 w-3.5 text-[#2c2c2e]" />
                           ) : (
-                            <EyeOff className="h-3.5 w-3.5 text-[#6b6b78]" />
+                            <EyeOff className="h-3.5 w-3.5 text-[#71717a]" />
                           )}
                           Furniture
                         </span>
                         <span
-                          className={`text-[10px] ${showFurniture ? "text-[#64748b]" : "text-[#6b6b78]"}`}
+                          className={`text-[10px] ${showFurniture ? "text-[#2c2c2e]" : "text-[#71717a]"}`}
                         >
                           {showFurniture ? "ON" : "OFF"}
                         </span>
@@ -298,29 +298,29 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
 
                       <button
                         onClick={() => setShowRoomColors((v) => !v)}
-                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#94a3b8] transition-colors hover:bg-[#1e293b]"
+                        className="flex w-full items-center justify-between rounded px-2 py-1.5 text-[11px] font-medium text-[#71717a] transition-colors hover:bg-[#f4f4f5]"
                       >
                         <span className="flex items-center gap-2">
                           <Palette
-                            className={`h-3.5 w-3.5 ${showRoomColors ? "text-[#64748b]" : "text-[#6b6b78]"}`}
+                            className={`h-3.5 w-3.5 ${showRoomColors ? "text-[#2c2c2e]" : "text-[#71717a]"}`}
                           />
                           Room Colors
                         </span>
                         <span
-                          className={`text-[10px] ${showRoomColors ? "text-[#64748b]" : "text-[#6b6b78]"}`}
+                          className={`text-[10px] ${showRoomColors ? "text-[#2c2c2e]" : "text-[#71717a]"}`}
                         >
                           {showRoomColors ? "ON" : "OFF"}
                         </span>
                       </button>
                     </div>
 
-                    <div className="border-t border-[#334155]/40 pt-1">
+                    <div className="border-t border-[#e4e4e7]/40 pt-1">
                       <div className="mb-1.5 flex items-center justify-between px-2">
-                        <span className="flex items-center gap-2 text-[11px] font-medium text-[#94a3b8]">
-                          <Sun className="h-3.5 w-3.5 text-[#64748b]" />
+                        <span className="flex items-center gap-2 text-[11px] font-medium text-[#71717a]">
+                          <Sun className="h-3.5 w-3.5 text-[#2c2c2e]" />
                           Ambient Light
                         </span>
-                        <span className="text-[10px] text-[#6b6b78]">{ambientIntensity}%</span>
+                        <span className="text-[10px] text-[#71717a]">{ambientIntensity}%</span>
                       </div>
                       <div className="px-2">
                         <Slider
@@ -333,10 +333,10 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                       </div>
                     </div>
 
-                    <div className="space-y-3 border-t border-[#334155]/40 px-2 pt-1">
+                    <div className="space-y-3 border-t border-[#e4e4e7]/40 px-2 pt-1">
                       <div className="mb-1 flex items-center gap-2">
-                        <Palette className="h-3.5 w-3.5 text-[#64748b]" />
-                        <span className="text-[11px] font-medium text-[#94a3b8]">Colors</span>
+                        <Palette className="h-3.5 w-3.5 text-[#2c2c2e]" />
+                        <span className="text-[11px] font-medium text-[#71717a]">Colors</span>
                       </div>
                       <ColorPickerRow
                         label="Floor"

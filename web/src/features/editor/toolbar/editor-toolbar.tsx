@@ -38,7 +38,8 @@ export const EditorToolbar = ({
   designName,
   onNameChange,
   onToggle3DPreview,
-  onToggleFurniture: _onToggleFurniture,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onToggleFurniture,
   onToggleShare,
   onToggleHistory,
   onToggleUpgrade,

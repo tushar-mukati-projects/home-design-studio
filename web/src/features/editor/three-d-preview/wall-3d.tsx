@@ -11,9 +11,9 @@ const WINDOW_BOTTOM = 0.9;
 const WINDOW_HEIGHT = 1.2;
 
 const doorFrameMaterial = new MeshStandardMaterial({
-  color: "#8B7355",
-  roughness: 0.6,
-  metalness: 0.1,
+  color: "#71717a",
+  roughness: 0.5,
+  metalness: 0.15,
 });
 
 const windowMaterial = new MeshStandardMaterial({
@@ -51,8 +51,8 @@ export const Wall3D = ({ wall, doors, windows, offsetX, offsetZ, wallColor }: Wa
   const wallMaterial = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: wallColor || "#F5EDE0",
-        roughness: 0.85,
+        color: wallColor || "#f4f4f5",
+        roughness: 0.8,
         metalness: 0.02,
       }),
     [wallColor],

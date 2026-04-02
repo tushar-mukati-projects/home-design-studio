@@ -8,7 +8,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 200,
     height: 90,
     depth: 85,
-    color: "#8B6F4E",
+    color: "#9ca3af",
   },
   {
     id: "fi_02",
@@ -17,7 +17,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 85,
     height: 85,
     depth: 80,
-    color: "#8B6F4E",
+    color: "#9ca3af",
   },
   {
     id: "fi_03",
@@ -26,7 +26,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 120,
     height: 60,
     depth: 45,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_04",
@@ -44,7 +44,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 80,
     height: 30,
     depth: 200,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_06",
@@ -63,7 +63,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 200,
     height: 160,
     depth: 45,
-    color: "#A0522D",
+    color: "#b4b4bc",
   },
   {
     id: "fi_08",
@@ -72,7 +72,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 200,
     height: 90,
     depth: 45,
-    color: "#A0522D",
+    color: "#b4b4bc",
   },
   {
     id: "fi_09",
@@ -81,7 +81,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 50,
     height: 40,
     depth: 55,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_10",
@@ -99,7 +99,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 100,
     height: 45,
     depth: 80,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_12",
@@ -108,7 +108,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 120,
     height: 60,
     depth: 75,
-    color: "#8B7355",
+    color: "#a1a1aa",
   },
 
   {
@@ -118,7 +118,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 160,
     height: 90,
     depth: 75,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_14",
@@ -127,7 +127,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 45,
     height: 45,
     depth: 90,
-    color: "#8B7355",
+    color: "#a1a1aa",
   },
   {
     id: "fi_15",
@@ -201,7 +201,7 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 140,
     height: 70,
     depth: 75,
-    color: "#654321",
+    color: "#a1a1aa",
   },
   {
     id: "fi_23",
@@ -228,6 +228,6 @@ export const mockFurnitureItems: FurnitureItem[] = [
     width: 90,
     height: 35,
     depth: 180,
-    color: "#654321",
+    color: "#a1a1aa",
   },
 ];
