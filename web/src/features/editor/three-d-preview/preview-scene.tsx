@@ -113,14 +113,14 @@ const SceneContents = ({
 
   return (
     <>
-      {/* Sky gradient background */}
-      <color attach="background" args={["#e8eaef"]} />
+      {/* Soft sky background */}
+      <color attach="background" args={["#c8ccd4"]} />
 
-      <ambientLight intensity={ambientIntensity * 0.8} color="#ffffff" />
+      <ambientLight intensity={ambientIntensity * 0.5} color="#e8ecf0" />
       <directionalLight
         position={[bounds.size * 0.7, bounds.size * 1.2, bounds.size * 0.5]}
-        intensity={1.4}
-        color="#ffffff"
+        intensity={1.8}
+        color="#fff8f0"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -134,11 +134,11 @@ const SceneContents = ({
       />
       <directionalLight
         position={[-bounds.size * 0.5, bounds.size * 0.6, -bounds.size * 0.3]}
-        intensity={0.4}
-        color="#d4d8e0"
+        intensity={0.3}
+        color="#b8c0d0"
       />
       <hemisphereLight
-        args={["#dde1e8", "#a0a4aa", 0.5]}
+        args={["#d0d4dc", "#808890", 0.4]}
       />
 
       {/* Ground plane */}
@@ -149,7 +149,7 @@ const SceneContents = ({
 
       {/* Subtle grid on ground */}
       <gridHelper
-        args={[bounds.size * 3, Math.round(bounds.size * 3), "#c4c8d0", "#d8dce4"]}
+        args={[bounds.size * 3, Math.round(bounds.size * 3), "#9098a0", "#a8b0b8"]}
         position={[0, 0.001, 0]}
       />
 
@@ -188,11 +188,11 @@ const SceneContents = ({
 
       <ContactShadows
         position={[0, 0, 0]}
-        opacity={0.3}
+        opacity={0.5}
         scale={bounds.size * 3}
-        blur={2.5}
+        blur={2}
         far={bounds.size * 2}
-        color="#52525b"
+        color="#3a3a4a"
       />
 
       {!hasContent && (
@@ -298,7 +298,7 @@ export const PreviewScene = ({
         alpha: false,
         powerPreference: "high-performance",
       }}
-      style={{ background: "linear-gradient(180deg, #e8eaef 0%, #d4d8e0 100%)" }}
+      style={{ background: "linear-gradient(180deg, #b8bcc8 0%, #a0a4b0 50%, #909498 100%)" }}
       onCreated={({ camera }) => {
         camera.position.set(...preset.position);
         camera.lookAt(...preset.target);

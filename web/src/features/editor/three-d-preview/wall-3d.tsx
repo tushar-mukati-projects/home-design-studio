@@ -51,7 +51,7 @@ export const Wall3D = ({ wall, doors, windows, offsetX, offsetZ, wallColor }: Wa
   const wallMaterial = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: wallColor || "#f4f4f5",
+        color: wallColor || "#e8e8e8",
         roughness: 0.8,
         metalness: 0.02,
       }),

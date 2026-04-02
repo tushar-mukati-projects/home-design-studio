@@ -11,6 +11,7 @@ import {
   Share2,
   Clock,
   Compass,
+  ImageUp,
 } from "lucide-react";
 import type Konva from "konva";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface EditorToolbarProps {
   onToggleShare: () => void;
   onToggleHistory: () => void;
   onToggleUpgrade: () => void;
+  onToggleImport: () => void;
   stageRef: React.RefObject<Konva.Stage | null>;
   designId: string;
   canEdit?: boolean;
@@ -43,6 +45,7 @@ export const EditorToolbar = ({
   onToggleShare,
   onToggleHistory,
   onToggleUpgrade,
+  onToggleImport,
   stageRef,
   designId,
   canEdit = true,
@@ -84,19 +87,19 @@ export const EditorToolbar = ({
   };
 
   return (
-    <div className="flex h-12 items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-4">
+    <div className="flex h-12 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)] px-2 sm:gap-2 sm:px-4">
       {/* Left: logo + project name */}
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <Tooltip content="Back to Dashboard" side="bottom">
           <button
             onClick={() => router.push("/dashboard")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white transition-colors hover:bg-[#3d3d40]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)] text-white transition-colors hover:bg-[#3d3d40] sm:h-9 sm:w-9"
           >
-            <Compass className="h-5 w-5" />
+            <Compass className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </Tooltip>
 
-        <div className="flex flex-col">
+        <div className="hidden flex-col sm:flex">
           {isEditingName ? (
             <input
               ref={inputRef}
@@ -110,12 +113,12 @@ export const EditorToolbar = ({
                   setIsEditingName(false);
                 }
               }}
-              className="h-7 w-48 rounded border border-[var(--input)] bg-[var(--background)] px-2 text-sm font-semibold text-[var(--foreground)] outline-none focus:ring-1 focus:ring-[var(--ring)]"
+              className="h-7 w-28 rounded border border-[var(--input)] bg-[var(--background)] px-2 text-sm font-semibold text-[var(--foreground)] outline-none focus:ring-1 focus:ring-[var(--ring)] md:w-48"
             />
           ) : (
             <button
               onClick={() => setIsEditingName(true)}
-              className="text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--muted-foreground)]"
+              className="max-w-[120px] truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--muted-foreground)] md:max-w-[200px]"
             >
               {designName || "Untitled Design"}
             </button>
@@ -126,9 +129,9 @@ export const EditorToolbar = ({
         </div>
       </div>
 
-      {/* Center: undo/redo + grid/snap */}
+      {/* Center: undo/redo + grid/snap — hidden on small screens */}
       {canEdit && (
-        <div className="flex flex-1 items-center justify-center gap-1">
+        <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
           <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
             <Tooltip content="Undo (Ctrl+Z)" side="bottom">
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={past.length === 0}>
@@ -155,24 +158,43 @@ export const EditorToolbar = ({
         </div>
       )}
 
+      {/* Mobile undo/redo — shown only on small screens */}
+      {canEdit && (
+        <div className="flex items-center gap-0.5 md:hidden">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={past.length === 0}>
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={future.length === 0}>
+            <Redo2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       {!canEdit && (
         <>
-          <span className="ml-2 rounded-full bg-[var(--secondary)] px-3 py-1 text-xs font-medium text-[var(--muted-foreground)]">
+          <span className="ml-1 rounded-full bg-[var(--secondary)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted-foreground)] sm:ml-2 sm:px-3 sm:py-1 sm:text-xs">
             View Only
           </span>
           <div className="flex-1" />
         </>
       )}
 
+      <div className="flex-1 md:hidden" />
+
       {/* Right: action buttons */}
-      <div className="flex items-center gap-1.5">
-        <PlanBadge onClick={onToggleUpgrade} />
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
+        <span className="hidden sm:inline-flex">
+          <PlanBadge onClick={onToggleUpgrade} />
+        </span>
 
         {canEdit && (
           <Tooltip content="Version History" side="bottom">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--muted-foreground)]" onClick={onToggleHistory}>
+            <Button variant="ghost" size="icon" className="hidden h-8 w-8 text-[var(--muted-foreground)] sm:inline-flex lg:hidden" onClick={onToggleHistory}>
               <Clock className="h-3.5 w-3.5" />
-              <span className="hidden text-xs sm:inline">History</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="hidden gap-1.5 text-[var(--muted-foreground)] lg:inline-flex" onClick={onToggleHistory}>
+              <Clock className="h-3.5 w-3.5" />
+              <span className="text-xs">History</span>
             </Button>
           </Tooltip>
         )}
@@ -180,19 +202,41 @@ export const EditorToolbar = ({
           <Tooltip content="Share" side="bottom">
             <Button
               variant="ghost"
-              size="sm"
-              className="gap-1.5 text-[var(--muted-foreground)]"
+              size="icon"
+              className="hidden h-8 w-8 text-[var(--muted-foreground)] sm:inline-flex lg:hidden"
               onClick={planData?.canShare ? onToggleShare : onToggleUpgrade}
             >
               <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden text-xs sm:inline">Share</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden gap-1.5 text-[var(--muted-foreground)] lg:inline-flex"
+              onClick={planData?.canShare ? onToggleShare : onToggleUpgrade}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="text-xs">Share</span>
+            </Button>
+          </Tooltip>
+        )}
+        {canEdit && (
+          <Tooltip content="Import from Image" side="bottom">
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={onToggleImport}>
+              <ImageUp className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={onToggleImport}>
+              <ImageUp className="h-3.5 w-3.5" />
+              <span className="hidden text-xs lg:inline">Import</span>
             </Button>
           </Tooltip>
         )}
         <Tooltip content="3D Preview" side="bottom">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggle3DPreview}>
+          <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={onToggle3DPreview}>
             <Box className="h-3.5 w-3.5" />
-            <span className="hidden text-xs sm:inline">3D</span>
+          </Button>
+          <Button variant="outline" size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={onToggle3DPreview}>
+            <Box className="h-3.5 w-3.5" />
+            <span className="hidden text-xs lg:inline">3D</span>
           </Button>
         </Tooltip>
 

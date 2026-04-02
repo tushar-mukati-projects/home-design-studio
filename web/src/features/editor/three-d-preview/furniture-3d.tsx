@@ -20,9 +20,9 @@ export const Furniture3D = ({ placed, offsetX, offsetZ, furnitureColor }: Furnit
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: furnitureColor || item.color || "#a1a1aa",
-        roughness: 0.6,
-        metalness: 0.1,
+        color: furnitureColor || item.color || "#909098",
+        roughness: 0.5,
+        metalness: 0.15,
       }),
     [item.color, furnitureColor],
   );

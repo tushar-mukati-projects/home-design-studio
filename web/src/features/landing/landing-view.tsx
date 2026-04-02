@@ -151,7 +151,7 @@ const HeroGradientMesh = () => {
       <motion.div
         className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full opacity-[0.05]"
         style={{
-          background: "radial-gradient(circle, #2c2c2e 0%, #B8922E 30%, transparent 70%)",
+          background: "radial-gradient(circle, #2c2c2e 0%, #71717a 30%, transparent 70%)",
         }}
         animate={{
           x: [0, -25, 15, 0],
@@ -166,7 +166,7 @@ const HeroGradientMesh = () => {
       <motion.div
         className="absolute top-1/3 left-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.03]"
         style={{
-          background: "radial-gradient(circle, #E8C97A 0%, transparent 60%)",
+          background: "radial-gradient(circle, #a1a1aa 0%, transparent 60%)",
         }}
         animate={{
           scale: [1, 1.15, 0.95, 1],
@@ -190,8 +190,8 @@ const EditorMockup = () => {
     >
       <div className="absolute -inset-4 rounded-2xl bg-[#2c2c2e]/5 blur-3xl" />
 
-      <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl shadow-black/60">
-        <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[#0F0F0F] px-4 py-3">
+      <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl shadow-black/10">
+        <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[#2c2c2e] px-4 py-3">
           <span className="h-3 w-3 rounded-full bg-[#B85450]" />
           <span className="h-3 w-3 rounded-full bg-[#2c2c2e]/60" />
           <span className="h-3 w-3 rounded-full bg-[#4A8C5C]/60" />
@@ -200,7 +200,7 @@ const EditorMockup = () => {
           </span>
         </div>
         <div className="flex h-64 sm:h-80 lg:h-96">
-          <div className="flex w-12 shrink-0 flex-col items-center gap-3 border-r border-[var(--border)] bg-[#0F0F0F] py-4">
+          <div className="flex w-12 shrink-0 flex-col items-center gap-3 border-r border-[var(--border)] bg-[#2c2c2e] py-4">
             <MousePointerClick className="h-4 w-4 text-[var(--muted-foreground)]" />
             <PenTool className="h-4 w-4 text-[#2c2c2e]" />
             <Square className="h-4 w-4 text-[var(--muted-foreground)]" />
@@ -446,7 +446,7 @@ const EditorMockup = () => {
                 x="400"
                 y="155"
                 textAnchor="middle"
-                fill="#fafafa"
+                fill="#71717a"
                 fontSize="13"
                 opacity={0.3}
                 fontFamily="Inter, sans-serif"
@@ -460,7 +460,7 @@ const EditorMockup = () => {
                 x="200"
                 y="130"
                 textAnchor="middle"
-                fill="#fafafa"
+                fill="#71717a"
                 fontSize="12"
                 opacity={0.25}
                 fontFamily="Inter, sans-serif"
@@ -487,7 +487,7 @@ const EditorMockup = () => {
               </motion.g>
             </svg>
           </div>
-          <div className="hidden w-48 shrink-0 border-l border-[var(--border)] bg-[#0F0F0F] p-4 lg:block">
+          <div className="hidden w-48 shrink-0 border-l border-[var(--border)] bg-[#2c2c2e] p-4 lg:block">
             <p className="text-[10px] font-semibold tracking-widest text-[var(--muted-foreground)] uppercase">
               Properties
             </p>
@@ -688,7 +688,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           >
             <polygon
               points="140,35 140,52 147,47 153,57 157,55 151,45 158,42"
-              fill="#fafafa"
+              fill="#71717a"
               opacity={0.6}
             />
           </motion.g>
@@ -777,7 +777,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           >
             <polygon
               points="115,115 115,133 122,128 128,138 132,136 126,126 133,123"
-              fill="#fafafa"
+              fill="#71717a"
               opacity={0.7}
             />
           </motion.g>
@@ -886,24 +886,24 @@ const showcaseData = [
     dimensions: "5.2m x 3.8m",
     gradientFrom: "#2c2c2e",
     gradientVia: "#1A1A1A",
-    gradientTo: "#0F0F0F",
+    gradientTo: "#2c2c2e",
     accent: "#2c2c2e",
   },
   {
     name: "Minimalist Bedroom",
     dimensions: "4.0m x 3.5m",
     gradientFrom: "#3f3f46",
-    gradientVia: "#1A1715",
-    gradientTo: "#0F0F0F",
-    accent: "#C4A882",
+    gradientVia: "#27272a",
+    gradientTo: "#2c2c2e",
+    accent: "#a1a1aa",
   },
   {
     name: "Open Kitchen",
     dimensions: "6.0m x 4.2m",
-    gradientFrom: "#B8922E",
-    gradientVia: "#1A1610",
-    gradientTo: "#0F0F0F",
-    accent: "#E8C97A",
+    gradientFrom: "#71717a",
+    gradientVia: "#27272a",
+    gradientTo: "#2c2c2e",
+    accent: "#a1a1aa",
   },
 ];
 
@@ -1092,7 +1092,7 @@ export const LandingView = () => {
             >
               <span className="text-[var(--foreground)]">Design Your</span>
               <br />
-              <span className="bg-gradient-to-r from-[#2c2c2e] via-[#E8C97A] to-[#2c2c2e] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#2c2c2e] via-[#a1a1aa] to-[#2c2c2e] bg-clip-text text-transparent">
                 Dream Space
               </span>
             </motion.h1>
@@ -1352,7 +1352,7 @@ export const LandingView = () => {
           >
             Ready to Design
             <br />
-            <span className="bg-gradient-to-r from-[#2c2c2e] via-[#E8C97A] to-[#2c2c2e] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#2c2c2e] via-[#a1a1aa] to-[#2c2c2e] bg-clip-text text-transparent">
               Your Space?
             </span>
           </motion.h2>
@@ -1380,7 +1380,7 @@ export const LandingView = () => {
       </AnimatedSection>
 
       {}
-      <footer className="relative border-t border-[#2c2c2e]/10 bg-[#0A0A0A] px-4 py-16 sm:px-6 lg:px-8">
+      <footer className="relative border-t border-[var(--border)] bg-[var(--card)] px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 md:grid-cols-5">
             <div className="md:col-span-2">
@@ -1409,7 +1409,7 @@ export const LandingView = () => {
                   <a
                     key={i}
                     href={href}
-                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[#2c2c2e]/30 hover:text-[#2c2c2e]"
+                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--foreground)]/30 hover:text-[var(--foreground)]"
                   >
                     <SocialIcon className="h-4 w-4" />
                   </a>
@@ -1452,7 +1452,7 @@ export const LandingView = () => {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[#2c2c2e]"
+                        className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
                       >
                         {link.label}
                       </Link>
@@ -1469,7 +1469,7 @@ export const LandingView = () => {
                 Built with Next.js, Three.js &amp; AI
               </span>
               <span className="text-[var(--muted-foreground)]">
-                Built with precision <span className="text-[#2c2c2e]">&bull;</span> Designed with
+                Built with precision <span className="text-[var(--foreground)]">&bull;</span> Designed with
                 care
               </span>
             </div>
