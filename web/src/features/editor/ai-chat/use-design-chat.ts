@@ -52,11 +52,21 @@ export const useDesignChat = (designId: string) => {
       case "remove_element": {
         const { elementType, elementId } = payload as { elementType: string; elementId: string };
         switch (elementType) {
-          case "wall": store.removeWall(elementId); break;
-          case "room": store.setRooms(store.rooms.filter((r) => r.id !== elementId)); break;
-          case "furniture": store.removeFurniture(elementId); break;
-          case "door": store.removeDoor(elementId); break;
-          case "window": store.removeWindow(elementId); break;
+          case "wall":
+            store.removeWall(elementId);
+            break;
+          case "room":
+            store.setRooms(store.rooms.filter((r) => r.id !== elementId));
+            break;
+          case "furniture":
+            store.removeFurniture(elementId);
+            break;
+          case "door":
+            store.removeDoor(elementId);
+            break;
+          case "window":
+            store.removeWindow(elementId);
+            break;
         }
         break;
       }

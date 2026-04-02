@@ -107,13 +107,7 @@ const ToolPill = ({ tool }: { tool: ToolCall }) => {
   );
 };
 
-const AssistantMessage = ({
-  msg,
-  isLoading,
-}: {
-  msg: ChatMessage;
-  isLoading: boolean;
-}) => {
+const AssistantMessage = ({ msg, isLoading }: { msg: ChatMessage; isLoading: boolean }) => {
   const [toolsExpanded, setToolsExpanded] = useState(true);
   const tools = msg.toolCalls ?? [];
   const doneTools = tools.filter((t) => t.status === "done");
@@ -126,13 +120,9 @@ const AssistantMessage = ({
           <button
             type="button"
             onClick={() => setToolsExpanded((v) => !v)}
-            className="flex items-center gap-1 text-[10px] font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            className="flex items-center gap-1 text-[10px] font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
           >
-            {toolsExpanded ? (
-              <ChevronUp className="size-3" />
-            ) : (
-              <ChevronDown className="size-3" />
-            )}
+            {toolsExpanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             {doneTools.length}/{tools.length} steps completed
           </button>
 
@@ -151,15 +141,14 @@ const AssistantMessage = ({
           <MarkdownMessage content={msg.content} />
         </div>
       ) : !isLoading ? (
-        <span className="text-xs italic text-[var(--muted-foreground)]">Done</span>
+        <span className="text-xs text-[var(--muted-foreground)] italic">Done</span>
       ) : null}
     </div>
   );
 };
 
 export const DesignChat = ({ designId }: DesignChatProps) => {
-  const { messages, isLoading, activeTools, sendMessage, clearMessages } =
-    useDesignChat(designId);
+  const { messages, isLoading, activeTools, sendMessage, clearMessages } = useDesignChat(designId);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
@@ -229,7 +218,7 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
             <Sparkles className="size-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold leading-tight text-[var(--foreground)]">
+            <p className="text-sm leading-tight font-semibold text-[var(--foreground)]">
               Design AI
             </p>
             <p className="text-[10px] leading-tight text-[var(--muted-foreground)]">
@@ -281,11 +270,7 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <EmptyState
-            suggestions={SUGGESTIONS}
-            onSuggestion={sendMessage}
-            isLoading={isLoading}
-          />
+          <EmptyState suggestions={SUGGESTIONS} onSuggestion={sendMessage} isLoading={isLoading} />
         ) : (
           <MessageList messages={messages} isLoading={isLoading} />
         )}
@@ -299,7 +284,7 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
             submit();
           }}
         >
-          <div className="flex items-end gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20 transition-all">
+          <div className="flex items-end gap-2 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 transition-all focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20">
             <textarea
               ref={textareaRef}
               value={input}
@@ -355,7 +340,8 @@ const EmptyState = ({
     <div>
       <p className="text-sm font-semibold text-[var(--foreground)]">Your AI Design Assistant</p>
       <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
-        Tell me what to build and I'll add walls, rooms, and furniture directly onto your canvas.
+        Tell me what to build and I&apos;ll add walls, rooms, and furniture directly onto your
+        canvas.
       </p>
     </div>
     <div className="flex w-full flex-col gap-1.5">
@@ -374,13 +360,7 @@ const EmptyState = ({
   </div>
 );
 
-const MessageList = ({
-  messages,
-  isLoading,
-}: {
-  messages: ChatMessage[];
-  isLoading: boolean;
-}) => (
+const MessageList = ({ messages, isLoading }: { messages: ChatMessage[]; isLoading: boolean }) => (
   <div className="space-y-5">
     {messages.map((msg, idx) => {
       const isLast = idx === messages.length - 1;
@@ -390,7 +370,7 @@ const MessageList = ({
             /* User bubble — right aligned, dark fill */
             <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-[var(--foreground)] px-3.5 py-2.5 text-sm text-[var(--background)]">
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
           ) : (
@@ -400,10 +380,7 @@ const MessageList = ({
                 <Sparkles className="size-3.5 text-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <AssistantMessage
-                  msg={msg}
-                  isLoading={isLoading && isLast}
-                />
+                <AssistantMessage msg={msg} isLoading={isLoading && isLast} />
               </div>
             </div>
           )}
@@ -421,7 +398,7 @@ const MessageList = ({
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="size-1.5 rounded-full bg-[var(--muted-foreground)] opacity-60 animate-bounce"
+              className="size-1.5 animate-bounce rounded-full bg-[var(--muted-foreground)] opacity-60"
               style={{ animationDelay: `${i * 150}ms` }}
             />
           ))}
