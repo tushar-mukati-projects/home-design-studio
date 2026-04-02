@@ -90,13 +90,26 @@ export const WallLayer = memo(
               />
               {isSelected && (
                 <>
+                  {/* Outer ring for visibility */}
+                  <Circle
+                    x={wall.x1}
+                    y={wall.y1}
+                    radius={14 / zoom}
+                    fill="rgba(124, 99, 80, 0.15)"
+                    stroke="rgba(124, 99, 80, 0.4)"
+                    strokeWidth={1.5 / zoom}
+                    listening={false}
+                  />
                   <Circle
                     x={wall.x1}
                     y={wall.y1}
                     radius={8 / zoom}
-                    fill="#52525b"
-                    stroke="#ffffff"
-                    strokeWidth={2 / zoom}
+                    fill="#ffffff"
+                    stroke="#7c6350"
+                    strokeWidth={2.5 / zoom}
+                    shadowColor="#7c6350"
+                    shadowBlur={8 / zoom}
+                    shadowOpacity={0.6}
                     draggable
                     onDragStart={() => {
                       draggingRef.current = true;
@@ -108,13 +121,26 @@ export const WallLayer = memo(
                       e.target.position({ x: pos.x, y: pos.y });
                     }}
                   />
+                  {/* Outer ring for visibility */}
+                  <Circle
+                    x={wall.x2}
+                    y={wall.y2}
+                    radius={14 / zoom}
+                    fill="rgba(124, 99, 80, 0.15)"
+                    stroke="rgba(124, 99, 80, 0.4)"
+                    strokeWidth={1.5 / zoom}
+                    listening={false}
+                  />
                   <Circle
                     x={wall.x2}
                     y={wall.y2}
                     radius={8 / zoom}
-                    fill="#52525b"
-                    stroke="#ffffff"
-                    strokeWidth={2 / zoom}
+                    fill="#ffffff"
+                    stroke="#7c6350"
+                    strokeWidth={2.5 / zoom}
+                    shadowColor="#7c6350"
+                    shadowBlur={8 / zoom}
+                    shadowOpacity={0.6}
                     draggable
                     onDragStart={() => {
                       draggingRef.current = true;

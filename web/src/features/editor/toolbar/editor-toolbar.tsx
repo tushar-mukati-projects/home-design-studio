@@ -188,65 +188,40 @@ export const EditorToolbar = ({
         </span>
 
         {canEdit && (
-          <>
-            <Tooltip content="Version History" side="bottom">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--muted-foreground)] lg:hidden" onClick={onToggleHistory}>
-                <Clock className="h-3.5 w-3.5" />
-              </Button>
-            </Tooltip>
-            <Button variant="ghost" size="sm" className="hidden gap-1.5 text-[var(--muted-foreground)] lg:inline-flex" onClick={onToggleHistory}>
+          <Tooltip content="Version History" side="bottom">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--muted-foreground)]" onClick={onToggleHistory}>
               <Clock className="h-3.5 w-3.5" />
-              <span className="text-xs">History</span>
+              <span className="hidden text-xs lg:inline">History</span>
             </Button>
-          </>
+          </Tooltip>
         )}
         {isOwner && (
-          <>
-            <Tooltip content="Share" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-[var(--muted-foreground)] lg:hidden"
-                onClick={planData?.canShare ? onToggleShare : onToggleUpgrade}
-              >
-                <Share2 className="h-3.5 w-3.5" />
-              </Button>
-            </Tooltip>
+          <Tooltip content="Share" side="bottom">
             <Button
               variant="ghost"
               size="sm"
-              className="hidden gap-1.5 text-[var(--muted-foreground)] lg:inline-flex"
+              className="gap-1.5 text-[var(--muted-foreground)]"
               onClick={planData?.canShare ? onToggleShare : onToggleUpgrade}
             >
               <Share2 className="h-3.5 w-3.5" />
-              <span className="text-xs">Share</span>
+              <span className="hidden text-xs lg:inline">Share</span>
             </Button>
-          </>
+          </Tooltip>
         )}
         {canEdit && (
-          <>
-            <Tooltip content="Import from Image" side="bottom">
-              <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={onToggleImport}>
-                <ImageUp className="h-3.5 w-3.5" />
-              </Button>
-            </Tooltip>
-            <Button variant="outline" size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={onToggleImport}>
+          <Tooltip content="Import from Image" side="bottom">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggleImport}>
               <ImageUp className="h-3.5 w-3.5" />
               <span className="hidden text-xs lg:inline">Import</span>
             </Button>
-          </>
-        )}
-        <>
-          <Tooltip content="3D Preview" side="bottom">
-            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={onToggle3DPreview}>
-              <Box className="h-3.5 w-3.5" />
-            </Button>
           </Tooltip>
-          <Button variant="outline" size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={onToggle3DPreview}>
+        )}
+        <Tooltip content="3D Preview" side="bottom">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={onToggle3DPreview}>
             <Box className="h-3.5 w-3.5" />
             <span className="hidden text-xs lg:inline">3D</span>
           </Button>
-        </>
+        </Tooltip>
 
         <ExportMenu stageRef={stageRef} designName={designName} designId={designId} />
       </div>
