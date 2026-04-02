@@ -5,7 +5,6 @@ import * as Y from "yjs";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { logger } from "../logger";
-import { createVersion } from "../services/version.service";
 
 const extractCanvasFromDoc = (doc: Y.Doc) => {
   const toArray = (yMap: Y.Map<unknown>) => {
@@ -63,19 +62,12 @@ const hocuspocus = new Hocuspocus({
         const canvasData = extractCanvasFromDoc(doc);
         doc.destroy();
 
-        const design = await prisma.design.update({
+        await prisma.design.update({
           where: { id: designId },
           data: {
             yjsState: Buffer.from(state),
             canvasData: canvasData as unknown as Prisma.InputJsonValue,
           },
-        });
-
-        createVersion(designId, design.userId).catch((err) => {
-          logger.error("Failed to auto-create version", {
-            designId,
-            error: err instanceof Error ? err.message : String(err),
-          });
         });
       },
     }),
