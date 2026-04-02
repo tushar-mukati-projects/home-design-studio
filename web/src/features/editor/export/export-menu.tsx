@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import type Konva from "konva";
-import { Download, Image as ImageIcon, FileText, Link, Printer } from "lucide-react";
+import { Download, Image as ImageIcon, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useExport } from "./use-export";
 import { ExportDialog } from "./export-dialog";
@@ -22,7 +21,7 @@ interface ExportMenuProps {
 
 const ExportMenu = ({ stageRef, designName, designId }: ExportMenuProps) => {
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
-  const { exportAsPng, copyShareLink, printFloorPlan } = useExport();
+  const { exportAsPng, printFloorPlan } = useExport();
 
   return (
     <>
@@ -41,11 +40,6 @@ const ExportMenu = ({ stageRef, designName, designId }: ExportMenuProps) => {
           <DropdownMenuItem onSelect={() => setPdfDialogOpen(true)}>
             <FileText className="mr-2 h-4 w-4 text-[#52525b]" />
             Export as PDF
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => copyShareLink(designId)}>
-            <Link className="mr-2 h-4 w-4 text-[#52525b]" />
-            Copy Share Link
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => printFloorPlan(stageRef)}>
             <Printer className="mr-2 h-4 w-4 text-[#52525b]" />
