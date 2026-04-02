@@ -51,9 +51,9 @@
   --canvas-wall: #3a3a4a;
   --canvas-wall-selected: #2c2c2e;
   --canvas-dimension: #8b6f4e;
-  --canvas-furniture-bg: #e8eaef;
+  --canvas-furniture-bg: #d4d4d8;
   --canvas-furniture-text: #3a3a4a;
-  --canvas-furniture-border: #cfd1d6;
+  --canvas-furniture-border: #b4b4bc;
 }
 
 .dark {

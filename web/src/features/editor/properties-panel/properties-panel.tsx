@@ -460,10 +460,34 @@ export const PropertiesPanel = () => {
             <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
               Color
             </label>
-            <div
-              className="h-8 w-full rounded-md border border-[var(--border)]"
-              style={{ backgroundColor: selectedFurniture.furnitureItem.color }}
-            />
+            <div className="flex items-center gap-2">
+              <label className="relative h-8 flex-1 cursor-pointer overflow-hidden rounded-md border border-[var(--border)]">
+                <input
+                  type="color"
+                  value={selectedFurniture.furnitureItem.color || "#d4d4d8"}
+                  onChange={(e) => {
+                    updateFurniture(selectedFurniture.id, {
+                      furnitureItem: { ...selectedFurniture.furnitureItem, color: e.target.value },
+                    });
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+                <div
+                  className="h-full w-full rounded-md"
+                  style={{ backgroundColor: selectedFurniture.furnitureItem.color || "#d4d4d8" }}
+                />
+              </label>
+              <button
+                onClick={() => {
+                  updateFurniture(selectedFurniture.id, {
+                    furnitureItem: { ...selectedFurniture.furnitureItem, color: "#d4d4d8" },
+                  });
+                }}
+                className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[10px] font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)]"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           <Separator />

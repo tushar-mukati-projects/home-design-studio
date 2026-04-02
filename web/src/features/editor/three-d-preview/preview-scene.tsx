@@ -113,11 +113,14 @@ const SceneContents = ({
 
   return (
     <>
-      <ambientLight intensity={ambientIntensity} color="#FFF8F0" />
+      {/* Sky gradient background */}
+      <color attach="background" args={["#e8eaef"]} />
+
+      <ambientLight intensity={ambientIntensity * 0.8} color="#ffffff" />
       <directionalLight
         position={[bounds.size * 0.7, bounds.size * 1.2, bounds.size * 0.5]}
-        intensity={1.2}
-        color="#FFF5E8"
+        intensity={1.4}
+        color="#ffffff"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -129,17 +132,26 @@ const SceneContents = ({
         shadow-camera-far={bounds.size * 4}
         shadow-bias={-0.001}
       />
-      <pointLight
-        position={[0, 2.5, 0]}
-        intensity={0.3}
-        color="#94a3b8"
-        distance={bounds.size * 2}
+      <directionalLight
+        position={[-bounds.size * 0.5, bounds.size * 0.6, -bounds.size * 0.3]}
+        intensity={0.4}
+        color="#d4d8e0"
+      />
+      <hemisphereLight
+        args={["#dde1e8", "#a0a4aa", 0.5]}
       />
 
+      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
         <planeGeometry args={[bounds.size * 3, bounds.size * 3]} />
         <primitive object={floorMat} attach="material" />
       </mesh>
+
+      {/* Subtle grid on ground */}
+      <gridHelper
+        args={[bounds.size * 3, Math.round(bounds.size * 3), "#c4c8d0", "#d8dce4"]}
+        position={[0, 0.001, 0]}
+      />
 
       {rooms.map((room) => (
         <Room3D
@@ -176,18 +188,18 @@ const SceneContents = ({
 
       <ContactShadows
         position={[0, 0, 0]}
-        opacity={0.4}
+        opacity={0.3}
         scale={bounds.size * 3}
-        blur={2}
+        blur={2.5}
         far={bounds.size * 2}
-        color="#1a1a2e"
+        color="#52525b"
       />
 
       {!hasContent && (
         <Text
           position={[0, 1.5, 0]}
           fontSize={0.3}
-          color="#6b6b78"
+          color="#71717a"
           anchorX="center"
           anchorY="middle"
           maxWidth={6}
@@ -197,7 +209,6 @@ const SceneContents = ({
       )}
 
       <Environment preset="apartment" />
-      <fog attach="fog" args={["#0f172a", bounds.size * 3, bounds.size * 8]} />
     </>
   );
 };
@@ -287,7 +298,7 @@ export const PreviewScene = ({
         alpha: false,
         powerPreference: "high-performance",
       }}
-      style={{ background: "#0f172a" }}
+      style={{ background: "linear-gradient(180deg, #e8eaef 0%, #d4d8e0 100%)" }}
       onCreated={({ camera }) => {
         camera.position.set(...preset.position);
         camera.lookAt(...preset.target);

@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
-  { href: "/pricing", label: "Pricing", badge: "Soon" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 
@@ -176,11 +176,6 @@ export const Navbar = () => {
               )}
             >
               {link.label}
-              {link.badge && (
-                <span className="ml-1.5 inline-flex items-center rounded-full bg-[var(--secondary)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted-foreground)]">
-                  {link.badge}
-                </span>
-              )}
             </Link>
           ))}
         </nav>
@@ -207,11 +202,6 @@ export const Navbar = () => {
                 onClick={() => setMobileOpen(false)}
               >
                 {link.label}
-                {link.badge && (
-                  <span className="ml-1.5 inline-flex items-center rounded-full bg-[var(--secondary)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted-foreground)]">
-                    {link.badge}
-                  </span>
-                )}
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-3">{renderMobileAuth()}</div>

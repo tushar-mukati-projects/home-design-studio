@@ -101,13 +101,24 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               height={fh}
               offsetX={fw / 2}
               offsetY={fh / 2}
-              fill={piece.furnitureItem.color || "#e8e0d8"}
+              fill={piece.furnitureItem.color || "#d4d4d8"}
               cornerRadius={4}
-              stroke={isSelected ? "#52525b" : "#c8c0b8"}
+              stroke={isSelected ? "#52525b" : "#b4b4bc"}
               strokeWidth={isSelected ? 2 / zoom : 1 / zoom}
               shadowColor={isSelected ? "#52525b" : undefined}
               shadowBlur={isSelected ? 10 : 0}
               shadowOpacity={isSelected ? 0.4 : 0}
+            />
+            {/* Front edge indicator - a subtle line on top edge */}
+            <Rect
+              width={fw * 0.4}
+              height={Math.max(3, 4 / zoom)}
+              offsetX={(fw * 0.4) / 2}
+              offsetY={fh / 2}
+              fill="#52525b"
+              cornerRadius={1}
+              opacity={0.6}
+              listening={false}
             />
             <Text
               width={fw}
