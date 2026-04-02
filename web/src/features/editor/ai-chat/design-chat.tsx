@@ -15,6 +15,7 @@ import {
   Minimize2,
   Trash2,
   Wrench,
+  User,
 } from "lucide-react";
 
 interface DesignChatProps {
@@ -269,22 +270,34 @@ const MessageList = ({ messages, isLoading, activeTools }: MessageListProps) => 
     {messages.map((msg) => (
       <div
         key={msg.id}
-        className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
+        className={cn("flex items-start", msg.role === "user" ? "justify-end" : "justify-start")}
       >
+        {msg.role !== "user" && (
+          <div className="mr-3 mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+            <Sparkles className="size-4" />
+          </div>
+        )}
+
         <div
           className={cn(
-            "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+            "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
             msg.role === "user"
-              ? "rounded-br-md bg-[var(--primary)] text-[var(--primary-foreground)]"
+              ? "ml-3 rounded-br-md bg-[var(--primary)] text-[var(--primary-foreground)]"
               : "rounded-bl-md bg-[var(--secondary)] text-[var(--foreground)]",
           )}
         >
           {msg.role === "assistant" ? (
             <AssistantMessage msg={msg} isLoading={isLoading} />
           ) : (
-            msg.content
+            <div className="whitespace-pre-wrap">{msg.content}</div>
           )}
         </div>
+
+        {msg.role === "user" && (
+          <div className="ml-3 mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)]">
+            <User className="size-4" />
+          </div>
+        )}
       </div>
     ))}
     {isLoading && <LoadingIndicator activeTools={activeTools} />}
