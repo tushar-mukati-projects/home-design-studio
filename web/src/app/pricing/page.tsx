@@ -64,7 +64,7 @@ const PricingPage = () => {
       <div className="mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1
-            className="text-4xl font-bold tracking-tight text-[var(--foreground)] sm:text-5xl"
+            className="text-3xl font-bold tracking-tight text-[var(--foreground)] sm:text-4xl md:text-5xl"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             Simple, transparent pricing
@@ -83,7 +83,7 @@ const PricingPage = () => {
             return (
               <div
                 key={plan.name}
-                className={`relative flex flex-col rounded-2xl border p-8 transition-shadow ${
+                className={`relative flex flex-col rounded-2xl border p-6 transition-shadow sm:p-8 ${
                   plan.highlighted
                     ? "border-[var(--primary)] bg-[var(--card)] shadow-xl"
                     : "border-[var(--border)] bg-[var(--card)]"

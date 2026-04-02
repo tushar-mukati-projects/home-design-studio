@@ -59,7 +59,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md p-0">
-        <div className="relative overflow-hidden rounded-t-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/80 px-6 pt-8 pb-6">
+        <div className="relative overflow-hidden rounded-t-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/80 px-4 pt-6 pb-5 sm:px-6 sm:pt-8 sm:pb-6">
           <div className="absolute top-0 right-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
           <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-white/5" />
           <div className="relative">
@@ -82,7 +82,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
           </div>
         </div>
 
-        <div className="space-y-5 px-6 pt-4 pb-6">
+        <div className="space-y-5 px-4 pt-4 pb-6 sm:px-6">
           <div className="space-y-3">
             {PRO_FEATURES.map((feature) => (
               <div key={feature.label} className="flex items-center gap-3">

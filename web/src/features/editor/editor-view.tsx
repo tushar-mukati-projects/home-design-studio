@@ -31,6 +31,7 @@ import { ShareModal } from "./sharing/share-modal";
 import type { EditorTool } from "@/types";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { VersionHistoryPanel } from "./version-history/version-history-panel";
+import { ImportDesignModal } from "./import/import-design-modal";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
 interface EditorViewProps {
   designId: string;
@@ -125,6 +126,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const [showShareModal, setShowShareModal] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [localDesignName, setLocalDesignName] = useState<string | null>(null);
 
   const fetchEnabled = !preloadedDesign;
@@ -348,6 +350,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         onToggleShare={() => setShowShareModal(true)}
         onToggleHistory={() => setShowVersionHistory((v) => !v)}
         onToggleUpgrade={() => setShowUpgradeModal(true)}
+        onToggleImport={() => setShowImportModal(true)}
         stageRef={stageRef}
         designId={designId}
         canEdit={canEdit}
@@ -355,10 +358,10 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Vertical tool sidebar */}
+        {/* Vertical tool sidebar — desktop only */}
         {canEdit && (
           <motion.div
-            className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3"
+            className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3 md:flex"
             initial={{ x: -56 }}
             animate={{ x: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
@@ -412,7 +415,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
 
           {/* Connection status badge */}
           {collaborationEnabled && canEdit && (
-            <div className="absolute top-4 right-4 z-10">
+            <div className="absolute top-2 right-2 z-10 sm:top-4 sm:right-4">
               <ConnectionStatus
                 isConnected={isConnected}
                 isSynced={isSynced}
@@ -421,90 +424,169 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             </div>
           )}
 
-          {/* Floating right panel */}
+          {/* Floating right panel — desktop floating, mobile bottom sheet */}
           <AnimatePresence>
             {canEdit && showRightPanel && (
-              <motion.div
-                className="absolute top-4 right-4 z-20 w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                style={{ maxHeight: "calc(100% - 80px)" }}
-              >
-                <div className="flex h-10 items-center justify-between border-b border-[var(--border)] px-3">
-                  <div className="flex items-center gap-1">
+              <>
+                {/* Desktop floating panel */}
+                <motion.div
+                  className="absolute top-4 right-4 z-20 hidden w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl md:block"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  style={{ maxHeight: "calc(100% - 80px)" }}
+                >
+                  <div className="flex h-10 items-center justify-between border-b border-[var(--border)] px-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setRightPanel("properties")}
+                        className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                          rightPanel === "properties"
+                            ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        Properties
+                      </button>
+                      <button
+                        onClick={() => setRightPanel("furniture")}
+                        className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                          rightPanel === "furniture"
+                            ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        Furniture
+                      </button>
+                    </div>
                     <button
-                      onClick={() => setRightPanel("properties")}
-                      className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
-                        rightPanel === "properties"
-                          ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                      }`}
+                      onClick={() => setShowRightPanel(false)}
+                      className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
                     >
-                      Properties
-                    </button>
-                    <button
-                      onClick={() => setRightPanel("furniture")}
-                      className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
-                        rightPanel === "furniture"
-                          ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                      }`}
-                    >
-                      Furniture
+                      <span className="text-sm">✕</span>
                     </button>
                   </div>
-                  <button
-                    onClick={() => setShowRightPanel(false)}
-                    className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
-                  >
-                    <span className="text-sm">✕</span>
-                  </button>
-                </div>
-                <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
-                  {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
-                </div>
-              </motion.div>
+                  <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                    {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
+                  </div>
+                </motion.div>
+
+                {/* Mobile bottom sheet */}
+                <motion.div
+                  className="absolute inset-x-0 bottom-0 z-20 overflow-hidden rounded-t-2xl border-t border-[var(--border)] bg-[var(--card)] shadow-2xl md:hidden"
+                  initial={{ opacity: 0, y: 100 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 100 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  style={{ maxHeight: "55vh" }}
+                >
+                  <div className="flex h-10 items-center justify-between border-b border-[var(--border)] px-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setRightPanel("properties")}
+                        className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                          rightPanel === "properties"
+                            ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        Properties
+                      </button>
+                      <button
+                        onClick={() => setRightPanel("furniture")}
+                        className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                          rightPanel === "furniture"
+                            ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                        }`}
+                      >
+                        Furniture
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setShowRightPanel(false)}
+                      className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+                    >
+                      <span className="text-sm">✕</span>
+                    </button>
+                  </div>
+                  <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(55vh - 40px)" }}>
+                    {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
+                  </div>
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
 
           {/* Zoom controls */}
           <motion.div
-            className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 shadow-lg"
+            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5 shadow-lg sm:bottom-4 sm:gap-1 sm:p-1"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
             <Tooltip content="Zoom Out" side="top">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut}>
-                <ZoomOut className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomOut}>
+                <ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
             <button
               onClick={handleZoomReset}
-              className="min-w-[52px] px-2 py-1 font-mono text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+              className="min-w-[40px] px-1 py-1 font-mono text-[10px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] sm:min-w-[52px] sm:px-2 sm:text-xs"
             >
               {Math.round(zoom * 100)}%
             </button>
             <Tooltip content="Zoom In" side="top">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn}>
-                <ZoomIn className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomIn}>
+                <ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
-            <div className="mx-0.5 h-5 w-px bg-[var(--border)]" />
+            <div className="mx-0.5 h-4 w-px bg-[var(--border)] sm:h-5" />
             <Tooltip content="Fit to Screen" side="top">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomReset}>
-                <Maximize className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomReset}>
+                <Maximize className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
           </motion.div>
 
-          {/* Tool hint overlays */}
+          {/* Mobile horizontal toolbar — bottom, above zoom */}
+          {canEdit && (
+            <div className="absolute bottom-14 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--sidebar-background)] p-1 shadow-lg md:hidden">
+              {SIDEBAR_TOOLS.map((t) => {
+                const isActive = activeTool === t.tool;
+                return (
+                  <button
+                    key={t.tool}
+                    onClick={() => setTool(t.tool)}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-all ${
+                      isActive
+                        ? "bg-[var(--sidebar-accent)] text-white shadow-md"
+                        : "text-[var(--sidebar-foreground)]"
+                    }`}
+                  >
+                    {t.icon}
+                  </button>
+                );
+              })}
+              <div className="mx-0.5 h-5 w-px bg-white/10" />
+              <button
+                onClick={() => {
+                  setRightPanel("properties");
+                  setShowRightPanel((v) => !v);
+                }}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--sidebar-foreground)]"
+              >
+                <Layers className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
+          {/* Tool hint overlays — hidden on mobile */}
           <AnimatePresence>
             {activeTool === "wall" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -515,7 +597,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "door" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -525,7 +607,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "window" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -555,6 +637,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         />
       )}
       <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <ImportDesignModal open={showImportModal} onClose={() => setShowImportModal(false)} />
     </div>
   );
 };

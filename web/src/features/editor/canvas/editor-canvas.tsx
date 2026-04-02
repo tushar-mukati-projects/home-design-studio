@@ -96,6 +96,9 @@ export const EditorCanvas = ({
   const wallLayerRedrawRef = useRef<() => void>(null);
   const doorWindowPriorityRef = useRef(false);
   const rafRef = useRef<number | null>(null);
+  const lastTouchDistRef = useRef(0);
+  const lastTouchCenterRef = useRef({ x: 0, y: 0 });
+  const isTouchPanningRef = useRef(false);
 
   // Only subscribe to values the Stage JSX needs for rendering
   const zoom = useEditorStore((s) => s.zoom);
@@ -399,6 +402,79 @@ export const EditorCanvas = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Touch support: pinch-to-zoom + two-finger pan
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const getTouchDistance = (t1: Touch, t2: Touch) => {
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const getTouchCenter = (t1: Touch, t2: Touch) => ({
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2,
+    });
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isTouchPanningRef.current = true;
+        lastTouchDistRef.current = getTouchDistance(e.touches[0], e.touches[1]);
+        lastTouchCenterRef.current = getTouchCenter(e.touches[0], e.touches[1]);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isTouchPanningRef.current) {
+        e.preventDefault();
+        const s = useEditorStore.getState();
+
+        const newDist = getTouchDistance(e.touches[0], e.touches[1]);
+        const newCenter = getTouchCenter(e.touches[0], e.touches[1]);
+
+        const scale = newDist / (lastTouchDistRef.current || 1);
+        const newZoom = Math.max(0.1, Math.min(5, s.zoom * scale));
+
+        const rect = container.getBoundingClientRect();
+        const centerX = newCenter.x - rect.left;
+        const centerY = newCenter.y - rect.top;
+        const mousePointTo = {
+          x: (centerX - s.panX) / s.zoom,
+          y: (centerY - s.panY) / s.zoom,
+        };
+
+        const dx = newCenter.x - lastTouchCenterRef.current.x;
+        const dy = newCenter.y - lastTouchCenterRef.current.y;
+
+        const newPanX = centerX - mousePointTo.x * newZoom + dx;
+        const newPanY = centerY - mousePointTo.y * newZoom + dy;
+
+        s.setZoom(newZoom);
+        s.setPan(newPanX, newPanY);
+
+        lastTouchDistRef.current = newDist;
+        lastTouchCenterRef.current = newCenter;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      isTouchPanningRef.current = false;
+    };
+
+    container.addEventListener("touchstart", handleTouchStart, { passive: false });
+    container.addEventListener("touchmove", handleTouchMove, { passive: false });
+    container.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [containerRef]);
 
   return (
     <Stage

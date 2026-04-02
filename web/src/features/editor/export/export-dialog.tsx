@@ -126,12 +126,12 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-[var(--foreground)]">Orientation</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setOrientation("landscape")}
                   className={cn(
-                    "flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+                    "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     orientation === "landscape"
                       ? "border-[#2c2c2e] bg-[#2c2c2e]/10 text-[#2c2c2e]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]",
@@ -144,7 +144,7 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
                   type="button"
                   onClick={() => setOrientation("portrait")}
                   className={cn(
-                    "flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+                    "flex min-w-0 flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     orientation === "portrait"
                       ? "border-[#2c2c2e] bg-[#2c2c2e]/10 text-[#2c2c2e]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]",

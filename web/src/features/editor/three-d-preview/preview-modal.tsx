@@ -19,30 +19,30 @@ import { Slider } from "@/components/ui/slider";
 import { PreviewScene } from "./preview-scene";
 
 const FLOOR_PRESETS = [
-  { color: "#d4d4d8", label: "Light Gray" },
-  { color: "#a1a1aa", label: "Medium Gray" },
-  { color: "#e8dcc8", label: "Cream" },
-  { color: "#52525b", label: "Charcoal" },
-  { color: "#d4c5b2", label: "Light Oak" },
-  { color: "#71717a", label: "Slate" },
+  { color: "#8a8a8f", label: "Concrete" },
+  { color: "#a08060", label: "Light Wood" },
+  { color: "#6b5b4e", label: "Dark Wood" },
+  { color: "#b0a898", label: "Sandstone" },
+  { color: "#505058", label: "Dark Slate" },
+  { color: "#c8b8a8", label: "Travertine" },
 ];
 
 const WALL_PRESETS = [
-  { color: "#f4f4f5", label: "Light" },
-  { color: "#ffffff", label: "White" },
-  { color: "#e4e4e7", label: "Soft Gray" },
-  { color: "#d4d4d8", label: "Gray" },
-  { color: "#c9d6df", label: "Light Blue" },
-  { color: "#d4e6d4", label: "Light Green" },
+  { color: "#e8e8e8", label: "White" },
+  { color: "#d8d0c8", label: "Warm White" },
+  { color: "#c8d0d8", label: "Cool Gray" },
+  { color: "#d0c8b8", label: "Cream" },
+  { color: "#b8c8c8", label: "Sage" },
+  { color: "#c8c0b8", label: "Linen" },
 ];
 
 const FURNITURE_PRESETS = [
-  { color: "#a1a1aa", label: "Gray" },
-  { color: "#52525b", label: "Charcoal" },
-  { color: "#f4f4f5", label: "White" },
-  { color: "#71717a", label: "Slate" },
-  { color: "#d4d4d8", label: "Silver" },
-  { color: "#2c2c2e", label: "Dark" },
+  { color: "#909098", label: "Gray" },
+  { color: "#6b5b4e", label: "Walnut" },
+  { color: "#e0e0e0", label: "White" },
+  { color: "#404048", label: "Charcoal" },
+  { color: "#a08868", label: "Oak" },
+  { color: "#28282e", label: "Black" },
 ];
 
 interface ColorPreset {
@@ -63,7 +63,7 @@ const ColorPickerRow = ({ label, presets, value, onChange }: ColorPickerRowProps
       <span className="text-[10px] font-medium tracking-wider text-[#71717a] uppercase">
         {label}
       </span>
-      <div className="mt-1.5 flex items-center gap-1.5">
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {presets.map((preset) => (
           <button
             key={preset.color}
@@ -130,9 +130,9 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
   const [showRoomColors, setShowRoomColors] = useState(true);
   const [ambientIntensity, setAmbientIntensity] = useState(60);
   const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [floorColor, setFloorColor] = useState("#d4d4d8");
-  const [wallColor, setWallColor] = useState("#f4f4f5");
-  const [furnitureColor, setFurnitureColor] = useState("#a1a1aa");
+  const [floorColor, setFloorColor] = useState("#8a8a8f");
+  const [wallColor, setWallColor] = useState("#e8e8e8");
+  const [furnitureColor, setFurnitureColor] = useState("#909098");
 
   useEffect(() => {
     if (!open) return;
@@ -159,9 +159,9 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
     setShowFurniture(true);
     setShowRoomColors(true);
     setAmbientIntensity(60);
-    setFloorColor("#d4d4d8");
-    setWallColor("#f4f4f5");
-    setFurnitureColor("#a1a1aa");
+    setFloorColor("#8a8a8f");
+    setWallColor("#e8e8e8");
+    setFurnitureColor("#909098");
   }, []);
 
   if (!mounted) return null;
@@ -181,7 +181,7 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
           <div className="relative z-10 flex items-center justify-between border-b border-[#e4e4e7]/60 px-5 py-3">
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-[#2c2c2e]" />
-              <h2 className="text-lg font-semibold tracking-tight text-[#18181b]">3D Preview</h2>
+              <h2 className="text-base font-semibold tracking-tight text-[#18181b] sm:text-lg">3D Preview</h2>
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden text-xs text-[#71717a] sm:block">
@@ -215,7 +215,7 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
-              className="absolute right-4 bottom-4 z-20"
+              className="absolute inset-x-2 bottom-2 z-20 sm:inset-x-auto sm:right-4 sm:bottom-4"
             >
               {panelCollapsed ? (
                 <Button
@@ -227,7 +227,7 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
                   View Options
                 </Button>
               ) : (
-                <div className="w-64 rounded-lg border border-[#e4e4e7] bg-[#ffffff]/90 shadow-2xl backdrop-blur-md">
+                <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-[#e4e4e7] bg-[#ffffff]/90 shadow-2xl backdrop-blur-md sm:max-h-none sm:w-64 sm:overflow-y-visible">
                   <div className="flex items-center justify-between border-b border-[#e4e4e7]/60 px-3 py-2">
                     <span className="text-xs font-medium tracking-wider text-[#71717a] uppercase">
                       View Options

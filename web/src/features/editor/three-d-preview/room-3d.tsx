@@ -40,7 +40,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: showColor ? room.color || "#d4d4d8" : "#e4e4e7",
+        color: showColor ? room.color || "#c0c0c8" : "#d0d0d4",
         roughness: 0.85,
         metalness: 0,
         transparent: true,

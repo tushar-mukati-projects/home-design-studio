@@ -432,7 +432,7 @@ export const DashboardView = () => {
               </h1>
               <PlanBadge onClick={() => setUpgradeModalOpen(true)} />
             </div>
-            <Button onClick={handleCreateClick}>
+            <Button onClick={handleCreateClick} className="w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Create New Design
             </Button>
@@ -440,7 +440,7 @@ export const DashboardView = () => {
 
           {hasDesigns && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative max-w-sm flex-1">
+              <div className="relative w-full flex-1 sm:max-w-sm">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
                 <Input
                   placeholder="Search designs..."
