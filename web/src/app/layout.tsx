@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, Figtree } from "next/font/google";
+import { DM_Sans, Inter } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { Providers } from "@/components/layout/providers";
 import "./globals.css";
 
-const dmSerifDisplay = DM_Serif_Display({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: "400",
   variable: "--font-heading",
   display: "swap",
 });
 
-const figtree = Figtree({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
@@ -34,7 +33,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
   return (
     <html
       lang="en"
-      className={`dark ${dmSerifDisplay.variable} ${figtree.variable}`}
+      className={`${dmSans.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-[var(--background)] font-sans antialiased">

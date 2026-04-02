@@ -111,8 +111,8 @@ const BlueprintGrid = () => {
         className="absolute inset-0 opacity-[0.04]"
         style={{
           backgroundImage: `
-            repeating-linear-gradient(0deg, #D4A853 0px, transparent 1px, transparent 30px),
-            repeating-linear-gradient(90deg, #D4A853 0px, transparent 1px, transparent 30px)
+            repeating-linear-gradient(0deg, #2c2c2e 0px, transparent 1px, transparent 30px),
+            repeating-linear-gradient(90deg, #2c2c2e 0px, transparent 1px, transparent 30px)
           `,
         }}
       />
@@ -120,8 +120,8 @@ const BlueprintGrid = () => {
         className="absolute inset-0 opacity-[0.07]"
         style={{
           backgroundImage: `
-            repeating-linear-gradient(0deg, #D4A853 0px, transparent 1px, transparent 150px),
-            repeating-linear-gradient(90deg, #D4A853 0px, transparent 1px, transparent 150px)
+            repeating-linear-gradient(0deg, #2c2c2e 0px, transparent 1px, transparent 150px),
+            repeating-linear-gradient(90deg, #2c2c2e 0px, transparent 1px, transparent 150px)
           `,
         }}
       />
@@ -136,7 +136,7 @@ const HeroGradientMesh = () => {
       <motion.div
         className="absolute -top-32 -right-32 h-[600px] w-[600px] rounded-full opacity-[0.07]"
         style={{
-          background: "radial-gradient(circle, #D4A853 0%, transparent 70%)",
+          background: "radial-gradient(circle, #2c2c2e 0%, transparent 70%)",
         }}
         animate={{
           x: [0, 30, -20, 0],
@@ -151,7 +151,7 @@ const HeroGradientMesh = () => {
       <motion.div
         className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full opacity-[0.05]"
         style={{
-          background: "radial-gradient(circle, #D4A853 0%, #B8922E 30%, transparent 70%)",
+          background: "radial-gradient(circle, #2c2c2e 0%, #B8922E 30%, transparent 70%)",
         }}
         animate={{
           x: [0, -25, 15, 0],
@@ -188,12 +188,12 @@ const EditorMockup = () => {
       custom={3}
       className="relative mx-auto mt-12 w-full max-w-4xl lg:mt-16"
     >
-      <div className="absolute -inset-4 rounded-2xl bg-[#D4A853]/5 blur-3xl" />
+      <div className="absolute -inset-4 rounded-2xl bg-[#2c2c2e]/5 blur-3xl" />
 
       <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl shadow-black/60">
         <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[#0F0F0F] px-4 py-3">
           <span className="h-3 w-3 rounded-full bg-[#B85450]" />
-          <span className="h-3 w-3 rounded-full bg-[#D4A853]/60" />
+          <span className="h-3 w-3 rounded-full bg-[#2c2c2e]/60" />
           <span className="h-3 w-3 rounded-full bg-[#4A8C5C]/60" />
           <span className="ml-3 text-xs text-[var(--muted-foreground)]">
             Home Design Studio — My Living Room
@@ -202,7 +202,7 @@ const EditorMockup = () => {
         <div className="flex h-64 sm:h-80 lg:h-96">
           <div className="flex w-12 shrink-0 flex-col items-center gap-3 border-r border-[var(--border)] bg-[#0F0F0F] py-4">
             <MousePointerClick className="h-4 w-4 text-[var(--muted-foreground)]" />
-            <PenTool className="h-4 w-4 text-[#D4A853]" />
+            <PenTool className="h-4 w-4 text-[#2c2c2e]" />
             <Square className="h-4 w-4 text-[var(--muted-foreground)]" />
             <Minus className="h-4 w-4 text-[var(--muted-foreground)]" />
             <Circle className="h-4 w-4 text-[var(--muted-foreground)]" />
@@ -213,8 +213,8 @@ const EditorMockup = () => {
               className="absolute inset-0 opacity-[0.06]"
               style={{
                 backgroundImage: `
-                  repeating-linear-gradient(0deg, #D4A853 0px, transparent 1px, transparent 24px),
-                  repeating-linear-gradient(90deg, #D4A853 0px, transparent 1px, transparent 24px)
+                  repeating-linear-gradient(0deg, #2c2c2e 0px, transparent 1px, transparent 24px),
+                  repeating-linear-gradient(90deg, #2c2c2e 0px, transparent 1px, transparent 24px)
                 `,
               }}
             />
@@ -226,7 +226,7 @@ const EditorMockup = () => {
             >
               <motion.path
                 d="M 100 60 L 500 60 L 500 340 L 300 340 L 300 200 L 100 200 Z"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="3"
                 fill="none"
                 initial={{ pathLength: 0 }}
@@ -235,14 +235,14 @@ const EditorMockup = () => {
               />
               <motion.path
                 d="M 300 60 L 500 60 L 500 340 L 300 340 Z"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.03 }}
                 transition={{ delay: 2, duration: 0.8 }}
               />
               <motion.path
                 d="M 100 60 L 300 60 L 300 200 L 100 200 Z"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.02 }}
                 transition={{ delay: 2.2, duration: 0.8 }}
@@ -252,7 +252,7 @@ const EditorMockup = () => {
                 y1="60"
                 x2="300"
                 y2="200"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="2"
                 strokeDasharray="6 4"
                 opacity={0.5}
@@ -262,7 +262,7 @@ const EditorMockup = () => {
               />
               <motion.path
                 d="M 180 200 A 30 30 0 0 1 210 200"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="1.5"
                 fill="none"
                 opacity={0.6}
@@ -275,7 +275,7 @@ const EditorMockup = () => {
                 y1="200"
                 x2="180"
                 y2="170"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="1"
                 opacity={0.4}
                 initial={{ opacity: 0 }}
@@ -310,9 +310,9 @@ const EditorMockup = () => {
                 width="120"
                 height="50"
                 rx="6"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 opacity={0.15}
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="1"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -323,7 +323,7 @@ const EditorMockup = () => {
                 y1="264"
                 x2="380"
                 y2="306"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="0.5"
                 opacity={0.2}
                 initial={{ opacity: 0 }}
@@ -335,7 +335,7 @@ const EditorMockup = () => {
                 y1="264"
                 x2="420"
                 y2="306"
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="0.5"
                 opacity={0.2}
                 initial={{ opacity: 0 }}
@@ -348,9 +348,9 @@ const EditorMockup = () => {
                 width="60"
                 height="40"
                 rx="4"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 opacity={0.1}
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="1"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -362,9 +362,9 @@ const EditorMockup = () => {
                 width="80"
                 height="40"
                 rx="3"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 opacity={0.08}
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="1"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -384,7 +384,7 @@ const EditorMockup = () => {
                   cy={chair.cy}
                   r="7"
                   fill="none"
-                  stroke="#D4A853"
+                  stroke="#2c2c2e"
                   strokeWidth="0.8"
                   opacity={0.15}
                   initial={{ opacity: 0, scale: 0 }}
@@ -398,9 +398,9 @@ const EditorMockup = () => {
                 width="12"
                 height="60"
                 rx="2"
-                fill="#D4A853"
+                fill="#2c2c2e"
                 opacity={0.12}
-                stroke="#D4A853"
+                stroke="#2c2c2e"
                 strokeWidth="0.8"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.12 }}
@@ -411,7 +411,7 @@ const EditorMockup = () => {
                 animate={{ opacity: 0.6 }}
                 transition={{ delay: 3.4, duration: 0.5 }}
               >
-                <text x="300" y="48" textAnchor="middle" fill="#D4A853" fontSize="11">
+                <text x="300" y="48" textAnchor="middle" fill="#2c2c2e" fontSize="11">
                   5.2m
                 </text>
                 <line
@@ -419,7 +419,7 @@ const EditorMockup = () => {
                   y1="48"
                   x2="270"
                   y2="48"
-                  stroke="#D4A853"
+                  stroke="#2c2c2e"
                   strokeWidth="0.5"
                   opacity={0.3}
                 />
@@ -428,7 +428,7 @@ const EditorMockup = () => {
                   y1="48"
                   x2="490"
                   y2="48"
-                  stroke="#D4A853"
+                  stroke="#2c2c2e"
                   strokeWidth="0.5"
                   opacity={0.3}
                 />
@@ -438,7 +438,7 @@ const EditorMockup = () => {
                 animate={{ opacity: 0.6 }}
                 transition={{ delay: 3.5, duration: 0.5 }}
               >
-                <text x="520" y="200" textAnchor="start" fill="#D4A853" fontSize="11">
+                <text x="520" y="200" textAnchor="start" fill="#2c2c2e" fontSize="11">
                   3.8m
                 </text>
               </motion.g>
@@ -446,10 +446,10 @@ const EditorMockup = () => {
                 x="400"
                 y="155"
                 textAnchor="middle"
-                fill="#F5F0EB"
+                fill="#fafafa"
                 fontSize="13"
                 opacity={0.3}
-                fontFamily="Figtree, sans-serif"
+                fontFamily="Inter, sans-serif"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.3 }}
                 transition={{ delay: 3.6, duration: 0.5 }}
@@ -460,10 +460,10 @@ const EditorMockup = () => {
                 x="200"
                 y="130"
                 textAnchor="middle"
-                fill="#F5F0EB"
+                fill="#fafafa"
                 fontSize="12"
                 opacity={0.25}
-                fontFamily="Figtree, sans-serif"
+                fontFamily="Inter, sans-serif"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.25 }}
                 transition={{ delay: 3.7, duration: 0.5 }}
@@ -480,10 +480,10 @@ const EditorMockup = () => {
                   repeatDelay: 2,
                 }}
               >
-                <rect x="337" y="257" width="6" height="6" fill="#D4A853" opacity={0.8} />
-                <rect x="457" y="257" width="6" height="6" fill="#D4A853" opacity={0.8} />
-                <rect x="337" y="307" width="6" height="6" fill="#D4A853" opacity={0.8} />
-                <rect x="457" y="307" width="6" height="6" fill="#D4A853" opacity={0.8} />
+                <rect x="337" y="257" width="6" height="6" fill="#2c2c2e" opacity={0.8} />
+                <rect x="457" y="257" width="6" height="6" fill="#2c2c2e" opacity={0.8} />
+                <rect x="337" y="307" width="6" height="6" fill="#2c2c2e" opacity={0.8} />
+                <rect x="457" y="307" width="6" height="6" fill="#2c2c2e" opacity={0.8} />
               </motion.g>
             </svg>
           </div>
@@ -510,19 +510,19 @@ const EditorMockup = () => {
                 <span className="text-[10px] text-[var(--muted-foreground)]">Furniture</span>
                 <div className="mt-1 space-y-1">
                   <div className="flex items-center gap-1.5 rounded bg-[var(--secondary)] px-2 py-1 text-[10px] text-[var(--foreground)]">
-                    <Armchair className="h-3 w-3 text-[#D4A853]" /> Sofa
+                    <Armchair className="h-3 w-3 text-[#2c2c2e]" /> Sofa
                   </div>
                   <div className="flex items-center gap-1.5 rounded bg-[var(--secondary)] px-2 py-1 text-[10px] text-[var(--foreground)]">
-                    <Square className="h-3 w-3 text-[#D4A853]" /> Coffee Table
+                    <Square className="h-3 w-3 text-[#2c2c2e]" /> Coffee Table
                   </div>
                 </div>
               </div>
               <div className="mt-3 border-t border-[var(--border)] pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-[var(--muted-foreground)]">3D Preview</span>
-                  <div className="flex h-4 w-8 items-center rounded-full bg-[#D4A853]/20 px-0.5">
+                  <div className="flex h-4 w-8 items-center rounded-full bg-[#2c2c2e]/20 px-0.5">
                     <motion.div
-                      className="h-3 w-3 rounded-full bg-[#D4A853]"
+                      className="h-3 w-3 rounded-full bg-[#2c2c2e]"
                       animate={{ x: [0, 12, 0] }}
                       transition={{
                         duration: 3,
@@ -605,24 +605,24 @@ const FeatureCard = ({ icon: Icon, title, description, index }: FeatureCardProps
       variants={scaleIn}
       custom={index}
       onMouseMove={handleMouseMove}
-      className="group relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition-all duration-300 hover:border-[#D4A853]/30 hover:shadow-md hover:shadow-[#D4A853]/5"
+      className="group relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition-all duration-300 hover:border-[#2c2c2e]/30 hover:shadow-md hover:shadow-[#2c2c2e]/5"
     >
       <div
         className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background:
-            "radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(212,168,83,0.08), transparent 70%)",
+            "radial-gradient(400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(44, 44, 46,0.08), transparent 70%)",
         }}
       />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4A853]/0 to-transparent transition-all duration-500 group-hover:via-[#D4A853]/50" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#2c2c2e]/0 to-transparent transition-all duration-500 group-hover:via-[#2c2c2e]/50" />
 
       <div className="relative z-10">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[#D4A853]/10 transition-colors duration-300 group-hover:bg-[#D4A853]/15">
-          <Icon className="h-6 w-6 text-[#D4A853]" />
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[#2c2c2e]/10 transition-colors duration-300 group-hover:bg-[#2c2c2e]/15">
+          <Icon className="h-6 w-6 text-[#2c2c2e]" />
         </div>
         <h3
           className="mb-2 text-lg text-[var(--foreground)]"
-          style={{ fontFamily: "'DM Serif Display', serif" }}
+          style={{ fontFamily: "var(--font-heading)" }}
         >
           {title}
         </h3>
@@ -644,15 +644,15 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           className="absolute inset-0 rounded-xl opacity-[0.07]"
           style={{
             backgroundImage: `
-              repeating-linear-gradient(0deg, #D4A853 0px, transparent 1px, transparent 20px),
-              repeating-linear-gradient(90deg, #D4A853 0px, transparent 1px, transparent 20px)
+              repeating-linear-gradient(0deg, #2c2c2e 0px, transparent 1px, transparent 20px),
+              repeating-linear-gradient(90deg, #2c2c2e 0px, transparent 1px, transparent 20px)
             `,
           }}
         />
         <svg viewBox="0 0 176 176" className="absolute inset-0 h-full w-full">
           <motion.path
             d="M 30 30 L 146 30 L 146 146 L 88 146 L 88 88 L 30 88 Z"
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="2.5"
             fill="none"
             initial={{ pathLength: 0 }}
@@ -673,7 +673,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
               cx={cx}
               cy={cy}
               r="4"
-              fill="#D4A853"
+              fill="#2c2c2e"
               initial={{ opacity: 0, scale: 0 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
@@ -688,7 +688,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           >
             <polygon
               points="140,35 140,52 147,47 153,57 157,55 151,45 158,42"
-              fill="#F5F0EB"
+              fill="#fafafa"
               opacity={0.6}
             />
           </motion.g>
@@ -706,7 +706,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             width="136"
             height="136"
             rx="2"
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1.5"
             fill="none"
             opacity={0.3}
@@ -717,9 +717,9 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             width="55"
             height="24"
             rx="4"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.25}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
             initial={{ opacity: 0, y: -30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -732,9 +732,9 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             width="30"
             height="20"
             rx="3"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.15}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
             initial={{ opacity: 0, y: -30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -745,9 +745,9 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             cx="120"
             cy="60"
             r="14"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.15}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
             initial={{ opacity: 0, scale: 0 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -760,9 +760,9 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             width="36"
             height="12"
             rx="2"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.12}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="0.8"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -777,7 +777,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           >
             <polygon
               points="115,115 115,133 122,128 128,138 132,136 126,126 133,123"
-              fill="#F5F0EB"
+              fill="#fafafa"
               opacity={0.7}
             />
           </motion.g>
@@ -787,8 +787,8 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
             viewport={{ once: true }}
             transition={{ delay: 1.1, duration: 0.5 }}
           >
-            <line x1="35" y1="140" x2="90" y2="140" stroke="#D4A853" strokeWidth="0.8" />
-            <text x="62" y="152" textAnchor="middle" fill="#D4A853" fontSize="8">
+            <line x1="35" y1="140" x2="90" y2="140" stroke="#2c2c2e" strokeWidth="0.8" />
+            <text x="62" y="152" textAnchor="middle" fill="#2c2c2e" fontSize="8">
               1.8m
             </text>
           </motion.g>
@@ -807,23 +807,23 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
         >
           <polygon
             points="30,115 88,142 146,115 88,88"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.1}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
           />
           <polygon
             points="30,115 30,55 88,28 88,88"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.06}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
           />
           <polygon
             points="146,115 146,55 88,28 88,88"
-            fill="#D4A853"
+            fill="#2c2c2e"
             opacity={0.04}
-            stroke="#D4A853"
+            stroke="#2c2c2e"
             strokeWidth="1"
           />
           <motion.rect
@@ -848,7 +848,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
           width="26"
           height="14"
           rx="2"
-          fill="#D4A853"
+          fill="#2c2c2e"
           opacity={0.2}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 0.2 }}
@@ -857,7 +857,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
         />
         <motion.path
           d="M 68 155 A 22 9 0 1 1 108 155"
-          stroke="#D4A853"
+          stroke="#2c2c2e"
           strokeWidth="1.5"
           fill="none"
           opacity={0.5}
@@ -868,7 +868,7 @@ const StepIllustration = ({ step }: StepIllustrationProps) => {
         />
         <motion.polygon
           points="106,151 112,156 106,159"
-          fill="#D4A853"
+          fill="#2c2c2e"
           opacity={0.5}
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 0.5 }}
@@ -884,15 +884,15 @@ const showcaseData = [
   {
     name: "Modern Living Room",
     dimensions: "5.2m x 3.8m",
-    gradientFrom: "#D4A853",
+    gradientFrom: "#2c2c2e",
     gradientVia: "#1A1A1A",
     gradientTo: "#0F0F0F",
-    accent: "#D4A853",
+    accent: "#2c2c2e",
   },
   {
     name: "Minimalist Bedroom",
     dimensions: "4.0m x 3.5m",
-    gradientFrom: "#8B7355",
+    gradientFrom: "#3f3f46",
     gradientVia: "#1A1715",
     gradientTo: "#0F0F0F",
     accent: "#C4A882",
@@ -922,7 +922,7 @@ const ShowcaseCard = ({
     <motion.div
       variants={scaleIn}
       custom={index}
-      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm transition-all duration-500 hover:border-[#D4A853]/20 hover:shadow-lg hover:shadow-[#D4A853]/10"
+      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm transition-all duration-500 hover:border-[#2c2c2e]/20 hover:shadow-lg hover:shadow-[#2c2c2e]/10"
     >
       <div
         className="absolute inset-0 transition-transform duration-700 group-hover:scale-105"
@@ -999,16 +999,16 @@ const ShowcaseCard = ({
           background: `radial-gradient(ellipse at center, ${accent}08, transparent 70%)`,
         }}
       />
-      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-[#0C0C0C]/90 via-[#0C0C0C]/30 to-transparent p-6">
+      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-[#18181b]/90 via-[#18181b]/30 to-transparent p-6">
         <div className="translate-y-2 transition-transform duration-500 group-hover:translate-y-0">
           <p
             className="text-lg text-[var(--foreground)]"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "var(--font-heading)" }}
           >
             {name}
           </p>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">{dimensions}</p>
-          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#D4A853] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#2c2c2e] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             View design <ChevronRight className="h-3 w-3" />
           </div>
         </div>
@@ -1069,8 +1069,8 @@ export const LandingView = () => {
       <section className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 pt-24 pb-20 sm:px-6 lg:px-8">
         <BlueprintGrid />
         <HeroGradientMesh />
-        <div className="pointer-events-none absolute top-24 left-6 h-24 w-24 border-t border-l border-[#D4A853]/10 sm:left-12 sm:h-32 sm:w-32" />
-        <div className="pointer-events-none absolute right-6 bottom-12 h-24 w-24 border-r border-b border-[#D4A853]/10 sm:right-12 sm:h-32 sm:w-32" />
+        <div className="pointer-events-none absolute top-24 left-6 h-24 w-24 border-t border-l border-[#2c2c2e]/10 sm:left-12 sm:h-32 sm:w-32" />
+        <div className="pointer-events-none absolute right-6 bottom-12 h-24 w-24 border-r border-b border-[#2c2c2e]/10 sm:right-12 sm:h-32 sm:w-32" />
 
         <div className="relative z-10 mx-auto max-w-5xl text-center">
           <motion.div
@@ -1080,7 +1080,7 @@ export const LandingView = () => {
           >
             <motion.div variants={fadeUp} custom={0} className="mb-6">
               <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-1.5 text-xs font-medium text-[var(--muted-foreground)]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#D4A853]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2c2c2e]" />
                 Now in Public Beta
               </span>
             </motion.div>
@@ -1088,11 +1088,11 @@ export const LandingView = () => {
               variants={fadeUp}
               custom={1}
               className="text-4xl leading-[1.1] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               <span className="text-[var(--foreground)]">Design Your</span>
               <br />
-              <span className="bg-gradient-to-r from-[#D4A853] via-[#E8C97A] to-[#D4A853] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#2c2c2e] via-[#E8C97A] to-[#2c2c2e] bg-clip-text text-transparent">
                 Dream Space
               </span>
             </motion.h1>
@@ -1113,7 +1113,7 @@ export const LandingView = () => {
               <Link href="/dashboard">
                 <Button
                   size="lg"
-                  className="h-12 gap-2 px-8 text-base font-semibold shadow-lg shadow-[#D4A853]/20"
+                  className="h-12 gap-2 px-8 text-base font-semibold shadow-lg shadow-[#2c2c2e]/20"
                 >
                   Start Designing
                   <ArrowRight className="h-4 w-4" />
@@ -1132,14 +1132,14 @@ export const LandingView = () => {
 
       {}
       <AnimatedSection id="features" className="relative px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#D4A853]/20 to-transparent" />
+        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#2c2c2e]/20 to-transparent" />
 
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
             <motion.p
               variants={fadeUp}
               custom={0}
-              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#D4A853] uppercase"
+              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#2c2c2e] uppercase"
             >
               Features
             </motion.p>
@@ -1147,7 +1147,7 @@ export const LandingView = () => {
               variants={fadeUp}
               custom={1}
               className="text-3xl tracking-tight sm:text-4xl md:text-5xl"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               Everything You Need to Design
             </motion.h2>
@@ -1171,7 +1171,7 @@ export const LandingView = () => {
       {}
       <AnimatedSection className="relative px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4A853]/[0.02] blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2c2c2e]/[0.02] blur-3xl" />
         </div>
 
         <div className="mx-auto max-w-6xl">
@@ -1179,7 +1179,7 @@ export const LandingView = () => {
             <motion.p
               variants={fadeUp}
               custom={0}
-              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#D4A853] uppercase"
+              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#2c2c2e] uppercase"
             >
               How It Works
             </motion.p>
@@ -1187,29 +1187,29 @@ export const LandingView = () => {
               variants={fadeUp}
               custom={1}
               className="text-3xl tracking-tight sm:text-4xl md:text-5xl"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               Three Steps to Your Dream Home
             </motion.h2>
           </div>
           <div className="relative grid gap-12 md:grid-cols-3 md:gap-8">
             <div className="pointer-events-none absolute top-[5.5rem] right-0 left-0 hidden md:block">
-              <div className="mx-auto h-px max-w-[70%] bg-gradient-to-r from-transparent via-[#D4A853]/20 to-transparent" />
-              <div className="absolute top-1/2 left-[33%] h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4A853]/30" />
-              <div className="absolute top-1/2 left-[66%] h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4A853]/30" />
+              <div className="mx-auto h-px max-w-[70%] bg-gradient-to-r from-transparent via-[#2c2c2e]/20 to-transparent" />
+              <div className="absolute top-1/2 left-[33%] h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2c2c2e]/30" />
+              <div className="absolute top-1/2 left-[66%] h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2c2c2e]/30" />
             </div>
-            <div className="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-[#D4A853]/10 to-transparent md:hidden" />
+            <div className="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-[#2c2c2e]/10 to-transparent md:hidden" />
             <motion.div variants={slideInLeft} custom={0} className="relative text-center">
               <span
-                className="mb-4 block text-5xl text-[#D4A853]/20 md:text-6xl"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                className="mb-4 block text-5xl text-[#2c2c2e]/20 md:text-6xl"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 01
               </span>
               <StepIllustration step={1} />
               <h3
                 className="mt-6 text-xl text-[var(--foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 Draw Your Layout
               </h3>
@@ -1219,15 +1219,15 @@ export const LandingView = () => {
             </motion.div>
             <motion.div variants={fadeUp} custom={1} className="relative text-center">
               <span
-                className="mb-4 block text-5xl text-[#D4A853]/20 md:text-6xl"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                className="mb-4 block text-5xl text-[#2c2c2e]/20 md:text-6xl"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 02
               </span>
               <StepIllustration step={2} />
               <h3
                 className="mt-6 text-xl text-[var(--foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 Furnish &amp; Customize
               </h3>
@@ -1238,15 +1238,15 @@ export const LandingView = () => {
             </motion.div>
             <motion.div variants={slideInRight} custom={2} className="relative text-center">
               <span
-                className="mb-4 block text-5xl text-[#D4A853]/20 md:text-6xl"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                className="mb-4 block text-5xl text-[#2c2c2e]/20 md:text-6xl"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 03
               </span>
               <StepIllustration step={3} />
               <h3
                 className="mt-6 text-xl text-[var(--foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 Preview in 3D
               </h3>
@@ -1261,14 +1261,14 @@ export const LandingView = () => {
 
       {}
       <AnimatedSection className="relative px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#D4A853]/20 to-transparent" />
+        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#2c2c2e]/20 to-transparent" />
 
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
             <motion.p
               variants={fadeUp}
               custom={0}
-              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#D4A853] uppercase"
+              className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#2c2c2e] uppercase"
             >
               Showcase
             </motion.p>
@@ -1276,7 +1276,7 @@ export const LandingView = () => {
               variants={fadeUp}
               custom={1}
               className="text-3xl tracking-tight sm:text-4xl md:text-5xl"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               See What&apos;s Possible
             </motion.h2>
@@ -1298,7 +1298,7 @@ export const LandingView = () => {
 
       {}
       <AnimatedSection className="relative px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#D4A853]/40 to-transparent" />
+        <div className="absolute inset-x-0 top-0 mx-auto h-px max-w-4xl bg-gradient-to-r from-transparent via-[#2c2c2e]/40 to-transparent" />
 
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 md:grid-cols-4 md:gap-12">
           {[
@@ -1310,7 +1310,7 @@ export const LandingView = () => {
             <motion.div key={stat.label} variants={fadeUp} custom={i} className="text-center">
               <p
                 className="text-3xl text-[var(--foreground)] sm:text-4xl md:text-5xl"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 {stat.value === 0 ? (
                   <span>{stat.prefix}0</span>
@@ -1328,18 +1328,18 @@ export const LandingView = () => {
       <AnimatedSection className="relative px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-            <div className="h-[500px] w-[500px] rounded-full border border-[#D4A853]/[0.04]" />
-            <div className="absolute h-[700px] w-[700px] rounded-full border border-[#D4A853]/[0.03]" />
-            <div className="absolute h-[900px] w-[900px] rounded-full border border-[#D4A853]/[0.02]" />
-            <div className="absolute h-[300px] w-[300px] rotate-45 border border-[#D4A853]/[0.03]" />
-            <div className="absolute h-[450px] w-[450px] rotate-45 border border-[#D4A853]/[0.02]" />
+            <div className="h-[500px] w-[500px] rounded-full border border-[#2c2c2e]/[0.04]" />
+            <div className="absolute h-[700px] w-[700px] rounded-full border border-[#2c2c2e]/[0.03]" />
+            <div className="absolute h-[900px] w-[900px] rounded-full border border-[#2c2c2e]/[0.02]" />
+            <div className="absolute h-[300px] w-[300px] rotate-45 border border-[#2c2c2e]/[0.03]" />
+            <div className="absolute h-[450px] w-[450px] rotate-45 border border-[#2c2c2e]/[0.02]" />
           </div>
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute top-1/2 left-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#D4A853]/[0.03] blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2c2c2e]/[0.03] blur-3xl" />
           </div>
 
           <motion.div variants={fadeUp} custom={0}>
-            <p className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#D4A853] uppercase">
+            <p className="mb-3 text-sm font-semibold tracking-[0.2em] text-[#2c2c2e] uppercase">
               Get Started
             </p>
           </motion.div>
@@ -1348,11 +1348,11 @@ export const LandingView = () => {
             variants={fadeUp}
             custom={1}
             className="text-3xl tracking-tight sm:text-4xl md:text-5xl lg:text-6xl"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "var(--font-heading)" }}
           >
             Ready to Design
             <br />
-            <span className="bg-gradient-to-r from-[#D4A853] via-[#E8C97A] to-[#D4A853] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#2c2c2e] via-[#E8C97A] to-[#2c2c2e] bg-clip-text text-transparent">
               Your Space?
             </span>
           </motion.h2>
@@ -1369,7 +1369,7 @@ export const LandingView = () => {
             <Link href="/dashboard">
               <Button
                 size="lg"
-                className="h-14 gap-2 px-10 text-base font-semibold shadow-lg shadow-[#D4A853]/20 sm:text-lg"
+                className="h-14 gap-2 px-10 text-base font-semibold shadow-lg shadow-[#2c2c2e]/20 sm:text-lg"
               >
                 Get Started Free
                 <ArrowRight className="h-5 w-5" />
@@ -1380,17 +1380,17 @@ export const LandingView = () => {
       </AnimatedSection>
 
       {}
-      <footer className="relative border-t border-[#D4A853]/10 bg-[#0A0A0A] px-4 py-16 sm:px-6 lg:px-8">
+      <footer className="relative border-t border-[#2c2c2e]/10 bg-[#0A0A0A] px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 md:grid-cols-5">
             <div className="md:col-span-2">
               <Link href="/" className="inline-flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#D4A853]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#2c2c2e]">
                   <Home className="h-5 w-5 text-[var(--primary-foreground)]" />
                 </div>
                 <span
                   className="text-xl text-[var(--foreground)]"
-                  style={{ fontFamily: "'DM Serif Display', serif" }}
+                  style={{ fontFamily: "var(--font-heading)" }}
                 >
                   DesignStudio
                 </span>
@@ -1409,7 +1409,7 @@ export const LandingView = () => {
                   <a
                     key={i}
                     href={href}
-                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[#D4A853]/30 hover:text-[#D4A853]"
+                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[#2c2c2e]/30 hover:text-[#2c2c2e]"
                   >
                     <SocialIcon className="h-4 w-4" />
                   </a>
@@ -1452,7 +1452,7 @@ export const LandingView = () => {
                     <li key={link.label}>
                       <Link
                         href={link.href}
-                        className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[#D4A853]"
+                        className="text-sm text-[var(--muted-foreground)] transition-colors hover:text-[#2c2c2e]"
                       >
                         {link.label}
                       </Link>
@@ -1469,7 +1469,7 @@ export const LandingView = () => {
                 Built with Next.js, Three.js &amp; AI
               </span>
               <span className="text-[var(--muted-foreground)]">
-                Built with precision <span className="text-[#D4A853]">&bull;</span> Designed with
+                Built with precision <span className="text-[#2c2c2e]">&bull;</span> Designed with
                 care
               </span>
             </div>

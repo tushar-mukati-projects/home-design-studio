@@ -40,14 +40,15 @@ export const webhook = async (req: Request, res: Response) => {
   }
 
   try {
-    const event = stripeService.constructWebhookEvent(req.body as Buffer, signature);
+    const event = await stripeService.constructWebhookEvent(req.body as Buffer, signature);
+    logger.info("Stripe webhook received", { type: event.type, id: event.id });
     await stripeService.handleWebhookEvent(event);
     res.json({ received: true });
   } catch (err) {
-    logger.error("Webhook signature verification failed", {
+    logger.error("Webhook failed", {
       error: err instanceof Error ? err.message : String(err),
     });
-    res.status(400).json({ error: "Webhook signature verification failed" });
+    res.status(400).json({ error: `Webhook Error: ${err instanceof Error ? err.message : "Unknown"}` });
   }
 };
 

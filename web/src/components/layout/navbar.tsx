@@ -160,7 +160,7 @@ export const Navbar = () => {
           </div>
           <span
             className="text-xl text-[var(--foreground)]"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
+            style={{ fontFamily: "var(--font-heading)" }}
           >
             DesignStudio
           </span>

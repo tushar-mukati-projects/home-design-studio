@@ -136,7 +136,7 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
           whileTap={{ scale: 0.98 }}
           className={cn(
             "group relative flex cursor-grab flex-col items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm transition-all duration-200",
-            "hover:border-[#D4A853]/60 hover:shadow-md hover:shadow-[#D4A853]/5",
+            "hover:border-[#2c2c2e]/60 hover:shadow-md hover:shadow-[#2c2c2e]/5",
             isDragging && "opacity-50 shadow-none",
           )}
         >

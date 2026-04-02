@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { memo, useRef, useEffect, useCallback } from "react";
 import { Layer, Shape, Line, Rect, Group, Transformer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
 import type { Wall } from "@/types";
@@ -25,7 +25,7 @@ const projectOntoWall = (wall: Wall, x: number, y: number): number => {
   return Math.max(0.05, Math.min(0.95, ((x - wall.x1) * dx + (y - wall.y1) * dy) / lenSq));
 };
 
-export const DoorWindowLayer = () => {
+export const DoorWindowLayer = memo(function DoorWindowLayer() {
   const walls = useEditorStore((s) => s.walls);
   const doors = useEditorStore((s) => s.doors);
   const windows = useEditorStore((s) => s.windows);
@@ -117,7 +117,7 @@ export const DoorWindowLayer = () => {
           >
             <Line
               points={[-halfWidth, 0, halfWidth, 0]}
-              stroke="#0C0C0C"
+              stroke="#f4f5f7"
               strokeWidth={wall.thickness + 4}
               listening={false}
             />
@@ -126,22 +126,22 @@ export const DoorWindowLayer = () => {
               y={-wall.thickness * 0.3}
               width={door.width}
               height={wall.thickness * 0.6}
-              fill="#8B7355"
-              stroke={isSelected ? "#D4A853" : undefined}
+              fill="#a08870"
+              stroke={isSelected ? "#52525b" : undefined}
               strokeWidth={isSelected ? 2 / zoom : 0}
-              shadowColor={isSelected ? "#D4A853" : undefined}
+              shadowColor={isSelected ? "#52525b" : undefined}
               shadowBlur={isSelected ? 10 : 0}
               shadowOpacity={isSelected ? 0.4 : 0}
             />
             <Line
               points={[-halfWidth, -wall.thickness * 0.3, -halfWidth, wall.thickness * 0.3]}
-              stroke="#6B5344"
+              stroke="#8a7560"
               strokeWidth={2 / zoom}
               listening={false}
             />
             <Line
               points={[halfWidth, -wall.thickness * 0.3, halfWidth, wall.thickness * 0.3]}
-              stroke="#6B5344"
+              stroke="#8a7560"
               strokeWidth={2 / zoom}
               listening={false}
             />
@@ -156,7 +156,7 @@ export const DoorWindowLayer = () => {
                   ctx.closePath();
                   ctx.fillStrokeShape(shape);
                 }}
-                stroke="#C4B99A"
+                stroke="#9c9ca6"
                 strokeWidth={1.5 / zoom}
                 dash={[4 / zoom, 3 / zoom]}
                 listening={false}
@@ -174,7 +174,7 @@ export const DoorWindowLayer = () => {
                     ctx.closePath();
                     ctx.fillStrokeShape(shape);
                   }}
-                  stroke="#C4B99A"
+                  stroke="#9c9ca6"
                   strokeWidth={1.5 / zoom}
                   dash={[4 / zoom, 3 / zoom]}
                   listening={false}
@@ -189,7 +189,7 @@ export const DoorWindowLayer = () => {
                     ctx.closePath();
                     ctx.fillStrokeShape(shape);
                   }}
-                  stroke="#C4B99A"
+                  stroke="#9c9ca6"
                   strokeWidth={1.5 / zoom}
                   dash={[4 / zoom, 3 / zoom]}
                   listening={false}
@@ -247,7 +247,7 @@ export const DoorWindowLayer = () => {
           >
             <Line
               points={[-halfWidth, 0, halfWidth, 0]}
-              stroke="#0C0C0C"
+              stroke="#f4f5f7"
               strokeWidth={wall.thickness + 2}
               listening={false}
             />
@@ -258,9 +258,9 @@ export const DoorWindowLayer = () => {
               height={t * 2}
               fill="#87CEEB"
               opacity={0.4}
-              stroke={isSelected ? "#D4A853" : undefined}
+              stroke={isSelected ? "#52525b" : undefined}
               strokeWidth={isSelected ? 2 / zoom : 0}
-              shadowColor={isSelected ? "#D4A853" : undefined}
+              shadowColor={isSelected ? "#52525b" : undefined}
               shadowBlur={isSelected ? 10 : 0}
               shadowOpacity={isSelected ? 0.4 : 0}
             />
@@ -302,10 +302,10 @@ export const DoorWindowLayer = () => {
         ref={transformerRef}
         rotateEnabled={false}
         enabledAnchors={["middle-left", "middle-right"]}
-        borderStroke="#D4A853"
+        borderStroke="#52525b"
         borderStrokeWidth={2}
-        anchorFill="#D4A853"
-        anchorStroke="#0C0C0C"
+        anchorFill="#52525b"
+        anchorStroke="#ffffff"
         anchorSize={10}
         anchorCornerRadius={2}
         keepRatio={false}
@@ -316,4 +316,4 @@ export const DoorWindowLayer = () => {
       />
     </Layer>
   );
-};
+});

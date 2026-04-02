@@ -40,7 +40,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: showColor ? room.color || "#4A4540" : "#3A3530",
+        color: showColor ? room.color || "#4a4a5a" : "#3a3a4a",
         roughness: 0.9,
         metalness: 0,
         transparent: true,
@@ -74,7 +74,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
         position={[center.x, 0.3, center.z]}
         rotation={[-Math.PI / 4, 0, 0]}
         fontSize={0.2}
-        color="#D4A853"
+        color="#94a3b8"
         anchorX="center"
         anchorY="middle"
         maxWidth={3}
@@ -87,7 +87,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
           position={[center.x, 0.15, center.z + 0.15]}
           rotation={[-Math.PI / 4, 0, 0]}
           fontSize={0.12}
-          color="#8A8278"
+          color="#6b6b78"
           anchorX="center"
           anchorY="middle"
           maxWidth={3}

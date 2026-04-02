@@ -5,13 +5,13 @@ import { Layer, Line, Text, Group } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
 
 const ROOM_COLORS: Record<string, string> = {
-  "living-room": "#D4A85320",
-  bedroom: "#7B68EE20",
-  kitchen: "#FF634720",
-  bathroom: "#4682B420",
-  office: "#32CD3220",
-  dining: "#FF8C0020",
-  generic: "#8A827820",
+  "living-room": "#2c2c2e20",
+  bedroom: "#6B5B9520",
+  kitchen: "#C4564520",
+  bathroom: "#4A7FB520",
+  office: "#2EA85A20",
+  dining: "#D4862020",
+  generic: "#8a8a9420",
 };
 
 const getCentroid = (points: { x: number; y: number }[]) => {
@@ -52,9 +52,9 @@ export const RoomLayer = memo(() => {
               align="center"
               text={room.name}
               fontSize={14 / zoom}
-              fontFamily="Figtree, sans-serif"
+              fontFamily="Inter, sans-serif"
               fontStyle="bold"
-              fill="#F5F0EB"
+              fill="#3a3a4a"
               opacity={0.6}
               listening={false}
             />
@@ -65,8 +65,8 @@ export const RoomLayer = memo(() => {
               align="center"
               text={`${room.area.toFixed(1)} sq ft`}
               fontSize={11 / zoom}
-              fontFamily="Figtree, sans-serif"
-              fill="#8A8278"
+              fontFamily="Inter, sans-serif"
+              fill="#6b6b78"
               opacity={0.6}
               listening={false}
             />

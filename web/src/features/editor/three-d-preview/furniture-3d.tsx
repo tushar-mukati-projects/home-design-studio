@@ -20,7 +20,7 @@ export const Furniture3D = ({ placed, offsetX, offsetZ, furnitureColor }: Furnit
   const material = useMemo(
     () =>
       new MeshStandardMaterial({
-        color: furnitureColor || item.color || "#A0856E",
+        color: furnitureColor || item.color || "#a08870",
         roughness: 0.7,
         metalness: 0.05,
       }),
@@ -62,7 +62,7 @@ export const Furniture3D = ({ placed, offsetX, offsetZ, furnitureColor }: Furnit
       <Text
         position={[0, dimensions.h / 2 + 0.15, 0]}
         fontSize={0.12}
-        color="#D4A853"
+        color="#94a3b8"
         anchorX="center"
         anchorY="bottom"
         maxWidth={2}

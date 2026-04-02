@@ -115,7 +115,7 @@ const SignInPage = () => {
               </div>
               <span
                 className="text-2xl text-[var(--foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 DesignStudio
               </span>

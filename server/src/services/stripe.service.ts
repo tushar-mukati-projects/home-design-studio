@@ -28,6 +28,7 @@ export const getOrCreateCustomer = async (userId: string) => {
     data: { stripeCustomerId: customer.id },
   });
 
+  logger.info("Stripe customer created", { customerId: customer.id, userId });
   return customer.id;
 };
 
@@ -46,8 +47,12 @@ export const createCheckoutSession = async (
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: { userId },
+    subscription_data: {
+      metadata: { userId },
+    },
   });
 
+  logger.info("Checkout session created", { userId, priceId });
   return session;
 };
 
@@ -63,11 +68,18 @@ export const createPortalSession = async (userId: string, returnUrl: string) => 
 };
 
 export const handleWebhookEvent = async (event: Stripe.Event) => {
+  logger.info("Processing webhook event", { type: event.type, id: event.id });
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
-      if (!userId) break;
+      if (!userId) {
+        logger.warn("checkout.session.completed: missing userId in metadata", {
+          sessionId: session.id,
+        });
+        break;
+      }
 
       const subscriptionId =
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
@@ -84,29 +96,38 @@ export const handleWebhookEvent = async (event: Stripe.Event) => {
             stripePriceId: priceId,
           },
         });
-      }
 
-      logger.info("Checkout completed", { userId });
+        logger.info("Plan upgraded to pro via checkout", { userId, subscriptionId });
+      }
       break;
     }
 
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id;
 
-      const user = await prisma.user.findUnique({
-        where: { stripeCustomerId: customerId },
-      });
-      if (!user) break;
+      // Try metadata first (set via subscription_data.metadata), then fall back to customer lookup
+      let userId = subscription.metadata?.userId;
+      if (!userId) {
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+        if (!user) {
+          logger.warn("subscription.updated: user not found", { customerId });
+          break;
+        }
+        userId = user.id;
+      }
 
       const isActive = subscription.status === "active" || subscription.status === "trialing";
       const priceId = subscription.items.data[0]?.price?.id ?? null;
 
       await prisma.user.update({
-        where: { id: user.id },
+        where: { id: userId },
         data: {
           plan: isActive ? "pro" : "free",
           stripeSubId: subscription.id,
@@ -115,26 +136,35 @@ export const handleWebhookEvent = async (event: Stripe.Event) => {
       });
 
       logger.info("Subscription updated", {
-        userId: user.id,
+        userId,
         status: subscription.status,
+        plan: isActive ? "pro" : "free",
       });
       break;
     }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id;
 
-      const user = await prisma.user.findUnique({
-        where: { stripeCustomerId: customerId },
-      });
-      if (!user) break;
+      let userId = subscription.metadata?.userId;
+      if (!userId) {
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+        if (!user) {
+          logger.warn("subscription.deleted: user not found", { customerId });
+          break;
+        }
+        userId = user.id;
+      }
 
       await prisma.user.update({
-        where: { id: user.id },
+        where: { id: userId },
         data: {
           plan: "free",
           stripeSubId: null,
@@ -142,7 +172,36 @@ export const handleWebhookEvent = async (event: Stripe.Event) => {
         },
       });
 
-      logger.info("Subscription deleted", { userId: user.id });
+      logger.info("Subscription deleted, reverted to free", { userId });
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId =
+        typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : invoice.subscription?.id;
+
+      if (!subId) break;
+
+      const subscription = await requireStripe().subscriptions.retrieve(subId);
+      let userId = subscription.metadata?.userId;
+
+      if (!userId) {
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const user = await prisma.user.findUnique({
+          where: { stripeCustomerId: customerId },
+        });
+        if (!user) break;
+        userId = user.id;
+      }
+
+      logger.warn("Invoice payment failed", { userId, subscriptionId: subId });
       break;
     }
   }
@@ -162,6 +221,10 @@ export const getUserPlan = async (userId: string) => {
   };
 };
 
-export const constructWebhookEvent = (payload: Buffer, signature: string) => {
-  return requireStripe().webhooks.constructEvent(payload, signature, config.stripeWebhookSecret);
+export const constructWebhookEvent = async (payload: Buffer, signature: string) => {
+  return requireStripe().webhooks.constructEventAsync(
+    payload,
+    signature,
+    config.stripeWebhookSecret,
+  );
 };

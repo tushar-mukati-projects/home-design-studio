@@ -10,25 +10,25 @@ import { Separator } from "@/components/ui/separator";
 import { useEditorStore } from "@/stores/editor-store";
 
 const WALL_COLORS = [
-  "#6B5B4D",
-  "#8B7D6B",
-  "#A0937D",
-  "#5A4E42",
-  "#4A4038",
-  "#3A3530",
-  "#2A2520",
-  "#D4A853",
+  "#3a3a4a",
+  "#5a5a6a",
+  "#7a7a8a",
+  "#4a4a5a",
+  "#2c2c3e",
+  "#1a1a2e",
+  "#0f0f1e",
+  "#2c2c2e",
 ];
 
 const ROOM_COLORS = [
-  "#D4A85330",
-  "#7B68EE30",
-  "#FF634730",
-  "#4682B430",
-  "#32CD3230",
-  "#FF8C0030",
-  "#FF69B430",
-  "#8A827830",
+  "#2c2c2e30",
+  "#6B5B9530",
+  "#C4564530",
+  "#4A7FB530",
+  "#2EA85A30",
+  "#D4862030",
+  "#D4567830",
+  "#8a8a9430",
 ];
 
 const PIXELS_PER_FOOT = 30;
@@ -143,7 +143,7 @@ export const PropertiesPanel = () => {
                   className="h-8 w-full rounded-md border-2 transition-all hover:scale-105"
                   style={{
                     backgroundColor: color,
-                    borderColor: selectedWall.color === color ? "#D4A853" : "transparent",
+                    borderColor: selectedWall.color === color ? "#2c2c2e" : "transparent",
                   }}
                   onClick={() => updateWall(selectedWall.id, { color })}
                 />
@@ -583,7 +583,7 @@ export const PropertiesPanel = () => {
                   className="h-8 w-full rounded-md border-2 transition-all hover:scale-105"
                   style={{
                     backgroundColor: color,
-                    borderColor: selectedRoom.color === color ? "#D4A853" : "transparent",
+                    borderColor: selectedRoom.color === color ? "#2c2c2e" : "transparent",
                   }}
                   onClick={() => {
                     const updated = rooms.map((r) =>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -21,6 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import NProgress from "nprogress";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,8 @@ import { useFetchDesigns, useCreateDesign, useDeleteDesign } from "@/hooks/desig
 import { useSharedWithMe } from "@/hooks/designs/useSharing";
 import { useFetchTemplates, useCreateFromTemplate } from "@/hooks/templates";
 import { useFetchPlan } from "@/hooks/billing";
+import { useQueryClient } from "@tanstack/react-query";
+import { BILLING_QUERY_KEYS } from "@/hooks/billing/constants";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { PlanBadge } from "@/features/billing/plan-badge";
 import { cn } from "@/lib/utils";
@@ -191,7 +194,7 @@ const EmptyState = ({ onCreateClick }: EmptyStateProps) => {
       </div>
       <h3
         className="mb-2 text-2xl text-[var(--foreground)]"
-        style={{ fontFamily: "'DM Serif Display', serif" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         No designs yet
       </h3>
@@ -220,7 +223,7 @@ const SearchEmptyState = () => {
       </div>
       <h3
         className="mb-2 text-2xl text-[var(--foreground)]"
-        style={{ fontFamily: "'DM Serif Display', serif" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         No matching designs
       </h3>
@@ -246,6 +249,8 @@ const cardVariants = {
 
 export const DashboardView = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { data: fetchedDesigns, isLoading } = useFetchDesigns();
   const { data: sharedDesigns } = useSharedWithMe();
   const createDesign = useCreateDesign();
@@ -254,6 +259,19 @@ export const DashboardView = () => {
   const createFromTemplate = useCreateFromTemplate();
   const { data: planData } = useFetchPlan();
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+
+  // Invalidate plan cache when returning from Stripe checkout
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    if (checkoutStatus === "success") {
+      queryClient.invalidateQueries({ queryKey: BILLING_QUERY_KEYS.plan });
+      toast.success("Payment successful! Your plan has been upgraded.");
+      router.replace("/dashboard", { scroll: false });
+    } else if (checkoutStatus === "cancelled") {
+      toast.info("Checkout was cancelled.");
+      router.replace("/dashboard", { scroll: false });
+    }
+  }, [searchParams, queryClient, router]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [createTab, setCreateTab] = useState<"blank" | "template">("blank");
@@ -317,7 +335,7 @@ export const DashboardView = () => {
       toast.success("Design created successfully");
       setCreateDialogOpen(false);
       resetCreateForm();
-      router.push(`/editor/${design.id}`);
+      NProgress.start(); router.push(`/editor/${design.id}`);
     } catch {
       toast.error("Failed to create design. Please try again.");
     }
@@ -340,7 +358,7 @@ export const DashboardView = () => {
       toast.success("Design created from template");
       setCreateDialogOpen(false);
       resetCreateForm();
-      router.push(`/editor/${design.id}`);
+      NProgress.start(); router.push(`/editor/${design.id}`);
     } catch {
       toast.error("Failed to create design from template");
     }
@@ -408,7 +426,7 @@ export const DashboardView = () => {
             <div className="flex items-center gap-3">
               <h1
                 className="text-3xl text-[var(--foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
+                style={{ fontFamily: "var(--font-heading)" }}
               >
                 My Designs
               </h1>
@@ -499,7 +517,7 @@ export const DashboardView = () => {
                     {viewMode === "grid" ? (
                       <GridCard
                         design={design}
-                        onOpen={() => router.push(`/editor/${design.id}`)}
+                        onOpen={() => { NProgress.start(); router.push(`/editor/${design.id}`); }}
                         onDuplicate={() => handleDuplicateDesign(design)}
                         onRename={() => openRenameDialog(design)}
                         onDelete={() => openDeleteDialog(design)}
@@ -507,8 +525,7 @@ export const DashboardView = () => {
                     ) : (
                       <ListCard
                         design={design}
-                        onOpen={() => router.push(`/editor/${design.id}`)}
-                        onDuplicate={() => handleDuplicateDesign(design)}
+                        onOpen={() => { NProgress.start(); router.push(`/editor/${design.id}`); }}                        onDuplicate={() => handleDuplicateDesign(design)}
                         onRename={() => openRenameDialog(design)}
                         onDelete={() => openDeleteDialog(design)}
                       />
@@ -524,7 +541,7 @@ export const DashboardView = () => {
           <div className="mt-10">
             <h2
               className="mb-4 flex items-center gap-2 text-xl text-[var(--foreground)]"
-              style={{ fontFamily: "'DM Serif Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               <Users className="h-5 w-5 text-[var(--primary)]" />
               Shared with me
@@ -534,8 +551,7 @@ export const DashboardView = () => {
                 <Card
                   key={item.id}
                   className="cursor-pointer overflow-hidden"
-                  onClick={() => router.push(`/editor/${item.design.id}`)}
-                >
+                  onClick={() => { NProgress.start(); router.push(`/editor/${item.design.id}`); }}                >
                   <div className="h-32 overflow-hidden bg-[var(--secondary)]">
                     <DesignThumbnail design={item.design} />
                   </div>
@@ -570,7 +586,7 @@ export const DashboardView = () => {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
               Create New Design
             </DialogTitle>
             <DialogDescription>Start from a blank canvas or choose a template.</DialogDescription>
@@ -741,7 +757,7 @@ export const DashboardView = () => {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
               Delete Design
             </DialogTitle>
             <DialogDescription>
@@ -774,7 +790,7 @@ export const DashboardView = () => {
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "'DM Serif Display', serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
               Rename Design
             </DialogTitle>
             <DialogDescription>Enter a new name for this design.</DialogDescription>

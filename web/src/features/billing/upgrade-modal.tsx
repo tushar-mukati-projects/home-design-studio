@@ -59,24 +59,21 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md p-0">
-        <div className="relative overflow-hidden rounded-t-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/70 px-6 pt-8 pb-6">
+        <div className="relative overflow-hidden rounded-t-lg bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/80 px-6 pt-8 pb-6">
           <div className="absolute top-0 right-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-white/10" />
           <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-6 translate-y-6 rounded-full bg-white/5" />
           <div className="relative">
             <div className="mb-3 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[var(--primary-foreground)]" />
-              <Badge className="border-white/20 bg-white/20 text-[var(--primary-foreground)]">
+              <Sparkles className="h-5 w-5 text-white" />
+              <Badge className="border-white/20 bg-white/20 text-white">
                 {isPro ? "Current Plan" : "Upgrade"}
               </Badge>
             </div>
             <DialogHeader>
-              <DialogTitle
-                className="text-2xl text-[var(--primary-foreground)]"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
-              >
+              <DialogTitle className="text-2xl text-white font-semibold">
                 {isPro ? "You are on Pro" : "Unlock Pro"}
               </DialogTitle>
-              <DialogDescription className="text-[var(--primary-foreground)]/80">
+              <DialogDescription className="text-white/80">
                 {isPro
                   ? "You have access to all Pro features."
                   : "Get unlimited designs, collaboration, and AI features."}

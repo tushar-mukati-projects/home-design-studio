@@ -30,7 +30,7 @@ const detectRoomsFromWalls = (walls: Wall[]): Room[] => {
         id: `room_${crypto.randomUUID().slice(0, 8)}`,
         name: "Room 1",
         type: "generic",
-        color: "#D4A85330",
+        color: "#52525b30",
         points: [
           { x: minX, y: minY },
           { x: maxX, y: minY },
@@ -144,7 +144,7 @@ export const roomHandlers = [
       id: `room_${crypto.randomUUID().slice(0, 8)}`,
       name: input.name,
       type: input.type ?? "generic",
-      color: input.color ?? "#D4A85330",
+      color: input.color ?? "#52525b30",
       points: input.points,
       area: 0,
     };

@@ -64,7 +64,7 @@ export const WallLayer = memo(
             <Group key={wall.id}>
               <Line
                 points={[wall.x1, wall.y1, wall.x2, wall.y2]}
-                stroke={isSelected ? "#D4A853" : wall.color}
+                stroke={isSelected ? "#52525b" : wall.color}
                 strokeWidth={wall.thickness}
                 lineCap="round"
                 lineJoin="round"
@@ -94,8 +94,8 @@ export const WallLayer = memo(
                     x={wall.x1}
                     y={wall.y1}
                     radius={8 / zoom}
-                    fill="#D4A853"
-                    stroke="#0C0C0C"
+                    fill="#52525b"
+                    stroke="#ffffff"
                     strokeWidth={2 / zoom}
                     draggable
                     onDragStart={() => {
@@ -112,8 +112,8 @@ export const WallLayer = memo(
                     x={wall.x2}
                     y={wall.y2}
                     radius={8 / zoom}
-                    fill="#D4A853"
-                    stroke="#0C0C0C"
+                    fill="#52525b"
+                    stroke="#ffffff"
                     strokeWidth={2 / zoom}
                     draggable
                     onDragStart={() => {
@@ -133,8 +133,8 @@ export const WallLayer = memo(
                     align="center"
                     text={`${(length / 30).toFixed(1)} ft`}
                     fontSize={12 / zoom}
-                    fontFamily="Figtree, sans-serif"
-                    fill="#D4A853"
+                    fontFamily="Inter, sans-serif"
+                    fill="#8b6f4e"
                     listening={false}
                   />
                 </>
@@ -160,7 +160,7 @@ export const WallLayer = memo(
               ctx.beginPath();
               ctx.moveTo(sx, sy);
               ctx.lineTo(ex, ey);
-              ctx.strokeStyle = "rgba(212, 168, 83, 0.6)";
+              ctx.strokeStyle = "rgba(124, 99, 80, 0.6)";
               ctx.lineWidth = 8;
               ctx.lineCap = "round";
               ctx.setLineDash([10, 5]);
@@ -169,17 +169,17 @@ export const WallLayer = memo(
 
               ctx.beginPath();
               ctx.arc(sx, sy, 6 / zoom, 0, Math.PI * 2);
-              ctx.fillStyle = "#D4A853";
+              ctx.fillStyle = "#52525b";
               ctx.fill();
 
               ctx.beginPath();
               ctx.arc(ex, ey, 6 / zoom, 0, Math.PI * 2);
-              ctx.fillStyle = "rgba(212, 168, 83, 0.8)";
+              ctx.fillStyle = "rgba(124, 99, 80, 0.8)";
               ctx.fill();
 
-              ctx.font = `bold ${13 / zoom}px Figtree, sans-serif`;
+              ctx.font = `bold ${13 / zoom}px Inter, sans-serif`;
               ctx.textAlign = "center";
-              ctx.fillStyle = "#D4A853";
+              ctx.fillStyle = "#8b6f4e";
               ctx.fillText(`${(length / 30).toFixed(1)} ft`, mid.x, mid.y - 14 / zoom);
             }}
             listening={false}

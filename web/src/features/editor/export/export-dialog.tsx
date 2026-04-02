@@ -86,7 +86,7 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#D4A853]" />
+            <FileText className="h-5 w-5 text-[#2c2c2e]" />
             Export as PDF
           </DialogTitle>
           <DialogDescription>Configure your PDF export settings</DialogDescription>
@@ -133,7 +133,7 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
                   className={cn(
                     "flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     orientation === "landscape"
-                      ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
+                      ? "border-[#2c2c2e] bg-[#2c2c2e]/10 text-[#2c2c2e]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]",
                   )}
                 >
@@ -146,7 +146,7 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
                   className={cn(
                     "flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     orientation === "portrait"
-                      ? "border-[#D4A853] bg-[#D4A853]/10 text-[#D4A853]"
+                      ? "border-[#2c2c2e] bg-[#2c2c2e]/10 text-[#2c2c2e]"
                       : "border-[var(--border)] text-[var(--muted-foreground)] hover:bg-[var(--secondary)]",
                   )}
                 >
@@ -199,7 +199,7 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
           <Button
             onClick={handleExport}
             disabled={exporting}
-            className="bg-[#D4A853] text-black hover:bg-[#D4A853]/90"
+            className="bg-[#2c2c2e] text-black hover:bg-[#2c2c2e]/90"
           >
             {exporting ? "Exporting..." : "Export PDF"}
           </Button>
@@ -226,7 +226,7 @@ const CheckboxItem = ({ checked, onChange, label }: CheckboxItemProps) => {
         className={cn(
           "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
           checked
-            ? "border-[#D4A853] bg-[#D4A853] text-black"
+            ? "border-[#2c2c2e] bg-[#2c2c2e] text-black"
             : "border-[var(--border)] bg-transparent",
         )}
       >

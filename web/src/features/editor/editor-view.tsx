@@ -2,7 +2,19 @@
 
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ZoomIn, ZoomOut, Maximize, Loader2 } from "lucide-react";
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Loader2,
+  MousePointer2,
+  PenLine,
+  DoorOpen,
+  Columns2,
+  Eraser,
+  Hand,
+  Layers,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type Konva from "konva";
 import { Button } from "@/components/ui/button";
@@ -16,6 +28,7 @@ import { PropertiesPanel } from "./properties-panel/properties-panel";
 import { FurnitureCatalog } from "./furniture-catalog/furniture-catalog";
 import { PreviewModal } from "./three-d-preview/preview-modal";
 import { ShareModal } from "./sharing/share-modal";
+import type { EditorTool } from "@/types";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { VersionHistoryPanel } from "./version-history/version-history-panel";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
@@ -24,6 +37,22 @@ interface EditorViewProps {
   preloadedDesign?: import("@/types").Design | null;
   permissionOverride?: import("@/types").DesignPermission;
 }
+
+interface SidebarTool {
+  tool: EditorTool;
+  icon: React.ReactNode;
+  label: string;
+  shortcut?: string;
+}
+
+const SIDEBAR_TOOLS: SidebarTool[] = [
+  { tool: "select", icon: <MousePointer2 className="h-5 w-5" />, label: "Select", shortcut: "V" },
+  { tool: "wall", icon: <PenLine className="h-5 w-5" />, label: "Draw Wall", shortcut: "W" },
+  { tool: "door", icon: <DoorOpen className="h-5 w-5" />, label: "Door", shortcut: "D" },
+  { tool: "window", icon: <Columns2 className="h-5 w-5" />, label: "Window" },
+  { tool: "eraser", icon: <Eraser className="h-5 w-5" />, label: "Eraser", shortcut: "E" },
+  { tool: "pan", icon: <Hand className="h-5 w-5" />, label: "Pan", shortcut: "H" },
+];
 
 const fitToScreen = (
   container: HTMLDivElement,
@@ -91,6 +120,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const stageRef = useRef<Konva.Stage | null>(null);
   const designLoadedRef = useRef<string | null>(null);
   const [rightPanel, setRightPanel] = useState<"properties" | "furniture">("properties");
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [showPreview3D, setShowPreview3D] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -313,6 +343,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         onToggle3DPreview={() => setShowPreview3D(true)}
         onToggleFurniture={() => {
           setRightPanel("furniture");
+          setShowRightPanel(true);
         }}
         onToggleShare={() => setShowShareModal(true)}
         onToggleHistory={() => setShowVersionHistory((v) => !v)}
@@ -324,7 +355,54 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="relative flex-1" ref={canvasContainerRef}>
+        {/* Vertical tool sidebar */}
+        {canEdit && (
+          <motion.div
+            className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3"
+            initial={{ x: -56 }}
+            animate={{ x: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            {SIDEBAR_TOOLS.map((t) => {
+              const isActive = activeTool === t.tool;
+              return (
+                <Tooltip
+                  key={t.tool}
+                  content={`${t.label}${t.shortcut ? ` (${t.shortcut})` : ""}`}
+                  side="right"
+                >
+                  <button
+                    onClick={() => setTool(t.tool)}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${
+                      isActive
+                        ? "bg-[var(--sidebar-accent)] text-white shadow-md"
+                        : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]/50 hover:text-white"
+                    }`}
+                  >
+                    {t.icon}
+                  </button>
+                </Tooltip>
+              );
+            })}
+
+            <div className="my-2 h-px w-6 bg-white/10" />
+
+            <Tooltip content="Layers" side="right">
+              <button
+                onClick={() => {
+                  setRightPanel("properties");
+                  setShowRightPanel((v) => !v);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--sidebar-foreground)] transition-all hover:bg-[var(--sidebar-accent)]/50 hover:text-white"
+              >
+                <Layers className="h-5 w-5" />
+              </button>
+            </Tooltip>
+          </motion.div>
+        )}
+
+        {/* Canvas + floating panels */}
+        <div className="relative flex-1 bg-[var(--canvas-bg)]" ref={canvasContainerRef}>
           <EditorCanvas
             containerRef={canvasContainerRef}
             stageRef={stageRef}
@@ -332,6 +410,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             collaborators={collaborators}
           />
 
+          {/* Connection status badge */}
           {collaborationEnabled && canEdit && (
             <div className="absolute top-4 right-4 z-10">
               <ConnectionStatus
@@ -342,8 +421,57 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             </div>
           )}
 
+          {/* Floating right panel */}
+          <AnimatePresence>
+            {canEdit && showRightPanel && (
+              <motion.div
+                className="absolute top-4 right-4 z-20 w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                style={{ maxHeight: "calc(100% - 80px)" }}
+              >
+                <div className="flex h-10 items-center justify-between border-b border-[var(--border)] px-3">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setRightPanel("properties")}
+                      className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                        rightPanel === "properties"
+                          ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      Properties
+                    </button>
+                    <button
+                      onClick={() => setRightPanel("furniture")}
+                      className={`rounded px-2 py-1 text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                        rightPanel === "furniture"
+                          ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                      }`}
+                    >
+                      Furniture
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowRightPanel(false)}
+                    className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
+                  >
+                    <span className="text-sm">✕</span>
+                  </button>
+                </div>
+                <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                  {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Zoom controls */}
           <motion.div
-            className="absolute right-4 bottom-4 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 shadow-lg"
+            className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 shadow-lg"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -372,10 +500,11 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             </Tooltip>
           </motion.div>
 
+          {/* Tool hint overlays */}
           <AnimatePresence>
             {activeTool === "wall" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] backdrop-blur-sm"
+                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -386,7 +515,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "door" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] backdrop-blur-sm"
+                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -396,7 +525,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "window" && (
               <motion.div
-                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] backdrop-blur-sm"
+                className="absolute top-4 left-4 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -406,38 +535,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
           </AnimatePresence>
         </div>
-
-        {canEdit && (
-          <div className="flex w-[280px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--card)]">
-            <div className="flex h-10 items-center border-b border-[var(--border)] px-3">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setRightPanel("properties")}
-                  className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                    rightPanel === "properties"
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  Properties
-                </button>
-                <button
-                  onClick={() => setRightPanel("furniture")}
-                  className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                    rightPanel === "furniture"
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  Furniture
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-x-hidden overflow-y-auto">
-              {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
-            </div>
-          </div>
-        )}
 
         {canEdit && showVersionHistory && (
           <VersionHistoryPanel
