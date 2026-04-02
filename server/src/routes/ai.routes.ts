@@ -11,7 +11,17 @@ import { uploadImage } from "../middleware/upload";
 const router = Router();
 
 router.post("/furnish", requireAuth, validate(furnishRoomSchema), aiController.furnishRoom);
-router.post("/image-to-design", requireAuth, uploadImage.single("image"), imageToDesignController.imageToDesign);
-router.post("/design-chat", requireAuth, validate(designChatSchema), designChatController.designChat);
+router.post(
+  "/image-to-design",
+  requireAuth,
+  uploadImage.single("image"),
+  imageToDesignController.imageToDesign,
+);
+router.post(
+  "/design-chat",
+  requireAuth,
+  validate(designChatSchema),
+  designChatController.designChat,
+);
 
 export { router as aiRouter };

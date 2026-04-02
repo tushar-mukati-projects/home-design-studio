@@ -63,7 +63,14 @@ export const FurnitureShape = memo(function FurnitureShape({
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
           <Rect x={-hw} y={-hh} width={w} height={backH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
           <Rect x={-hw} y={-hh} width={armW} height={h} fill={dark} cornerRadius={[3, 0, 0, 3]} />
-          <Rect x={hw - armW} y={-hh} width={armW} height={h} fill={dark} cornerRadius={[0, 3, 3, 0]} />
+          <Rect
+            x={hw - armW}
+            y={-hh}
+            width={armW}
+            height={h}
+            fill={dark}
+            cornerRadius={[0, 3, 3, 0]}
+          />
         </Group>
       );
     }
@@ -203,7 +210,12 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Line points={[0, -hh + 3, 0, hh - 3]} stroke={dark} strokeWidth={1.5} listening={false} />
+          <Line
+            points={[0, -hh + 3, 0, hh - 3]}
+            stroke={dark}
+            strokeWidth={1.5}
+            listening={false}
+          />
           <Circle x={-handleGap} y={0} radius={handleR} fill={dark} />
           <Circle x={handleGap} y={0} radius={handleR} fill={dark} />
         </Group>
@@ -243,7 +255,14 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Rect x={-hw} y={-hh} width={w} height={surfaceH} fill={dark} cornerRadius={[2, 2, 0, 0]} />
+          <Rect
+            x={-hw}
+            y={-hh}
+            width={w}
+            height={surfaceH}
+            fill={dark}
+            cornerRadius={[2, 2, 0, 0]}
+          />
         </Group>
       );
     }
@@ -296,7 +315,12 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Line points={[0, -hh + 3, 0, hh - 3]} stroke={dark} strokeWidth={1.5} listening={false} />
+          <Line
+            points={[0, -hh + 3, 0, hh - 3]}
+            stroke={dark}
+            strokeWidth={1.5}
+            listening={false}
+          />
         </Group>
       );
     }
@@ -308,10 +332,38 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Circle x={-bx} y={-by} radius={burnerR} stroke={dark} strokeWidth={1.5} fill={darkenColor(color, 0.08)} />
-          <Circle x={bx} y={-by} radius={burnerR} stroke={dark} strokeWidth={1.5} fill={darkenColor(color, 0.08)} />
-          <Circle x={-bx} y={by} radius={burnerR} stroke={dark} strokeWidth={1.5} fill={darkenColor(color, 0.08)} />
-          <Circle x={bx} y={by} radius={burnerR} stroke={dark} strokeWidth={1.5} fill={darkenColor(color, 0.08)} />
+          <Circle
+            x={-bx}
+            y={-by}
+            radius={burnerR}
+            stroke={dark}
+            strokeWidth={1.5}
+            fill={darkenColor(color, 0.08)}
+          />
+          <Circle
+            x={bx}
+            y={-by}
+            radius={burnerR}
+            stroke={dark}
+            strokeWidth={1.5}
+            fill={darkenColor(color, 0.08)}
+          />
+          <Circle
+            x={-bx}
+            y={by}
+            radius={burnerR}
+            stroke={dark}
+            strokeWidth={1.5}
+            fill={darkenColor(color, 0.08)}
+          />
+          <Circle
+            x={bx}
+            y={by}
+            radius={burnerR}
+            stroke={dark}
+            strokeWidth={1.5}
+            fill={darkenColor(color, 0.08)}
+          />
         </Group>
       );
     }
@@ -375,7 +427,14 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={6} />
-          <Circle x={0} y={h * 0.05} radius={basinR} fill={darkenColor(color, 0.08)} stroke={dark} strokeWidth={1} />
+          <Circle
+            x={0}
+            y={h * 0.05}
+            radius={basinR}
+            fill={darkenColor(color, 0.08)}
+            stroke={dark}
+            strokeWidth={1}
+          />
           <Circle x={0} y={-hh + 6} radius={faucetR} fill={dark} />
         </Group>
       );
@@ -413,7 +472,14 @@ export const FurnitureShape = memo(function FurnitureShape({
       return (
         <Group>
           <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Rect x={hw - returnW} y={hh - returnH} width={returnW} height={returnH} fill={dark} cornerRadius={[0, 0, 2, 0]} />
+          <Rect
+            x={hw - returnW}
+            y={hh - returnH}
+            width={returnW}
+            height={returnH}
+            fill={dark}
+            cornerRadius={[0, 0, 2, 0]}
+          />
         </Group>
       );
     }

@@ -1483,8 +1483,8 @@ export const LandingView = () => {
                 Built with Next.js, Three.js &amp; AI
               </span>
               <span className="text-[var(--muted-foreground)]">
-                Built with precision <span className="text-[var(--foreground)]">&bull;</span> Designed with
-                care
+                Built with precision <span className="text-[var(--foreground)]">&bull;</span>{" "}
+                Designed with care
               </span>
             </div>
           </div>

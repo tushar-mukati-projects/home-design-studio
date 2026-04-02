@@ -3,6 +3,12 @@ import type { Response } from "express";
 import { config } from "../config";
 import { logger } from "../logger";
 
+if (!config.openaiApiKey) {
+  throw new Error(
+    "Missing OPENAI_API_KEY. Set OPENAI_API_KEY in the environment or in server/.env (see server/.env.example).",
+  );
+}
+
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
 interface DesignWall {
@@ -230,7 +236,13 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
     const SNAP_THRESHOLD = 5;
 
     const walls = design.walls
-      .filter((w) => typeof w.x1 === "number" && typeof w.y1 === "number" && typeof w.x2 === "number" && typeof w.y2 === "number")
+      .filter(
+        (w) =>
+          typeof w.x1 === "number" &&
+          typeof w.y1 === "number" &&
+          typeof w.x2 === "number" &&
+          typeof w.y2 === "number",
+      )
       .map((w) => ({
         x1: Math.round(w.x1),
         y1: Math.round(w.y1),
@@ -242,11 +254,19 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
     // Snap wall endpoints that are within SNAP_THRESHOLD of each other
     for (let i = 0; i < walls.length; i++) {
       for (let j = i + 1; j < walls.length; j++) {
-        const endpoints: Array<{ wall: typeof walls[number]; key: "x1" | "x2"; yKey: "y1" | "y2" }> = [
+        const endpoints: Array<{
+          wall: (typeof walls)[number];
+          key: "x1" | "x2";
+          yKey: "y1" | "y2";
+        }> = [
           { wall: walls[i], key: "x1", yKey: "y1" },
           { wall: walls[i], key: "x2", yKey: "y2" },
         ];
-        const targets: Array<{ wall: typeof walls[number]; key: "x1" | "x2"; yKey: "y1" | "y2" }> = [
+        const targets: Array<{
+          wall: (typeof walls)[number];
+          key: "x1" | "x2";
+          yKey: "y1" | "y2";
+        }> = [
           { wall: walls[j], key: "x1", yKey: "y1" },
           { wall: walls[j], key: "x2", yKey: "y2" },
         ];
@@ -265,16 +285,23 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
     }
 
     const doors = (design.doors || [])
-      .filter((d) => typeof d.wallIndex === "number" && d.wallIndex >= 0 && d.wallIndex < walls.length)
+      .filter(
+        (d) => typeof d.wallIndex === "number" && d.wallIndex >= 0 && d.wallIndex < walls.length,
+      )
       .map((d) => ({
         wallIndex: d.wallIndex,
         position: Math.max(0, Math.min(1, d.position || 0.5)),
         width: d.width || 80,
-        type: (["single", "double", "sliding"].includes(d.type) ? d.type : "single") as "single" | "double" | "sliding",
+        type: (["single", "double", "sliding"].includes(d.type) ? d.type : "single") as
+          | "single"
+          | "double"
+          | "sliding",
       }));
 
     const windows = (design.windows || [])
-      .filter((w) => typeof w.wallIndex === "number" && w.wallIndex >= 0 && w.wallIndex < walls.length)
+      .filter(
+        (w) => typeof w.wallIndex === "number" && w.wallIndex >= 0 && w.wallIndex < walls.length,
+      )
       .map((w) => ({
         wallIndex: w.wallIndex,
         position: Math.max(0, Math.min(1, w.position || 0.5)),
@@ -286,7 +313,10 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
       .map((r) => ({
         name: r.name || "Room",
         type: r.type || "generic",
-        points: r.points.map((p: { x: number; y: number }) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+        points: r.points.map((p: { x: number; y: number }) => ({
+          x: Math.round(p.x),
+          y: Math.round(p.y),
+        })),
       }));
 
     // Compute room bounding boxes for furniture validation
@@ -333,7 +363,10 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
       canvasHeight,
     };
 
-    sendEvent({ type: "status", message: `Found ${walls.length} walls, ${rooms.length} rooms, ${furnitureItems.length} furniture items` });
+    sendEvent({
+      type: "status",
+      message: `Found ${walls.length} walls, ${rooms.length} rooms, ${furnitureItems.length} furniture items`,
+    });
     sendEvent({ type: "result", design: result });
     res.write("data: [DONE]\n\n");
     res.end();

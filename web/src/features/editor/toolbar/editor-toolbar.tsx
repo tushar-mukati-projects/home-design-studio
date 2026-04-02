@@ -2,17 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Undo2,
-  Redo2,
-  Grid3x3,
-  Magnet,
-  Box,
-  Share2,
-  Clock,
-  Compass,
-  ImageUp,
-} from "lucide-react";
+import { Undo2, Redo2, Grid3x3, Magnet, Box, Share2, Clock, Compass, ImageUp } from "lucide-react";
 import type Konva from "konva";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -25,13 +15,11 @@ interface EditorToolbarProps {
   designName: string;
   onNameChange: (name: string) => void;
   onToggle3DPreview: () => void;
-  onToggleFurniture: () => void;
   onToggleShare: () => void;
   onToggleHistory: () => void;
   onToggleUpgrade: () => void;
   onToggleImport: () => void;
   stageRef: React.RefObject<Konva.Stage | null>;
-  designId: string;
   canEdit?: boolean;
   isOwner?: boolean;
 }
@@ -40,14 +28,11 @@ export const EditorToolbar = ({
   designName,
   onNameChange,
   onToggle3DPreview,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onToggleFurniture,
   onToggleShare,
   onToggleHistory,
   onToggleUpgrade,
   onToggleImport,
   stageRef,
-  designId,
   canEdit = true,
   isOwner = false,
 }: EditorToolbarProps) => {
@@ -88,7 +73,6 @@ export const EditorToolbar = ({
 
   return (
     <div className="flex h-12 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)] px-2 sm:gap-2 sm:px-4">
-      {/* Left: logo + project name */}
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <Tooltip content="Back to Dashboard" side="bottom">
           <button
@@ -129,28 +113,49 @@ export const EditorToolbar = ({
         </div>
       </div>
 
-      {/* Center: undo/redo + grid/snap — hidden on small screens */}
       {canEdit && (
         <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
           <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
             <Tooltip content="Undo (Ctrl+Z)" side="bottom">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={past.length === 0}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={undo}
+                disabled={past.length === 0}
+              >
                 <Undo2 className="h-3.5 w-3.5" />
               </Button>
             </Tooltip>
             <Tooltip content="Redo (Ctrl+Shift+Z)" side="bottom">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={future.length === 0}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={redo}
+                disabled={future.length === 0}
+              >
                 <Redo2 className="h-3.5 w-3.5" />
               </Button>
             </Tooltip>
             <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
             <Tooltip content={`Grid (G) ${showGrid ? "On" : "Off"}`} side="bottom">
-              <Button variant={showGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={toggleGrid}>
+              <Button
+                variant={showGrid ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={toggleGrid}
+              >
                 <Grid3x3 className="h-3.5 w-3.5" />
               </Button>
             </Tooltip>
             <Tooltip content={`Snap (S) ${snapToGrid ? "On" : "Off"}`} side="bottom">
-              <Button variant={snapToGrid ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={toggleSnap}>
+              <Button
+                variant={snapToGrid ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={toggleSnap}
+              >
                 <Magnet className="h-3.5 w-3.5" />
               </Button>
             </Tooltip>
@@ -158,13 +163,24 @@ export const EditorToolbar = ({
         </div>
       )}
 
-      {/* Mobile undo/redo — shown only on small screens */}
       {canEdit && (
         <div className="flex items-center gap-0.5 md:hidden">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={undo} disabled={past.length === 0}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={undo}
+            disabled={past.length === 0}
+          >
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={redo} disabled={future.length === 0}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={redo}
+            disabled={future.length === 0}
+          >
             <Redo2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -181,7 +197,6 @@ export const EditorToolbar = ({
 
       <div className="flex-1 md:hidden" />
 
-      {/* Right: action buttons */}
       <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
         <span className="hidden sm:inline-flex">
           <PlanBadge onClick={onToggleUpgrade} />
@@ -189,7 +204,12 @@ export const EditorToolbar = ({
 
         {canEdit && (
           <Tooltip content="Version History" side="bottom">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--muted-foreground)]" onClick={onToggleHistory}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-[var(--muted-foreground)]"
+              onClick={onToggleHistory}
+            >
               <Clock className="h-3.5 w-3.5" />
               <span className="hidden text-xs lg:inline">History</span>
             </Button>
@@ -223,7 +243,7 @@ export const EditorToolbar = ({
           </Button>
         </Tooltip>
 
-        <ExportMenu stageRef={stageRef} designName={designName} designId={designId} />
+        <ExportMenu stageRef={stageRef} designName={designName} />
       </div>
     </div>
   );

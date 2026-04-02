@@ -181,7 +181,9 @@ export const PreviewModal = ({ open, onClose }: PreviewModalProps) => {
           <div className="relative z-10 flex items-center justify-between border-b border-[#e4e4e7]/60 px-5 py-3">
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-[#2c2c2e]" />
-              <h2 className="text-base font-semibold tracking-tight text-[#18181b] sm:text-lg">3D Preview</h2>
+              <h2 className="text-base font-semibold tracking-tight text-[#18181b] sm:text-lg">
+                3D Preview
+              </h2>
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden text-xs text-[#71717a] sm:block">

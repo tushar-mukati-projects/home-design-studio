@@ -103,7 +103,6 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               height={fh}
               color={piece.furnitureItem.color || "#d4d4d8"}
             />
-            {/* Selection outline */}
             <Rect
               width={fw}
               height={fh}
@@ -117,7 +116,6 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               cornerRadius={4}
               listening={false}
             />
-            {/* Front edge indicator */}
             <Rect
               width={fw * 0.4}
               height={Math.max(3, 4 / zoom)}

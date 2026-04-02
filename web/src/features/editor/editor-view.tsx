@@ -344,22 +344,16 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         designName={designName}
         onNameChange={handleNameChange}
         onToggle3DPreview={() => setShowPreview3D(true)}
-        onToggleFurniture={() => {
-          setRightPanel("furniture");
-          setShowRightPanel(true);
-        }}
         onToggleShare={() => setShowShareModal(true)}
         onToggleHistory={() => setShowVersionHistory((v) => !v)}
         onToggleUpgrade={() => setShowUpgradeModal(true)}
         onToggleImport={() => setShowImportModal(true)}
         stageRef={stageRef}
-        designId={designId}
         canEdit={canEdit}
         isOwner={isOwner}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Vertical tool sidebar — desktop only */}
         {canEdit && (
           <motion.div
             className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3 md:flex"
@@ -405,7 +399,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
           </motion.div>
         )}
 
-        {/* Canvas + floating panels */}
         <div className="relative flex-1 bg-[var(--canvas-bg)]" ref={canvasContainerRef}>
           <EditorCanvas
             containerRef={canvasContainerRef}
@@ -414,7 +407,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             collaborators={collaborators}
           />
 
-          {/* Connection status badge */}
           {collaborationEnabled && canEdit && (
             <div className="absolute top-2 right-2 z-10 sm:top-4 sm:right-4">
               <ConnectionStatus
@@ -425,11 +417,9 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             </div>
           )}
 
-          {/* Floating right panel — desktop floating, mobile bottom sheet */}
           <AnimatePresence>
             {canEdit && showRightPanel && (
               <>
-                {/* Desktop floating panel */}
                 <motion.div
                   className="absolute top-4 right-4 z-20 hidden w-[280px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xl md:block"
                   initial={{ opacity: 0, x: 20 }}
@@ -468,12 +458,14 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
                       <span className="text-sm">✕</span>
                     </button>
                   </div>
-                  <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                  <div
+                    className="overflow-x-hidden overflow-y-auto"
+                    style={{ maxHeight: "calc(100vh - 200px)" }}
+                  >
                     {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
                   </div>
                 </motion.div>
 
-                {/* Mobile bottom sheet */}
                 <motion.div
                   className="absolute inset-x-0 bottom-0 z-20 overflow-hidden rounded-t-2xl border-t border-[var(--border)] bg-[var(--card)] shadow-2xl md:hidden"
                   initial={{ opacity: 0, y: 100 }}
@@ -512,7 +504,10 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
                       <span className="text-sm">✕</span>
                     </button>
                   </div>
-                  <div className="overflow-x-hidden overflow-y-auto" style={{ maxHeight: "calc(55vh - 40px)" }}>
+                  <div
+                    className="overflow-x-hidden overflow-y-auto"
+                    style={{ maxHeight: "calc(55vh - 40px)" }}
+                  >
                     {rightPanel === "properties" ? <PropertiesPanel /> : <FurnitureCatalog />}
                   </div>
                 </motion.div>
@@ -520,7 +515,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
           </AnimatePresence>
 
-          {/* Zoom controls */}
           <motion.div
             className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5 shadow-lg sm:bottom-4 sm:gap-1 sm:p-1"
             initial={{ opacity: 0, y: 10 }}
@@ -528,7 +522,12 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             transition={{ delay: 0.3 }}
           >
             <Tooltip content="Zoom Out" side="top">
-              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomOut}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 sm:h-8 sm:w-8"
+                onClick={handleZoomOut}
+              >
                 <ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
@@ -539,19 +538,28 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
               {Math.round(zoom * 100)}%
             </button>
             <Tooltip content="Zoom In" side="top">
-              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomIn}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 sm:h-8 sm:w-8"
+                onClick={handleZoomIn}
+              >
                 <ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
             <div className="mx-0.5 h-4 w-px bg-[var(--border)] sm:h-5" />
             <Tooltip content="Fit to Screen" side="top">
-              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8" onClick={handleZoomReset}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 sm:h-8 sm:w-8"
+                onClick={handleZoomReset}
+              >
                 <Maximize className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
           </motion.div>
 
-          {/* Mobile horizontal toolbar — bottom, above zoom */}
           {canEdit && (
             <div className="absolute bottom-14 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--sidebar-background)] p-1 shadow-lg md:hidden">
               {SIDEBAR_TOOLS.map((t) => {
@@ -583,11 +591,10 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             </div>
           )}
 
-          {/* Tool hint overlays — hidden on mobile */}
           <AnimatePresence>
             {activeTool === "wall" && (
               <motion.div
-                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:top-4 sm:left-4 sm:block"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -598,7 +605,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "door" && (
               <motion.div
-                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:top-4 sm:left-4 sm:block"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -608,7 +615,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
             {activeTool === "window" && (
               <motion.div
-                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:block sm:top-4 sm:left-4"
+                className="absolute top-2 left-2 hidden rounded-lg border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 text-xs text-[var(--muted-foreground)] shadow-md backdrop-blur-sm sm:top-4 sm:left-4 sm:block"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -618,21 +625,23 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
           </AnimatePresence>
 
-          {canEdit && showVersionHistory && (
-            <motion.div
-              className="absolute top-0 right-0 bottom-0 z-30 w-[300px]"
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 40 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-            >
-              <VersionHistoryPanel
-                designId={designId}
-                onClose={() => setShowVersionHistory(false)}
-                onRestored={() => window.location.reload()}
-              />
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {canEdit && showVersionHistory && (
+              <motion.div
+                className="absolute top-0 right-0 bottom-0 z-30 w-[300px]"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+              >
+                <VersionHistoryPanel
+                  designId={designId}
+                  onClose={() => setShowVersionHistory(false)}
+                  onRestored={() => window.location.reload()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -647,7 +656,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       )}
       <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
       <ImportDesignModal open={showImportModal} onClose={() => setShowImportModal(false)} />
-      <DesignChat />
+      <DesignChat designId={designId} />
     </div>
   );
 };

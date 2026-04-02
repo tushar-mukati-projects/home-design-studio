@@ -100,7 +100,6 @@ export const EditorCanvas = ({
   const lastTouchCenterRef = useRef({ x: 0, y: 0 });
   const isTouchPanningRef = useRef(false);
 
-  // Only subscribe to values the Stage JSX needs for rendering
   const zoom = useEditorStore((s) => s.zoom);
   const panX = useEditorStore((s) => s.panX);
   const panY = useEditorStore((s) => s.panY);
@@ -124,18 +123,15 @@ export const EditorCanvas = ({
     };
   }, [containerRef]);
 
-  const getCanvasPoint = useCallback(
-    (stage: Konva.Stage) => {
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return null;
-      const s = useEditorStore.getState();
-      return {
-        x: (pointer.x - s.panX) / s.zoom,
-        y: (pointer.y - s.panY) / s.zoom,
-      };
-    },
-    [],
-  );
+  const getCanvasPoint = useCallback((stage: Konva.Stage) => {
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return null;
+    const s = useEditorStore.getState();
+    return {
+      x: (pointer.x - s.panX) / s.zoom,
+      y: (pointer.y - s.panY) / s.zoom,
+    };
+  }, []);
 
   const handleWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -345,7 +341,6 @@ export const EditorCanvas = ({
         mousePosRef.current = point;
         onCursorMove?.(point.x, point.y);
 
-        // Use RAF for wall preview redraws to avoid flooding renders
         if (s.activeTool === "wall" && s.isDrawing) {
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
           rafRef.current = requestAnimationFrame(() => {
@@ -403,7 +398,6 @@ export const EditorCanvas = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Touch support: pinch-to-zoom + two-finger pan
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;

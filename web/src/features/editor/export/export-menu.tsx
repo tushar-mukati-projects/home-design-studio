@@ -16,10 +16,9 @@ import { ExportDialog } from "./export-dialog";
 interface ExportMenuProps {
   stageRef: React.RefObject<Konva.Stage | null>;
   designName: string;
-  designId: string;
 }
 
-const ExportMenu = ({ stageRef, designName, designId }: ExportMenuProps) => {
+const ExportMenu = ({ stageRef, designName }: ExportMenuProps) => {
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const { exportAsPng, printFloorPlan } = useExport();
 

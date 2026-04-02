@@ -48,7 +48,9 @@ export const webhook = async (req: Request, res: Response) => {
     logger.error("Webhook failed", {
       error: err instanceof Error ? err.message : String(err),
     });
-    res.status(400).json({ error: `Webhook Error: ${err instanceof Error ? err.message : "Unknown"}` });
+    res
+      .status(400)
+      .json({ error: `Webhook Error: ${err instanceof Error ? err.message : "Unknown"}` });
   }
 };
 

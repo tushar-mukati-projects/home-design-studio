@@ -262,7 +262,6 @@ export const DashboardView = () => {
   const { data: planData } = useFetchPlan();
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Invalidate plan cache when returning from Stripe checkout
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout");
     if (checkoutStatus === "success") {
@@ -337,7 +336,8 @@ export const DashboardView = () => {
       toast.success("Design created successfully");
       setCreateDialogOpen(false);
       resetCreateForm();
-      NProgress.start(); router.push(`/editor/${design.id}`);
+      NProgress.start();
+      router.push(`/editor/${design.id}`);
     } catch {
       toast.error("Failed to create design. Please try again.");
     }
@@ -360,7 +360,8 @@ export const DashboardView = () => {
       toast.success("Design created from template");
       setCreateDialogOpen(false);
       resetCreateForm();
-      NProgress.start(); router.push(`/editor/${design.id}`);
+      NProgress.start();
+      router.push(`/editor/${design.id}`);
     } catch {
       toast.error("Failed to create design from template");
     }
@@ -446,7 +447,7 @@ export const DashboardView = () => {
                 <Layers className="h-4 w-4 text-[var(--muted-foreground)]" />
               </div>
               <div>
-                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                <p className="text-lg leading-tight font-semibold text-[var(--foreground)]">
                   {designs.length}
                 </p>
                 <p className="text-xs text-[var(--muted-foreground)]">Total Designs</p>
@@ -457,7 +458,7 @@ export const DashboardView = () => {
                 <Crown className="h-4 w-4 text-[var(--muted-foreground)]" />
               </div>
               <div>
-                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                <p className="text-lg leading-tight font-semibold text-[var(--foreground)]">
                   {planData?.plan === "pro"
                     ? "∞"
                     : `${designs.length}/${planData?.designLimit ?? 3}`}
@@ -470,7 +471,7 @@ export const DashboardView = () => {
                 <Users className="h-4 w-4 text-[var(--muted-foreground)]" />
               </div>
               <div>
-                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                <p className="text-lg leading-tight font-semibold text-[var(--foreground)]">
                   {sharedDesigns?.length ?? 0}
                 </p>
                 <p className="text-xs text-[var(--muted-foreground)]">Shared with Me</p>
@@ -481,7 +482,7 @@ export const DashboardView = () => {
                 <Ruler className="h-4 w-4 text-[var(--muted-foreground)]" />
               </div>
               <div>
-                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                <p className="text-lg leading-tight font-semibold text-[var(--foreground)]">
                   {planData?.plan === "pro" ? "Pro" : "Free"}
                 </p>
                 <p className="text-xs text-[var(--muted-foreground)]">Current Plan</p>
@@ -568,7 +569,10 @@ export const DashboardView = () => {
                     {viewMode === "grid" ? (
                       <GridCard
                         design={design}
-                        onOpen={() => { NProgress.start(); router.push(`/editor/${design.id}`); }}
+                        onOpen={() => {
+                          NProgress.start();
+                          router.push(`/editor/${design.id}`);
+                        }}
                         onDuplicate={() => handleDuplicateDesign(design)}
                         onRename={() => openRenameDialog(design)}
                         onDelete={() => openDeleteDialog(design)}
@@ -576,7 +580,11 @@ export const DashboardView = () => {
                     ) : (
                       <ListCard
                         design={design}
-                        onOpen={() => { NProgress.start(); router.push(`/editor/${design.id}`); }}                        onDuplicate={() => handleDuplicateDesign(design)}
+                        onOpen={() => {
+                          NProgress.start();
+                          router.push(`/editor/${design.id}`);
+                        }}
+                        onDuplicate={() => handleDuplicateDesign(design)}
                         onRename={() => openRenameDialog(design)}
                         onDelete={() => openDeleteDialog(design)}
                       />
@@ -602,7 +610,11 @@ export const DashboardView = () => {
                 <Card
                   key={item.id}
                   className="cursor-pointer overflow-hidden"
-                  onClick={() => { NProgress.start(); router.push(`/editor/${item.design.id}`); }}                >
+                  onClick={() => {
+                    NProgress.start();
+                    router.push(`/editor/${item.design.id}`);
+                  }}
+                >
                   <div className="h-32 overflow-hidden bg-[var(--secondary)]">
                     <DesignThumbnail design={item.design} />
                   </div>
@@ -808,9 +820,7 @@ export const DashboardView = () => {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
-              Delete Design
-            </DialogTitle>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>Delete Design</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
               <span className="font-semibold text-[var(--foreground)]">{designToDelete?.name}</span>
@@ -841,9 +851,7 @@ export const DashboardView = () => {
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
-              Rename Design
-            </DialogTitle>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>Rename Design</DialogTitle>
             <DialogDescription>Enter a new name for this design.</DialogDescription>
           </DialogHeader>
           <div className="py-2">

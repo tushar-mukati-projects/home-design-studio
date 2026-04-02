@@ -183,11 +183,7 @@ const PricingPage = () => {
                     Current Plan
                   </Button>
                 ) : plan.highlighted && user ? (
-                  <Button
-                    className="w-full"
-                    onClick={handleUpgrade}
-                    disabled={isPending}
-                  >
+                  <Button className="w-full" onClick={handleUpgrade} disabled={isPending}>
                     {isPending ? "Loading..." : plan.cta}
                   </Button>
                 ) : plan.highlighted ? (
@@ -196,7 +192,9 @@ const PricingPage = () => {
                   </a>
                 ) : (
                   <a href="/sign-up">
-                    <Button variant="outline" className="w-full">Get Started Free</Button>
+                    <Button variant="outline" className="w-full">
+                      Get Started Free
+                    </Button>
                   </a>
                 )}
               </div>

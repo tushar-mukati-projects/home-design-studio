@@ -90,7 +90,6 @@ export const WallLayer = memo(
               />
               {isSelected && (
                 <>
-                  {/* Outer ring for visibility */}
                   <Circle
                     x={wall.x1}
                     y={wall.y1}
@@ -121,7 +120,6 @@ export const WallLayer = memo(
                       e.target.position({ x: pos.x, y: pos.y });
                     }}
                   />
-                  {/* Outer ring for visibility */}
                   <Circle
                     x={wall.x2}
                     y={wall.y2}

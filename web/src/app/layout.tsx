@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { DM_Sans, Inter } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { Providers } from "@/components/layout/providers";
@@ -38,11 +38,7 @@ interface RootLayoutProps {
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html
-      lang="en"
-      className={`${dmSans.variable} ${inter.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${dmSans.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-[var(--background)] font-sans antialiased">
         <Providers>
           <AuthProvider>{children}</AuthProvider>
