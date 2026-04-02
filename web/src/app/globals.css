@@ -1,0 +1,123 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Figtree:ital,wght@0,300..900;1,300..900&display=swap");
+
+@import "tailwindcss";
+
+@theme {
+  --font-heading: "DM Serif Display", serif;
+  --font-body: "Figtree", sans-serif;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+:root {
+  --background: #0c0c0c;
+  --foreground: #f5f0eb;
+  --primary: #d4a853;
+  --primary-foreground: #0c0c0c;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #c4b99a;
+  --muted: #1f1f1f;
+  --muted-foreground: #8a8278;
+  --accent: #d4a853;
+  --accent-foreground: #0c0c0c;
+  --destructive: #b85450;
+  --destructive-foreground: #f5f0eb;
+  --border: #2a2520;
+  --input: #2a2520;
+  --ring: #d4a853;
+  --card: #141414;
+  --card-foreground: #f5f0eb;
+  --popover: #141414;
+  --popover-foreground: #f5f0eb;
+  --radius: 0.5rem;
+
+  --sidebar-background: #0f0f0f;
+  --sidebar-foreground: #f5f0eb;
+  --sidebar-primary: #d4a853;
+  --sidebar-primary-foreground: #0c0c0c;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #c4b99a;
+  --sidebar-border: #2a2520;
+  --sidebar-ring: #d4a853;
+  --sidebar-muted: #1f1f1f;
+  --sidebar-muted-foreground: #8a8278;
+}
+
+.light {
+  --background: #faf8f5;
+  --foreground: #1a1a1a;
+  --primary: #b8922e;
+  --primary-foreground: #faf8f5;
+  --secondary: #f0ede8;
+  --secondary-foreground: #4a4540;
+  --muted: #e8e4df;
+  --muted-foreground: #6b6560;
+  --accent: #b8922e;
+  --accent-foreground: #faf8f5;
+  --destructive: #c94a46;
+  --destructive-foreground: #faf8f5;
+  --border: #ddd8d0;
+  --input: #ddd8d0;
+  --ring: #b8922e;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+
+  --sidebar-background: #f5f2ef;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #b8922e;
+  --sidebar-primary-foreground: #faf8f5;
+  --sidebar-accent: #e8e4df;
+  --sidebar-accent-foreground: #4a4540;
+  --sidebar-border: #ddd8d0;
+  --sidebar-ring: #b8922e;
+  --sidebar-muted: #e8e4df;
+  --sidebar-muted-foreground: #6b6560;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body), "Figtree", system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+::-moz-selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
