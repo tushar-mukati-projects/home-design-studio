@@ -6,11 +6,16 @@ import { useEditorStore } from "@/stores/editor-store";
 
 const ROOM_COLORS: Record<string, string> = {
   "living-room": "#2c2c2e20",
+  living_room: "#2c2c2e20",
   bedroom: "#6B5B9520",
   kitchen: "#C4564520",
   bathroom: "#4A7FB520",
   office: "#2EA85A20",
   dining: "#D4862020",
+  dining_room: "#D4862020",
+  hallway: "#71717a20",
+  closet: "#a1a1aa20",
+  garage: "#78788020",
   generic: "#8a8a9420",
 };
 

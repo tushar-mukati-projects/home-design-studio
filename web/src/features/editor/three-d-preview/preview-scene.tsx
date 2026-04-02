@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows, Text } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
+import { OrbitControls, Environment } from "@react-three/drei";
 import { MeshStandardMaterial } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useEditorStore } from "@/stores/editor-store";
@@ -26,6 +26,14 @@ interface PreviewSceneProps {
   wallColor: string;
   furnitureColor: string;
 }
+
+const InvalidateOnChange = (props: Record<string, unknown>) => {
+  const { invalidate } = useThree();
+  useEffect(() => {
+    invalidate();
+  }, [props.showFurniture, props.showRoomColors, props.ambientIntensity, props.floorColor, props.wallColor, props.furnitureColor, invalidate]);
+  return null;
+};
 
 const SceneContents = ({
   showFurniture,
@@ -111,9 +119,19 @@ const SceneContents = ({
     [floorColor],
   );
 
+  const shadowCamSize = Math.max(bounds.size * 1.2, 6);
+
   return (
     <>
-      {/* Soft sky background */}
+      <InvalidateOnChange
+        showFurniture={showFurniture}
+        showRoomColors={showRoomColors}
+        ambientIntensity={ambientIntensity}
+        floorColor={floorColor}
+        wallColor={wallColor}
+        furnitureColor={furnitureColor}
+      />
+
       <color attach="background" args={["#c8ccd4"]} />
 
       <ambientLight intensity={ambientIntensity * 0.5} color="#e8ecf0" />
@@ -122,32 +140,28 @@ const SceneContents = ({
         intensity={1.8}
         color="#fff8f0"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-left={-bounds.size}
-        shadow-camera-right={bounds.size}
-        shadow-camera-top={bounds.size}
-        shadow-camera-bottom={-bounds.size}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-left={-shadowCamSize}
+        shadow-camera-right={shadowCamSize}
+        shadow-camera-top={shadowCamSize}
+        shadow-camera-bottom={-shadowCamSize}
         shadow-camera-near={0.1}
         shadow-camera-far={bounds.size * 4}
-        shadow-bias={-0.001}
+        shadow-bias={-0.002}
       />
       <directionalLight
         position={[-bounds.size * 0.5, bounds.size * 0.6, -bounds.size * 0.3]}
         intensity={0.3}
         color="#b8c0d0"
       />
-      <hemisphereLight
-        args={["#d0d4dc", "#808890", 0.4]}
-      />
+      <hemisphereLight args={["#d0d4dc", "#808890", 0.4]} />
 
-      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
         <planeGeometry args={[bounds.size * 3, bounds.size * 3]} />
         <primitive object={floorMat} attach="material" />
       </mesh>
 
-      {/* Subtle grid on ground */}
       <gridHelper
         args={[bounds.size * 3, Math.round(bounds.size * 3), "#9098a0", "#a8b0b8"]}
         position={[0, 0.001, 0]}
@@ -186,26 +200,11 @@ const SceneContents = ({
           />
         ))}
 
-      <ContactShadows
-        position={[0, 0, 0]}
-        opacity={0.5}
-        scale={bounds.size * 3}
-        blur={2}
-        far={bounds.size * 2}
-        color="#3a3a4a"
-      />
-
       {!hasContent && (
-        <Text
-          position={[0, 1.5, 0]}
-          fontSize={0.3}
-          color="#71717a"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={6}
-        >
-          No elements to preview. Add walls, rooms, or furniture in the editor.
-        </Text>
+        <mesh position={[0, 1.5, 0]}>
+          <planeGeometry args={[4, 0.5]} />
+          <meshBasicMaterial color="#71717a" transparent opacity={0} />
+        </mesh>
       )}
 
       <Environment preset="apartment" />
@@ -286,6 +285,7 @@ export const PreviewScene = ({
 
   return (
     <Canvas
+      frameloop="demand"
       shadows
       camera={{
         position: preset.position,
@@ -293,15 +293,17 @@ export const PreviewScene = ({
         near: 0.1,
         far: 500,
       }}
+      dpr={[1, 1.5]}
       gl={{
         antialias: true,
         alpha: false,
         powerPreference: "high-performance",
       }}
       style={{ background: "linear-gradient(180deg, #b8bcc8 0%, #a0a4b0 50%, #909498 100%)" }}
-      onCreated={({ camera }) => {
+      onCreated={({ camera, invalidate }) => {
         camera.position.set(...preset.position);
         camera.lookAt(...preset.target);
+        invalidate();
       }}
     >
       <OrbitControls
