@@ -1,6 +1,7 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
+import { useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { useCreateCheckout } from "@/hooks/billing";
@@ -42,6 +43,62 @@ const plans = [
     highlighted: true,
   },
 ];
+
+const faqs = [
+  {
+    question: "Can I try Pro before paying?",
+    answer:
+      "Yes — the Free plan gives you up to 3 designs with full editor access so you can evaluate the tool. Upgrade to Pro when you need unlimited designs, 3D walkthrough, and collaboration.",
+  },
+  {
+    question: "What happens to my designs if I downgrade?",
+    answer:
+      "Your designs are never deleted. If you downgrade to Free, you can still view and edit your existing designs — you just won't be able to create new ones beyond the 3-design limit.",
+  },
+  {
+    question: "How does billing work?",
+    answer:
+      "Pro is billed monthly at $12/month. You can cancel at any time and your access continues until the end of the billing period. All payments are securely processed by Stripe.",
+  },
+  {
+    question: "Is real-time collaboration included in Pro?",
+    answer:
+      "Yes. Pro includes real-time multiplayer collaboration so multiple people can work on the same design simultaneously, with live cursor tracking and synced edits.",
+  },
+  {
+    question: "What export formats are available?",
+    answer:
+      "Free plan supports PNG export. Pro unlocks PDF and SVG exports, which preserve vector quality for printing or sharing with contractors.",
+  },
+];
+
+interface FaqItemProps {
+  question: string;
+  answer: string;
+}
+
+const FaqItem = ({ question, answer }: FaqItemProps) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="border-b border-[var(--border)] last:border-0">
+      <button
+        className="flex w-full items-center justify-between gap-4 py-4 text-left"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="text-sm font-medium text-[var(--foreground)]">{question}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-[var(--muted-foreground)] transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {open && (
+        <p className="pb-4 text-sm leading-relaxed text-[var(--muted-foreground)]">{answer}</p>
+      )}
+    </div>
+  );
+};
 
 const PricingPage = () => {
   const { user } = useAuth();
@@ -151,6 +208,20 @@ const PricingPage = () => {
           <p className="text-sm text-[var(--muted-foreground)]">
             All plans include a 14-day money-back guarantee. Cancel anytime.
           </p>
+        </div>
+
+        <div className="mt-24">
+          <h2
+            className="mb-8 text-center text-2xl font-semibold text-[var(--foreground)]"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            Frequently Asked Questions
+          </h2>
+          <div className="mx-auto max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--card)] px-6 shadow-sm">
+            {faqs.map((faq) => (
+              <FaqItem key={faq.question} question={faq.question} answer={faq.answer} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

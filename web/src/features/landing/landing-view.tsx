@@ -23,6 +23,8 @@ import {
   MousePointerClick,
   PenTool,
   ChevronRight,
+  MessageSquare,
+  History,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
@@ -568,10 +570,22 @@ const featureData = [
       "See your design come to life with real-time 3D preview. Walk through your space from any angle.",
   },
   {
+    icon: MessageSquare,
+    title: "AI Chat Assistant",
+    description:
+      "Describe changes in plain English and watch them happen. Add rooms, rearrange furniture, or clear the canvas — all through conversation.",
+  },
+  {
     icon: Sparkles,
     title: "AI Room Furnishing",
     description:
       "Let AI suggest optimal furniture placement for any room. One click to a beautifully arranged space.",
+  },
+  {
+    icon: History,
+    title: "Version History",
+    description:
+      "Save named snapshots of your design and restore any version instantly. Never lose a good iteration.",
   },
   {
     icon: Download,
@@ -1160,7 +1174,7 @@ export const LandingView = () => {
               curve.
             </motion.p>
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featureData.map((feature, i) => (
               <FeatureCard key={feature.title} index={i} {...feature} />
             ))}

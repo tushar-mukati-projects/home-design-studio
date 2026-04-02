@@ -19,6 +19,8 @@ import {
   Armchair,
   Ruler,
   Users,
+  Layers,
+  Crown,
 } from "lucide-react";
 import { toast } from "sonner";
 import NProgress from "nprogress";
@@ -436,6 +438,55 @@ export const DashboardView = () => {
               <Plus className="h-4 w-4" />
               Create New Design
             </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)]">
+                <Layers className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                  {designs.length}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Total Designs</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)]">
+                <Crown className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                  {planData?.plan === "pro"
+                    ? "∞"
+                    : `${designs.length}/${planData?.designLimit ?? 3}`}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Plan Usage</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)]">
+                <Users className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                  {sharedDesigns?.length ?? 0}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Shared with Me</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)]">
+                <Ruler className="h-4 w-4 text-[var(--muted-foreground)]" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold leading-tight text-[var(--foreground)]">
+                  {planData?.plan === "pro" ? "Pro" : "Free"}
+                </p>
+                <p className="text-xs text-[var(--muted-foreground)]">Current Plan</p>
+              </div>
+            </div>
           </div>
 
           {hasDesigns && (
