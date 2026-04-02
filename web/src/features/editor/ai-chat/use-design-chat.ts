@@ -5,15 +5,21 @@ import { getToken } from "@/lib/axios";
 import { useEditorStore } from "@/stores/editor-store";
 import type { Wall, Room, PlacedFurniture, Door, Window } from "@/types";
 
+export interface ToolCall {
+  name: string;
+  status: "running" | "done";
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  toolCalls?: string[];
+  toolCalls?: ToolCall[];
 }
 
 type SSEEvent =
   | { type: "tool_call"; name: string }
+  | { type: "tool_done"; name: string }
   | { type: "action"; actionType: string; payload: Record<string, unknown> }
   | { type: "text"; content: string }
   | { type: "error"; message: string }
@@ -65,8 +71,9 @@ export const useDesignChat = (designId: string) => {
       if (isLoading || !content.trim()) return;
 
       const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
+      const assistantMsgId = crypto.randomUUID();
       const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: assistantMsgId,
         role: "assistant",
         content: "",
         toolCalls: [],
@@ -89,7 +96,7 @@ export const useDesignChat = (designId: string) => {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             signal: controller.signal,
-            body: JSON.stringify({ designId, messages: history, canvasState: useEditorStore.getState().getCanvasData() }),
+            body: JSON.stringify({ designId, messages: history }),
           },
         );
 
@@ -123,17 +130,36 @@ export const useDesignChat = (designId: string) => {
               setActiveTools((prev) => [...prev, event.name]);
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === assistantMsg.id
-                    ? { ...m, toolCalls: [...(m.toolCalls ?? []), event.name] }
+                  m.id === assistantMsgId
+                    ? {
+                        ...m,
+                        toolCalls: [
+                          ...(m.toolCalls ?? []),
+                          { name: event.name, status: "running" as const },
+                        ],
+                      }
                     : m,
                 ),
+              );
+            } else if (event.type === "tool_done") {
+              setActiveTools((prev) => prev.filter((t) => t !== event.name));
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantMsgId) return m;
+                  const calls = (m.toolCalls ?? []).map((tc) =>
+                    tc.name === event.name && tc.status === "running"
+                      ? { ...tc, status: "done" as const }
+                      : tc,
+                  );
+                  return { ...m, toolCalls: calls };
+                }),
               );
             } else if (event.type === "action") {
               applyAction(event.actionType, event.payload);
             } else if (event.type === "text") {
               setMessages((prev) =>
                 prev.map((m) =>
-                  m.id === assistantMsg.id ? { ...m, content: m.content + event.content } : m,
+                  m.id === assistantMsgId ? { ...m, content: m.content + event.content } : m,
                 ),
               );
             }
@@ -143,7 +169,7 @@ export const useDesignChat = (designId: string) => {
         if ((err as Error).name === "AbortError") return;
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMsg.id
+            m.id === assistantMsgId
               ? { ...m, content: "Sorry, something went wrong. Please try again." }
               : m,
           ),
