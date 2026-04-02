@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique @map("clerk_id")
+  email     String   @unique
+  name      String?
+  avatarUrl        String?  @map("avatar_url")
+  stripeCustomerId String?  @unique @map("stripe_customer_id")
+  stripePriceId    String?  @map("stripe_price_id")
+  stripeSubId      String?  @map("stripe_sub_id")
+  plan             String   @default("free") @map("plan")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  designs      Design[]
+  sharedDesigns DesignShare[]
+
+  @@map("home_design_studio_users")
+}
+
+model Design {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  thumbnail       String?
+  canvasData      Json     @default("{}") @map("canvas_data")
+  yjsState        Bytes?   @map("yjs_state")
+  width           Float    @default(800)
+  height          Float    @default(600)
+  isPublic        Boolean  @default(false) @map("is_public")
+  shareToken      String?  @unique @map("share_token")
+  shareLinkAccess String?  @map("share_link_access") // "readonly" | "readwrite"
+  userId          String   @map("user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rooms     Room[]
+  furniture PlacedFurniture[]
+  shares    DesignShare[]
+  versions  DesignVersion[]
+
+  @@index([userId])
+  @@map("home_design_studio_designs")
+}
+
+model DesignVersion {
+  id         String   @id @default(uuid())
+  designId   String   @map("design_id")
+  name       String   @default("Auto-save")
+  canvasData Json     @map("canvas_data")
+  rooms      Json     @default("[]")
+  furniture  Json     @default("[]")
+  createdBy  String   @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@index([designId])
+  @@map("home_design_studio_design_versions")
+}
+
+model DesignShare {
+  id              String   @id @default(uuid())
+  designId        String   @map("design_id")
+  sharedWithEmail String   @map("shared_with_email")
+  sharedWithId    String?  @map("shared_with_id")
+  permission      String   @default("readonly") // "readonly" | "readwrite"
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  design    Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+  sharedWith User?  @relation(fields: [sharedWithId], references: [id], onDelete: SetNull)
+
+  @@unique([designId, sharedWithEmail])
+  @@index([sharedWithEmail])
+  @@index([sharedWithId])
+  @@map("home_design_studio_design_shares")
+}
+
+model Room {
+  id       String @id @default(uuid())
+  name     String @default("Room")
+  type     String @default("generic")
+  color    String @default("#E5E7EB")
+  points   Json
+  area     Float  @default(0)
+  designId String @map("design_id")
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@index([designId])
+  @@map("home_design_studio_rooms")
+}
+
+model FurnitureItem {
+  id          String  @id @default(uuid())
+  name        String
+  category    String
+  width       Float
+  height      Float
+  depth       Float
+  color       String  @default("#8B7355")
+  icon        String?
+  description String?
+  isDefault   Boolean @default(false) @map("is_default")
+
+  placements PlacedFurniture[]
+
+  @@index([category])
+  @@map("home_design_studio_furniture_items")
+}
+
+model PlacedFurniture {
+  id              String  @id @default(uuid())
+  x               Float
+  y               Float
+  rotation        Float   @default(0)
+  scaleX          Float   @default(1) @map("scale_x")
+  scaleY          Float   @default(1) @map("scale_y")
+  designId        String  @map("design_id")
+  furnitureItemId String  @map("furniture_item_id")
+  roomId          String? @map("room_id")
+
+  design        Design        @relation(fields: [designId], references: [id], onDelete: Cascade)
+  furnitureItem FurnitureItem @relation(fields: [furnitureItemId], references: [id], onDelete: Cascade)
+
+  @@index([designId])
+  @@map("home_design_studio_placed_furniture")
+}
+
+model DesignTemplate {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  category    String
+  thumbnail   String?
+  canvasData  Json    @map("canvas_data")
+  rooms       Json    @default("[]")
+  furniture   Json    @default("[]")
+  width       Float   @default(800)
+  height      Float   @default(600)
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  @@index([category])
+  @@map("home_design_studio_templates")
+}

@@ -1,0 +1,69 @@
+{
+  "name": "home-design-studio-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun next dev",
+    "build": "bun next build",
+    "start": "bun next start",
+    "lint": "bun eslint",
+    "typecheck": "bun tsc --noEmit",
+    "format:check": "bun prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:fix": "bun prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "check": "bun run typecheck && bun run lint && bun run format:check",
+    "check:fix": "bun run lint -- --fix && bun run format:fix && bun run typecheck",
+    "test": "bun playwright test"
+  },
+  "dependencies": {
+    "@hocuspocus/provider": "^2.15.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@tanstack/react-query": "^5.62.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "firebase": "^11.3.0",
+    "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^11.15.0",
+    "jspdf": "^2.5.2",
+    "konva": "^10.2.3",
+    "lucide-react": "^0.468.0",
+    "msw": "^2.12.14",
+    "next": "^15.1.0",
+    "nprogress": "^0.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-konva": "^19.2.3",
+    "recharts": "^2.15.0",
+    "sonner": "^1.7.1",
+    "tailwind-merge": "^2.6.0",
+    "three": "^0.171.0",
+    "use-image": "^1.1.1",
+    "yjs": "^13.6.22",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/nprogress": "^0.2.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.171.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.1",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}
