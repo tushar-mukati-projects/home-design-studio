@@ -137,7 +137,13 @@ const cardVariants = {
 
 const TemplateCard = ({ template, onUse, index }: TemplateCardProps) => {
   return (
-    <motion.div custom={index} variants={cardVariants} initial="hidden" animate="visible">
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      onClick={() => onUse(template)}
+    >
       <Card className="group cursor-pointer overflow-hidden transition-colors hover:border-[var(--primary)]/50">
         <div className="h-36 overflow-hidden bg-[var(--secondary)]">
           <TemplatePreview template={template} />
@@ -161,10 +167,7 @@ const TemplateCard = ({ template, onUse, index }: TemplateCardProps) => {
               size="sm"
               variant="ghost"
               className="h-7 gap-1 px-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                onUse(template);
-              }}
+              onClick={(e) => e.stopPropagation()}
             >
               Use
               <ArrowRight className="h-3 w-3" />

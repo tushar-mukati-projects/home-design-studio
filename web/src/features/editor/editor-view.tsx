@@ -32,6 +32,7 @@ import type { EditorTool } from "@/types";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { VersionHistoryPanel } from "./version-history/version-history-panel";
 import { ImportDesignModal } from "./import/import-design-modal";
+import { DesignChat } from "./ai-chat/design-chat";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
 interface EditorViewProps {
   designId: string;
@@ -616,15 +617,23 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
 
-        {canEdit && showVersionHistory && (
-          <VersionHistoryPanel
-            designId={designId}
-            onClose={() => setShowVersionHistory(false)}
-            onRestored={() => window.location.reload()}
-          />
-        )}
+          {canEdit && showVersionHistory && (
+            <motion.div
+              className="absolute top-0 right-0 bottom-0 z-30 w-[300px]"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+            >
+              <VersionHistoryPanel
+                designId={designId}
+                onClose={() => setShowVersionHistory(false)}
+                onRestored={() => window.location.reload()}
+              />
+            </motion.div>
+          )}
+        </div>
       </div>
 
       <PreviewModal open={showPreview3D} onClose={() => setShowPreview3D(false)} />
@@ -638,6 +647,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       )}
       <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
       <ImportDesignModal open={showImportModal} onClose={() => setShowImportModal(false)} />
+      <DesignChat />
     </div>
   );
 };

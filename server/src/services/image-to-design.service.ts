@@ -51,69 +51,112 @@ interface GeneratedDesign {
   canvasHeight: number;
 }
 
-const SYSTEM_PROMPT = `You are an expert architectural floor plan analyzer. You analyze images of rooms, floor plans, sketches, or blueprints and convert them into a structured floor plan design.
+const SYSTEM_PROMPT = `You are an expert architectural floor plan analyzer. You convert images of floor plans, sketches, blueprints, or room photos into a structured JSON floor plan.
 
 You MUST respond with valid JSON only — no markdown, no explanation, no extra text.
 
-The coordinate system:
-- Origin (0,0) is at the top-left corner of the canvas
-- X increases to the right, Y increases downward
-- All measurements are in pixels where 1 pixel ≈ 1cm
-- Typical room: 300-600 pixels wide/tall
-- Typical canvas: 800-1200 pixels
+=== STEP-BY-STEP PROCESS (follow in order) ===
 
-Wall rules:
-- Walls are line segments defined by (x1,y1) → (x2,y2) endpoints
-- Standard wall thickness: 12
-- Walls should form closed rectangles/polygons for rooms
-- Adjacent walls should share exact endpoints (snap to each other)
+STEP 1: IDENTIFY OVERALL BOUNDING BOX
+- Determine the total floor plan dimensions from the image.
+- Choose a canvas between 800-1200px wide and 600-1000px tall.
+- Map the real-world proportions onto this canvas. For example, a 40'x30' house → canvasWidth: 1000, canvasHeight: 750.
 
-Door rules:
-- "wallIndex" references the index (0-based) in the walls array
-- "position" is 0.0-1.0 along the wall (0.5 = center)
-- Standard door width: 80
+STEP 2: IDENTIFY ALL ROOMS AS NON-OVERLAPPING RECTANGLES
+- List EVERY room visible in the plan. Do NOT skip any room, closet, or washroom.
+- For each room, estimate its proportional position and size as a percentage of the total floor plan width and height.
+  Example: "Master Bedroom occupies x: 0%-40%, y: 0%-50% of the plan"
+- Convert each room's percentage bounds to pixel coordinates on the canvas:
+  roomLeft = canvasWidth * xStartPercent
+  roomTop = canvasHeight * yStartPercent
+  roomRight = canvasWidth * xEndPercent
+  roomBottom = canvasHeight * yEndPercent
+- CRITICAL: Rooms MUST tile the floor plan like a grid. No two rooms may overlap. Adjacent rooms share exact boundary coordinates.
 
-Window rules:
-- Same wallIndex/position system as doors
-- Standard window width: 100
+STEP 3: GENERATE WALLS FROM ROOM BOUNDARIES
+- For each room rectangle, its four edges become wall candidates.
+- WHERE TWO ROOMS SHARE A BOUNDARY, emit only ONE wall segment for that shared edge — never two overlapping walls.
+- Walls along the outer perimeter of the house appear once.
+- Each wall is a segment: { x1, y1, x2, y2, thickness: 12 }.
+- Walls must be axis-aligned (horizontal or vertical). Horizontal walls have y1 === y2. Vertical walls have x1 === x2.
+- Wall endpoints MUST connect exactly — adjacent walls that meet at a corner must share the exact same coordinate at that corner.
+- After generating walls, verify: every room's boundary is fully enclosed by walls on all four sides.
 
-Room rules:
-- Each room has a polygon of points that traces its floor area
-- The points should follow wall inner edges
-- "type" should be one of: living_room, bedroom, kitchen, bathroom, office, dining, hallway, garage, generic
+STEP 4: PLACE DOORS AND WINDOWS ON WALLS
+- Doors go on interior walls (between rooms) and on exterior walls for entries.
+- Windows go on exterior walls.
+- "wallIndex" is the 0-based index into the walls array.
+- "position" is 0.0-1.0 along the wall length (0.5 = center of the wall).
+- Standard door width: 80. Standard window width: 100.
 
-Furniture:
-- Common items: Sofa, Armchair, Coffee Table, TV Stand, Bookshelf, Double Bed, Single Bed, Nightstand, Wardrobe, Dresser, Desk, Dining Table, Dining Chair, Kitchen Island, Refrigerator, Stove, Bathtub, Toilet, Sink, Shower, Office Desk, Office Chair
-- x,y is the CENTER position of the furniture
-- rotation is in degrees (0, 90, 180, 270)
-- width and height are the furniture dimensions in pixels/cm
+STEP 5: PLACE FURNITURE INSIDE ROOMS
+- For each room, choose furniture appropriate to the room type.
+- Furniture x,y is the CENTER of the item. It MUST be inside the room's rectangular bounds.
+  Verify: roomLeft + margin < x < roomRight - margin AND roomTop + margin < y < roomBottom - margin (margin = half of furniture dimension + 10).
+- Use ONLY these exact furniture names:
+  Sofa, Armchair, Coffee Table, TV Stand, Bookshelf, Floor Lamp,
+  Double Bed, Single Bed, Nightstand, Wardrobe, Dresser, Desk,
+  Dining Table, Dining Chair,
+  Kitchen Island, Refrigerator, Stove,
+  Bathtub, Toilet, Sink, Shower,
+  Office Desk, Office Chair, Filing Cabinet, Bookcase
+- rotation: 0, 90, 180, or 270 degrees.
+- Typical furniture sizes (width x height in px): Double Bed 140x200, Single Bed 100x200, Sofa 200x80, Dining Table 160x90, Desk 120x60, Toilet 45x60, Bathtub 80x170, Sink 50x40, Refrigerator 70x70, Stove 60x60, Wardrobe 120x55, Nightstand 45x45, Coffee Table 100x50, Armchair 80x80, TV Stand 120x40, Bookshelf 80x30, Dining Chair 45x45, Shower 90x90, Kitchen Island 120x70, Dresser 100x50, Office Desk 140x70, Office Chair 60x60, Filing Cabinet 45x60, Bookcase 90x35, Floor Lamp 30x30.
 
-Output JSON schema:
+=== COORDINATE SYSTEM ===
+- Origin (0,0) is top-left of the canvas.
+- X increases rightward, Y increases downward.
+- All values are in pixels.
+
+=== ROOM TYPES ===
+Use one of: living_room, bedroom, kitchen, bathroom, office, dining, hallway, garage, closet, laundry, generic
+
+=== VALIDATION CHECKLIST (verify before outputting) ===
+1. Every room from the image is present — do not omit any.
+2. No two rooms overlap in their rectangular areas.
+3. Adjacent rooms share exact boundary coordinates (e.g., Room A's right edge x === Room B's left edge x).
+4. Shared boundaries produce exactly ONE wall, not two.
+5. Walls form closed rectangles around every room.
+6. Wall endpoints connect — corners share exact coordinates.
+7. Every piece of furniture has its center inside its room.
+8. Furniture names are from the allowed list above.
+9. canvasWidth and canvasHeight are set and all coordinates fall within [0, canvasWidth] x [0, canvasHeight].
+
+=== OUTPUT JSON SCHEMA ===
 {
   "walls": [{ "x1": number, "y1": number, "x2": number, "y2": number, "thickness": 12 }],
-  "doors": [{ "wallIndex": number, "position": number, "width": 80, "type": "single" }],
+  "doors": [{ "wallIndex": number, "position": number, "width": 80, "type": "single"|"double"|"sliding" }],
   "windows": [{ "wallIndex": number, "position": number, "width": 100 }],
   "rooms": [{ "name": string, "type": string, "points": [{ "x": number, "y": number }] }],
   "furniture": [{ "name": string, "x": number, "y": number, "rotation": number, "width": number, "height": number }],
   "canvasWidth": number,
   "canvasHeight": number
-}`;
+}
 
-const USER_PROMPT = `Analyze this image and convert it into a floor plan design. 
+"rooms[].points" must be exactly 4 corner points of the room rectangle in order (top-left, top-right, bottom-right, bottom-left).`;
 
-If this is a photo of a room or space:
-- Estimate the room layout and dimensions
-- Identify visible walls, doors, windows
-- Identify furniture and their approximate positions
+const USER_PROMPT = `Analyze this image and convert it into a structured floor plan design.
 
-If this is a floor plan, sketch, or blueprint:
-- Extract the exact layout as closely as possible
-- Identify all rooms, walls, doors, windows
-- Identify labeled furniture or fixtures
+Follow this exact process:
 
-Make the design proportional and realistic. Ensure walls connect properly to form enclosed rooms. Place furniture logically within rooms.
+1. COUNT every room/space in the image (bedrooms, bathrooms, kitchen, living areas, closets, hallways, etc.). List them all — do not skip any.
 
-Respond ONLY with the JSON object.`;
+2. DETERMINE the overall floor plan proportions from the image. Choose a canvas size (800-1200px wide, 600-1000px tall) that matches the aspect ratio.
+
+3. For each room, estimate what percentage of the total width and height it occupies, and where it sits within the plan. Then convert those percentages to pixel coordinates to create non-overlapping rectangles.
+
+4. Generate walls from the room rectangles:
+   - Each room edge becomes a wall segment.
+   - Where two rooms share a boundary, output only ONE wall for that shared edge.
+   - Ensure wall endpoints connect at corners (same x,y coordinates).
+
+5. Add doors on walls between rooms and on exterior walls for entries. Add windows on exterior walls.
+
+6. Place furniture appropriate to each room type, using ONLY the allowed furniture names. Verify every furniture center point is inside its room.
+
+If this is a photo rather than a floor plan, estimate the layout as a rectangular room with visible furniture.
+
+Respond ONLY with the JSON object. No markdown fences, no explanation.`;
 
 export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: Response) => {
   res.setHeader("Content-Type", "text/event-stream");
@@ -161,6 +204,8 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
 
     sendEvent({ type: "status", message: "Building your floor plan..." });
 
+    logger.info("Raw AI image-to-design response", { content });
+
     let design: GeneratedDesign;
     try {
       design = JSON.parse(content);
@@ -179,6 +224,11 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
       return;
     }
 
+    const canvasWidth = design.canvasWidth || 1000;
+    const canvasHeight = design.canvasHeight || 800;
+
+    const SNAP_THRESHOLD = 5;
+
     const walls = design.walls
       .filter((w) => typeof w.x1 === "number" && typeof w.y1 === "number" && typeof w.x2 === "number" && typeof w.y2 === "number")
       .map((w) => ({
@@ -188,6 +238,31 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
         y2: Math.round(w.y2),
         thickness: w.thickness || 12,
       }));
+
+    // Snap wall endpoints that are within SNAP_THRESHOLD of each other
+    for (let i = 0; i < walls.length; i++) {
+      for (let j = i + 1; j < walls.length; j++) {
+        const endpoints: Array<{ wall: typeof walls[number]; key: "x1" | "x2"; yKey: "y1" | "y2" }> = [
+          { wall: walls[i], key: "x1", yKey: "y1" },
+          { wall: walls[i], key: "x2", yKey: "y2" },
+        ];
+        const targets: Array<{ wall: typeof walls[number]; key: "x1" | "x2"; yKey: "y1" | "y2" }> = [
+          { wall: walls[j], key: "x1", yKey: "y1" },
+          { wall: walls[j], key: "x2", yKey: "y2" },
+        ];
+        for (const ep of endpoints) {
+          for (const tg of targets) {
+            const dx = Math.abs(ep.wall[ep.key] - tg.wall[tg.key]);
+            const dy = Math.abs(ep.wall[ep.yKey] - tg.wall[tg.yKey]);
+            if (dx <= SNAP_THRESHOLD && dy <= SNAP_THRESHOLD && (dx > 0 || dy > 0)) {
+              // Snap the target endpoint to the source endpoint
+              tg.wall[tg.key] = ep.wall[ep.key];
+              tg.wall[tg.yKey] = ep.wall[ep.yKey];
+            }
+          }
+        }
+      }
+    }
 
     const doors = (design.doors || [])
       .filter((d) => typeof d.wallIndex === "number" && d.wallIndex >= 0 && d.wallIndex < walls.length)
@@ -214,16 +289,39 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
         points: r.points.map((p: { x: number; y: number }) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
       }));
 
+    // Compute room bounding boxes for furniture validation
+    const roomBounds = rooms.map((r) => {
+      const xs = r.points.map((p) => p.x);
+      const ys = r.points.map((p) => p.y);
+      return {
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        minY: Math.min(...ys),
+        maxY: Math.max(...ys),
+      };
+    });
+
+    const isInsideAnyRoom = (x: number, y: number): boolean => {
+      return roomBounds.some((b) => x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY);
+    };
+
     const furnitureItems = (design.furniture || [])
       .filter((f) => typeof f.x === "number" && typeof f.y === "number")
       .map((f) => ({
         name: f.name || "Furniture",
-        x: Math.round(f.x),
-        y: Math.round(f.y),
+        x: Math.round(Math.max(0, Math.min(canvasWidth, f.x))),
+        y: Math.round(Math.max(0, Math.min(canvasHeight, f.y))),
         rotation: f.rotation || 0,
         width: f.width || 60,
         height: f.height || 60,
-      }));
+      }))
+      .filter((f) => {
+        if (!isInsideAnyRoom(f.x, f.y)) {
+          logger.warn("Furniture outside all rooms, discarding", { name: f.name, x: f.x, y: f.y });
+          return false;
+        }
+        return true;
+      });
 
     const result = {
       walls,
@@ -231,8 +329,8 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
       windows,
       rooms,
       furniture: furnitureItems,
-      canvasWidth: design.canvasWidth || 1000,
-      canvasHeight: design.canvasHeight || 800,
+      canvasWidth,
+      canvasHeight,
     };
 
     sendEvent({ type: "status", message: `Found ${walls.length} walls, ${rooms.length} rooms, ${furnitureItems.length} furniture items` });

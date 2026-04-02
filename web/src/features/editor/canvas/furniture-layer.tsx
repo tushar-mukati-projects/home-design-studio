@@ -3,6 +3,7 @@
 import { memo, useRef, useEffect, useCallback } from "react";
 import { Layer, Rect, Text, Group, Transformer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { FurnitureShape } from "./furniture-shape";
 import type Konva from "konva";
 
 export const FurnitureLayer = memo(function FurnitureLayer() {
@@ -96,20 +97,27 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               });
             }}
           >
+            <FurnitureShape
+              furnitureId={piece.furnitureItem.id}
+              width={fw}
+              height={fh}
+              color={piece.furnitureItem.color || "#d4d4d8"}
+            />
+            {/* Selection outline */}
             <Rect
               width={fw}
               height={fh}
               offsetX={fw / 2}
               offsetY={fh / 2}
-              fill={piece.furnitureItem.color || "#d4d4d8"}
-              cornerRadius={4}
               stroke={isSelected ? "#52525b" : "#b4b4bc"}
               strokeWidth={isSelected ? 2 / zoom : 1 / zoom}
               shadowColor={isSelected ? "#52525b" : undefined}
               shadowBlur={isSelected ? 10 : 0}
               shadowOpacity={isSelected ? 0.4 : 0}
+              cornerRadius={4}
+              listening={false}
             />
-            {/* Front edge indicator - a subtle line on top edge */}
+            {/* Front edge indicator */}
             <Rect
               width={fw * 0.4}
               height={Math.max(3, 4 / zoom)}
@@ -120,21 +128,23 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               opacity={0.6}
               listening={false}
             />
-            <Text
-              width={fw}
-              height={fh}
-              offsetX={fw / 2}
-              offsetY={fh / 2}
-              text={piece.furnitureItem.name}
-              fontSize={Math.min(12, fw / 6, fh / 4) / Math.max(piece.scaleX, 0.5)}
-              fontFamily="Inter, sans-serif"
-              fill="#3a3a4a"
-              align="center"
-              verticalAlign="middle"
-              listening={false}
-              wrap="word"
-              padding={4}
-            />
+            {fw > 60 && fh > 40 && (
+              <Text
+                width={fw}
+                height={fh}
+                offsetX={fw / 2}
+                offsetY={fh / 2}
+                text={piece.furnitureItem.name}
+                fontSize={Math.min(10, fw / 8, fh / 5) / Math.max(piece.scaleX, 0.5)}
+                fontFamily="Inter, sans-serif"
+                fill="#3a3a4a"
+                align="center"
+                verticalAlign="middle"
+                listening={false}
+                wrap="word"
+                padding={4}
+              />
+            )}
           </Group>
         );
       })}

@@ -113,6 +113,15 @@ export const PropertiesPanel = () => {
       (Math.atan2(selectedWall.y2 - selectedWall.y1, selectedWall.x2 - selectedWall.x1) * 180) /
       Math.PI;
 
+    const handleCoordChange = (
+      field: "x1" | "y1" | "x2" | "y2",
+      raw: string,
+    ) => {
+      const ft = parseFloat(raw);
+      if (isNaN(ft)) return;
+      updateWall(selectedWall.id, { [field]: ftToPx(ft) });
+    };
+
     return (
       <div className="flex h-full flex-col">
         <div className="border-b border-[var(--border)] px-4 py-3">
@@ -153,6 +162,66 @@ export const PropertiesPanel = () => {
 
           <Separator />
 
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-[var(--muted-foreground)]">Start Point</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-[10px] text-[var(--muted-foreground)]">X (ft)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  defaultValue={parseFloat(pxToFt(selectedWall.x1))}
+                  key={`x1-${selectedWall.id}-${selectedWall.x1}`}
+                  className="h-8 text-xs"
+                  onBlur={(e) => handleCoordChange("x1", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCoordChange("x1", (e.target as HTMLInputElement).value); }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] text-[var(--muted-foreground)]">Y (ft)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  defaultValue={parseFloat(pxToFt(selectedWall.y1))}
+                  key={`y1-${selectedWall.id}-${selectedWall.y1}`}
+                  className="h-8 text-xs"
+                  onBlur={(e) => handleCoordChange("y1", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCoordChange("y1", (e.target as HTMLInputElement).value); }}
+                />
+              </div>
+            </div>
+
+            <p className="text-xs font-medium text-[var(--muted-foreground)]">End Point</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-[10px] text-[var(--muted-foreground)]">X (ft)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  defaultValue={parseFloat(pxToFt(selectedWall.x2))}
+                  key={`x2-${selectedWall.id}-${selectedWall.x2}`}
+                  className="h-8 text-xs"
+                  onBlur={(e) => handleCoordChange("x2", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCoordChange("x2", (e.target as HTMLInputElement).value); }}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] text-[var(--muted-foreground)]">Y (ft)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  defaultValue={parseFloat(pxToFt(selectedWall.y2))}
+                  key={`y2-${selectedWall.id}-${selectedWall.y2}`}
+                  className="h-8 text-xs"
+                  onBlur={(e) => handleCoordChange("y2", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCoordChange("y2", (e.target as HTMLInputElement).value); }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[var(--muted-foreground)]">Length</span>
@@ -163,7 +232,7 @@ export const PropertiesPanel = () => {
             <div className="flex items-center justify-between">
               <span className="text-xs text-[var(--muted-foreground)]">Angle</span>
               <span className="font-mono text-xs text-[var(--foreground)]">
-                {wallAngle.toFixed(1)}deg
+                {wallAngle.toFixed(1)}°
               </span>
             </div>
           </div>
