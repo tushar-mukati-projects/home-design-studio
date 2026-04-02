@@ -104,6 +104,7 @@ export const restoreVersion = async (designId: string, versionId: string, userId
     where: { id: designId },
     data: {
       canvasData: version.canvasData as Prisma.InputJsonValue,
+      yjsState: null,
     },
     include: {
       rooms: true,
