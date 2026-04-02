@@ -31,7 +31,15 @@ const InvalidateOnChange = (props: Record<string, unknown>) => {
   const { invalidate } = useThree();
   useEffect(() => {
     invalidate();
-  }, [props.showFurniture, props.showRoomColors, props.ambientIntensity, props.floorColor, props.wallColor, props.furnitureColor, invalidate]);
+  }, [
+    props.showFurniture,
+    props.showRoomColors,
+    props.ambientIntensity,
+    props.floorColor,
+    props.wallColor,
+    props.furnitureColor,
+    invalidate,
+  ]);
   return null;
 };
 

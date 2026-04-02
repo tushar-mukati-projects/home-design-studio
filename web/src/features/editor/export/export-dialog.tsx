@@ -100,7 +100,6 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
                 orientation === "landscape" ? "aspect-[4/3]" : "aspect-[3/4]",
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- Data URL preview, not a static asset */}
               <img
                 src={previewUrl}
                 alt="Floor plan preview"

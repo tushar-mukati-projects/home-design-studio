@@ -70,7 +70,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
               </Badge>
             </div>
             <DialogHeader>
-              <DialogTitle className="text-2xl text-white font-semibold">
+              <DialogTitle className="text-2xl font-semibold text-white">
                 {isPro ? "You are on Pro" : "Unlock Pro"}
               </DialogTitle>
               <DialogDescription className="text-white/80">

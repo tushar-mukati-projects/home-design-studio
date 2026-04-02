@@ -19,52 +19,64 @@ type SSEEvent =
   | { type: "error"; message: string }
   | { type: "done" };
 
-export const useDesignChat = () => {
+export const useDesignChat = (designId: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTools, setActiveTools] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const applyAction = useCallback(
-    (actionType: string, payload: Record<string, unknown>) => {
-      const store = useEditorStore.getState();
-      switch (actionType) {
-        case "add_wall":
-          store.addWall(payload as unknown as Wall);
-          break;
-        case "add_room":
-          store.setRooms([...store.rooms, payload as unknown as Room]);
-          break;
-        case "place_furniture":
-          store.addFurniture(payload as unknown as PlacedFurniture);
-          break;
-        case "add_door":
-          store.addDoor(payload as unknown as Door);
-          break;
-        case "add_window":
-          store.addWindow(payload as unknown as Window);
-          break;
-        case "clear_design":
-          store.clearCanvas();
-          break;
+  const applyAction = useCallback((actionType: string, payload: Record<string, unknown>) => {
+    const store = useEditorStore.getState();
+    switch (actionType) {
+      case "add_wall":
+        store.addWall(payload as unknown as Wall);
+        break;
+      case "add_room":
+        store.setRooms([...store.rooms, payload as unknown as Room]);
+        break;
+      case "place_furniture":
+        store.addFurniture(payload as unknown as PlacedFurniture);
+        break;
+      case "add_door":
+        store.addDoor(payload as unknown as Door);
+        break;
+      case "add_window":
+        store.addWindow(payload as unknown as Window);
+        break;
+      case "remove_element": {
+        const { elementType, elementId } = payload as { elementType: string; elementId: string };
+        switch (elementType) {
+          case "wall": store.removeWall(elementId); break;
+          case "room": store.setRooms(store.rooms.filter((r) => r.id !== elementId)); break;
+          case "furniture": store.removeFurniture(elementId); break;
+          case "door": store.removeDoor(elementId); break;
+          case "window": store.removeWindow(elementId); break;
+        }
+        break;
       }
-    },
-    [],
-  );
+      case "clear_design":
+        store.clearCanvas();
+        break;
+    }
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (isLoading || !content.trim()) return;
 
       const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
-      const assistantMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", content: "", toolCalls: [] };
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "",
+        toolCalls: [],
+      };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setIsLoading(true);
       setActiveTools([]);
 
       const token = await getToken();
-      const state = useEditorStore.getState();
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
 
       const controller = new AbortController();
@@ -77,16 +89,7 @@ export const useDesignChat = () => {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             signal: controller.signal,
-            body: JSON.stringify({
-              messages: history,
-              canvasState: {
-                walls: state.walls,
-                rooms: state.rooms,
-                furniture: state.furniture,
-                doors: state.doors,
-                windows: state.windows,
-              },
-            }),
+            body: JSON.stringify({ designId, messages: history }),
           },
         );
 
@@ -151,7 +154,7 @@ export const useDesignChat = () => {
         abortRef.current = null;
       }
     },
-    [isLoading, messages, applyAction],
+    [isLoading, messages, designId, applyAction],
   );
 
   const clearMessages = useCallback(() => setMessages([]), []);

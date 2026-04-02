@@ -105,7 +105,6 @@ export const handleWebhookEvent = async (event: Stripe.Event) => {
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
 
-      // Try metadata first (set via subscription_data.metadata), then fall back to customer lookup
       let userId = subscription.metadata?.userId;
       if (!userId) {
         const customerId =
@@ -179,9 +178,7 @@ export const handleWebhookEvent = async (event: Stripe.Event) => {
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
       const subId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id;
+        typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id;
 
       if (!subId) break;
 

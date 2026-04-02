@@ -7,10 +7,6 @@ import type { PlacedFurniture } from "@/types";
 
 const SCALE = 0.01;
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeDerived(
   base: MeshStandardMaterial,
   lightnessOffset: number,
@@ -65,10 +61,6 @@ const CornerLegs = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// FurnitureModel – composed 3-D models per item type
-// ---------------------------------------------------------------------------
-
 interface FurnitureModelProps {
   itemId: string;
   w: number;
@@ -82,7 +74,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
   const lighter = useMemo(() => makeDerived(material, 0.15, -0.05), [material]);
 
   switch (itemId) {
-    // ── Sofa ──────────────────────────────────────────────────────────────
     case "sofa":
       return (
         <>
@@ -115,7 +106,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Armchair ──────────────────────────────────────────────────────────
     case "armchair":
       return (
         <>
@@ -148,7 +138,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Double Bed ────────────────────────────────────────────────────────
     case "double-bed":
       return (
         <>
@@ -170,7 +159,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Single Bed ────────────────────────────────────────────────────────
     case "single-bed":
       return (
         <>
@@ -189,7 +177,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Dining Table ──────────────────────────────────────────────────────
     case "dining-table":
       return (
         <>
@@ -200,7 +187,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Dining Chair ──────────────────────────────────────────────────────
     case "dining-chair":
       return (
         <>
@@ -222,7 +208,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Coffee Table ──────────────────────────────────────────────────────
     case "coffee-table":
       return (
         <>
@@ -233,7 +218,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── TV Stand ──────────────────────────────────────────────────────────
     case "tv-stand":
       return (
         <>
@@ -246,7 +230,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Wardrobe ──────────────────────────────────────────────────────────
     case "wardrobe":
       return (
         <>
@@ -259,7 +242,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Desk / Office Desk ────────────────────────────────────────────────
     case "desk":
     case "office-desk":
       return (
@@ -279,7 +261,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Bathtub ───────────────────────────────────────────────────────────
     case "bathtub":
       return (
         <>
@@ -298,16 +279,10 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Toilet ────────────────────────────────────────────────────────────
     case "toilet":
       return (
         <>
-          <mesh
-            position={[0, h * 0.6, -d * 0.375]}
-            castShadow
-            receiveShadow
-            material={material}
-          >
+          <mesh position={[0, h * 0.6, -d * 0.375]} castShadow receiveShadow material={material}>
             <boxGeometry args={[w * 0.8, h * 0.4, d * 0.25]} />
           </mesh>
           <Cylinder
@@ -320,7 +295,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Refrigerator ──────────────────────────────────────────────────────
     case "refrigerator":
       return (
         <>
@@ -333,7 +307,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Stove ─────────────────────────────────────────────────────────────
     case "stove": {
       const burnerPositions: [number, number, number][] = [
         [-w * 0.2, h * 0.93, -d * 0.2],
@@ -350,20 +323,13 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
             <boxGeometry args={[w * 1.01, h * 0.03, d * 1.01]} />
           </mesh>
           {burnerPositions.map((pos, i) => (
-            <mesh
-              key={i}
-              position={pos}
-              rotation={[Math.PI / 2, 0, 0]}
-              material={lighter}
-            >
+            <mesh key={i} position={pos} rotation={[Math.PI / 2, 0, 0]} material={lighter}>
               <torusGeometry args={[0.06, 0.008, 8, 24]} />
             </mesh>
           ))}
         </>
       );
     }
-
-    // ── Simpler items with subtle details ─────────────────────────────────
 
     case "nightstand":
       return (
@@ -609,7 +575,6 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
         </>
       );
 
-    // ── Fallback ──────────────────────────────────────────────────────────
     default:
       return (
         <RoundedBox
@@ -625,9 +590,7 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
   }
 };
 
-// ---------------------------------------------------------------------------
 // Main component
-// ---------------------------------------------------------------------------
 
 interface Furniture3DProps {
   placed: PlacedFurniture;
@@ -636,12 +599,7 @@ interface Furniture3DProps {
   furnitureColor?: string;
 }
 
-export const Furniture3D = ({
-  placed,
-  offsetX,
-  offsetZ,
-  furnitureColor,
-}: Furniture3DProps) => {
+export const Furniture3D = ({ placed, offsetX, offsetZ, furnitureColor }: Furniture3DProps) => {
   const item = placed.furnitureItem;
 
   const material = useMemo(

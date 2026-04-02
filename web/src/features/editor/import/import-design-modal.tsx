@@ -24,10 +24,22 @@ interface ImportDesignModalProps {
 
 interface AIDesignResult {
   walls: { x1: number; y1: number; x2: number; y2: number; thickness: number }[];
-  doors: { wallIndex: number; position: number; width: number; type: "single" | "double" | "sliding" }[];
+  doors: {
+    wallIndex: number;
+    position: number;
+    width: number;
+    type: "single" | "double" | "sliding";
+  }[];
   windows: { wallIndex: number; position: number; width: number }[];
   rooms: { name: string; type: string; points: { x: number; y: number }[] }[];
-  furniture: { name: string; x: number; y: number; rotation: number; width: number; height: number }[];
+  furniture: {
+    name: string;
+    x: number;
+    y: number;
+    rotation: number;
+    width: number;
+    height: number;
+  }[];
   canvasWidth: number;
   canvasHeight: number;
 }
@@ -286,9 +298,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
               );
               setPhase("success");
             }
-          } catch {
-            // skip malformed SSE lines
-          }
+          } catch {}
         }
       }
     } catch (err) {
@@ -317,7 +327,6 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
           transition={{ duration: 0.2, ease: "easeOut" }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
@@ -340,7 +349,6 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
             </button>
           </div>
 
-          {/* Body */}
           <div className="px-6 py-5">
             {phase === "upload" && (
               <div className="space-y-4">
@@ -369,7 +377,6 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                 ) : (
                   <div className="space-y-3">
                     <div className="relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={previewUrl!}
                         alt="Selected image"
@@ -421,9 +428,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                   <p className="text-sm font-medium text-[var(--foreground)]">
                     AI is analyzing your image
                   </p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    {statusMessage}
-                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">{statusMessage}</p>
                 </div>
               </div>
             )}
@@ -437,9 +442,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                   <p className="text-sm font-semibold text-[var(--foreground)]">
                     Design imported successfully!
                   </p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    {resultSummary}
-                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">{resultSummary}</p>
                 </div>
               </div>
             )}
@@ -450,18 +453,13 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                   <AlertCircle className="h-8 w-8 text-red-500" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">
-                    Analysis failed
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    {errorMessage}
-                  </p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Analysis failed</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">{errorMessage}</p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] px-6 py-4">
             {phase === "upload" && (
               <>

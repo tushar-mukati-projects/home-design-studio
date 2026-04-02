@@ -4,6 +4,12 @@ import { config } from "../config";
 import { prisma } from "../db";
 import { logger } from "../logger";
 
+if (!config.openaiApiKey) {
+  throw new Error(
+    "Missing OPENAI_API_KEY. Set OPENAI_API_KEY in the environment or in server/.env (see server/.env.example).",
+  );
+}
+
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
 interface FurnishRequest {

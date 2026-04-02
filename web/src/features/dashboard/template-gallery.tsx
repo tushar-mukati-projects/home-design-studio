@@ -203,7 +203,12 @@ export const TemplateGallery = ({
   }, [templates, activeCategory]);
 
   const handleUseTemplate = async (template: DesignTemplate) => {
-    if (designLimit !== null && designLimit !== undefined && isFinite(designLimit) && designCount >= designLimit) {
+    if (
+      designLimit !== null &&
+      designLimit !== undefined &&
+      isFinite(designLimit) &&
+      designCount >= designLimit
+    ) {
       onPlanLimitReached?.();
       return;
     }
