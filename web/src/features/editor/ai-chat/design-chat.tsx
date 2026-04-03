@@ -41,6 +41,11 @@ const TOOL_CONFIG: Record<string, { label: string; icon: React.ReactNode; color:
     icon: <Database className="size-3" />,
     color: "text-blue-600 bg-blue-50 border-blue-200",
   },
+  set_canvas: {
+    label: "Building layout",
+    icon: <PencilRuler className="size-3" />,
+    color: "text-violet-600 bg-violet-50 border-violet-200",
+  },
   edit_canvas: {
     label: "Editing canvas",
     icon: <PencilRuler className="size-3" />,
