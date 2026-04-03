@@ -73,6 +73,17 @@ export const useDesignChat = (designId: string) => {
       case "clear_design":
         store.clearCanvas();
         break;
+      case "set_canvas":
+        store.setCanvas(
+          payload as {
+            walls: Wall[];
+            rooms: Room[];
+            furniture: PlacedFurniture[];
+            doors: Door[];
+            windows: Window[];
+          },
+        );
+        break;
     }
   }, []);
 

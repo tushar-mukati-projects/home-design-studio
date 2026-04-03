@@ -63,6 +63,13 @@ interface EditorState {
   updateFurniture: (id: string, updates: Partial<PlacedFurniture>) => void;
 
   setRooms: (rooms: Room[]) => void;
+  setCanvas: (state: {
+    walls: Wall[];
+    rooms: Room[];
+    furniture: PlacedFurniture[];
+    doors: Door[];
+    windows: Window[];
+  }) => void;
 
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
@@ -258,6 +265,23 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   setRooms: (rooms) => set({ rooms }),
+
+  setCanvas: (newState) => {
+    const state = get();
+    const snapshot = createSnapshot(state);
+    set({
+      walls: newState.walls,
+      rooms: newState.rooms,
+      furniture: newState.furniture,
+      doors: newState.doors,
+      windows: newState.windows,
+      selectedElementId: null,
+      isDrawing: false,
+      currentWallStart: null,
+      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
+      future: [],
+    });
+  },
 
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
 

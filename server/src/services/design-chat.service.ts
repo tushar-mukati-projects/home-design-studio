@@ -258,8 +258,162 @@ export const designChatStream = async (
       },
     }),
 
+    set_canvas: tool({
+      description: `Replace the ENTIRE canvas with a new complete layout in ONE atomic call. Use this for any new design, full redesign, multi-room layout, or "start over" request. Plan ALL rooms and furniture positions before calling — this replaces everything at once.`,
+      inputSchema: z.object({
+        walls: z
+          .array(
+            z.object({
+              x1: z.number(),
+              y1: z.number(),
+              x2: z.number(),
+              y2: z.number(),
+              thickness: z.number().optional(),
+            }),
+          )
+          .default([]),
+        rooms: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: z.enum(ROOM_TYPES),
+              x: z.number(),
+              y: z.number(),
+              width: z.number(),
+              height: z.number(),
+            }),
+          )
+          .default([]),
+        furniture: z
+          .array(
+            z.object({
+              furnitureId: z
+                .string()
+                .describe("Exact UUID from fetch_canvas catalog — never invent"),
+              x: z.number().describe("Top-left X of item"),
+              y: z.number().describe("Top-left Y of item"),
+              rotation: z.number().optional().describe("0, 90, 180, or 270"),
+            }),
+          )
+          .default([]),
+        doors: z
+          .array(
+            z.object({
+              wallIndex: z.number().int().describe("0-based index into walls array above"),
+              position: z.number().min(0).max(1).describe("0.0 = start, 1.0 = end of wall"),
+              type: z.enum(["single", "double", "sliding"]).optional(),
+            }),
+          )
+          .default([]),
+        windows: z
+          .array(
+            z.object({
+              wallIndex: z.number().int(),
+              position: z.number().min(0).max(1),
+              width: z.number().optional(),
+            }),
+          )
+          .default([]),
+      }),
+      execute: async (params): Promise<ToolResult> => {
+        if (!designFetched) {
+          return { summary: "Call fetch_canvas first to load the furniture catalog." };
+        }
+
+        const invalidIds: string[] = [];
+        const placedFurniture: PlacedFurniture[] = [];
+
+        for (const f of params.furniture) {
+          const item = availableFurnitureItems.find((fi) => fi.id === f.furnitureId);
+          if (!item) {
+            invalidIds.push(f.furnitureId);
+            continue;
+          }
+          placedFurniture.push({
+            id: randomUUID(),
+            furnitureItemId: item.id,
+            furnitureItem: item,
+            x: f.x,
+            y: f.y,
+            rotation: f.rotation ?? 0,
+            scaleX: 1,
+            scaleY: 1,
+          });
+        }
+
+        if (invalidIds.length > 0) {
+          return {
+            summary: `Invalid furniture IDs: ${invalidIds.join(", ")}. Call fetch_canvas to get valid UUIDs.`,
+          };
+        }
+
+        const newWalls: Wall[] = params.walls.map((w) => ({
+          id: randomUUID(),
+          x1: w.x1,
+          y1: w.y1,
+          x2: w.x2,
+          y2: w.y2,
+          thickness: w.thickness ?? 12,
+          color: "#52525b",
+        }));
+
+        const newRooms: Room[] = params.rooms.map((r) => ({
+          id: randomUUID(),
+          name: r.name,
+          type: r.type,
+          color: ROOM_COLORS[r.type] ?? ROOM_COLORS.generic,
+          points: [
+            { x: r.x, y: r.y },
+            { x: r.x + r.width, y: r.y },
+            { x: r.x + r.width, y: r.y + r.height },
+            { x: r.x, y: r.y + r.height },
+          ],
+          area: r.width * r.height,
+        }));
+
+        const newDoors: Door[] = params.doors
+          .filter((d) => newWalls[d.wallIndex])
+          .map((d) => ({
+            id: randomUUID(),
+            wallId: newWalls[d.wallIndex].id,
+            position: d.position,
+            width: 80,
+            type: d.type ?? "single",
+          }));
+
+        const newWindows: Win[] = params.windows
+          .filter((w) => newWalls[w.wallIndex])
+          .map((w) => ({
+            id: randomUUID(),
+            wallId: newWalls[w.wallIndex].id,
+            position: w.position,
+            width: w.width ?? 100,
+          }));
+
+        canvasState.walls = newWalls;
+        canvasState.rooms = newRooms;
+        canvasState.furniture = placedFurniture;
+        canvasState.doors = newDoors;
+        canvasState.windows = newWindows;
+
+        return {
+          summary: `Canvas set: ${newWalls.length} walls, ${newRooms.length} rooms, ${placedFurniture.length} furniture, ${newDoors.length} doors, ${newWindows.length} windows.`,
+          action: {
+            actionType: "set_canvas",
+            payload: {
+              walls: newWalls,
+              rooms: newRooms,
+              furniture: placedFurniture,
+              doors: newDoors,
+              windows: newWindows,
+            },
+          },
+        };
+      },
+    }),
+
     edit_canvas: tool({
-      description: `Apply a single edit operation to the canvas. Call multiple times for multiple changes. Operations:
+      description: `Apply a single targeted edit to an existing canvas. Use for small changes only (add/remove one element). For full redesigns or multi-element layouts, use set_canvas instead. Operations:
 - add_wall: x1, y1, x2, y2 required; thickness optional (default 12)
 - add_room: name, roomType, x, y, width, height required
 - place_furniture: furnitureId (UUID from fetch_canvas catalog), x, y required; rotation optional (0/90/180/270)
@@ -580,24 +734,99 @@ export const designChatStream = async (
     }),
   };
 
-  const system = `You are an AI assistant for a 2D home design canvas editor. You build and modify floor plans by calling tools.
+  const system = `You are an AI assistant for a 2D home design canvas editor. You build and modify 2D floor plans using tools.
 
-WORKFLOW — follow in order every turn:
-1. Call fetch_canvas — loads the design state AND the furniture catalog with valid UUIDs
-2. Plan your edits based on what you see
-3. Call edit_canvas one or more times to apply each change (updates the canvas live)
-4. Call review_canvas if you need to verify positions or get element IDs
-5. Call save_canvas — persists everything to the database
-6. Write a short, friendly summary of what was done
+## TOOLS
+- fetch_canvas   → ALWAYS call first. Loads canvas state + furniture catalog with valid UUIDs.
+- set_canvas     → Replace ENTIRE canvas in ONE call. Use for new designs, full rebuilds, "start over".
+- edit_canvas    → Add or remove ONE element. Use ONLY for tiny tweaks (≤2 calls per turn).
+- review_canvas  → Inspect exact positions and IDs. Use before targeted removals.
+- save_canvas    → Persist to DB. ALWAYS call last.
 
-CANVAS RULES:
-- Default canvas is 800×600px. Scale: ~30px per foot
-- Typical sizes: living room 350×300px, bedroom 300×300px, kitchen 250×250px, bathroom 180×180px
-- Build walls first as a closed rectangle, then add a matching room polygon
-- Wall thickness: 12px, color #52525b
-- Place furniture centered inside rooms with 30–50px margin from walls
-- For place_furniture, furnitureId MUST be a UUID from the fetch_canvas catalog — never invent an ID
-- You may call edit_canvas up to 20 times per turn for complex layouts`;
+## WORKFLOW (every turn)
+New/major design:  fetch_canvas → set_canvas → save_canvas       (3 steps)
+Small tweak:       fetch_canvas → edit_canvas → save_canvas       (3 steps)
+
+---
+
+## STEP 1 — PLAN YOUR GRID BEFORE WRITING ANY COORDINATES
+
+Count total rooms N. Choose rows/cols:
+  N=1 → rows=1, cols=1
+  N=2 → rows=1, cols=2
+  N=3 → rows=1, cols=3
+  N=4 → rows=2, cols=2
+  N=5 → rows=2, cols=3  (5th room at row=1,col=1 — last slot stays empty)
+  N=6 → rows=2, cols=3
+  N=7–9 → rows=3, cols=3
+
+Then compute ROOM dimensions (MARGIN=40, GAP=25):
+  ROOM_W = floor((800 - 2×MARGIN - (cols-1)×GAP) / cols)
+  ROOM_H = floor((600 - 2×MARGIN - (rows-1)×GAP) / rows)
+
+Position of room at (row r, col c) — both 0-indexed:
+  room_x = MARGIN + c × (ROOM_W + GAP)
+  room_y = MARGIN + r × (ROOM_H + GAP)
+
+EXAMPLE — 5 office rooms (rows=2, cols=3):
+  MARGIN=40, GAP=25, cols=3, rows=2
+  ROOM_W = floor((800-80-50)/3) = floor(670/3) = 223
+  ROOM_H = floor((600-80-25)/2) = floor(495/2) = 247
+  Room1 (r=0,c=0): x=40,  y=40
+  Room2 (r=0,c=1): x=288, y=40
+  Room3 (r=0,c=2): x=536, y=40
+  Room4 (r=1,c=0): x=40,  y=312
+  Room5 (r=1,c=1): x=288, y=312
+
+---
+
+## STEP 2 — WALLS (4 segments per room)
+
+For each room at (rx, ry) with size (ROOM_W, ROOM_H):
+  Top:    (rx,         ry)         → (rx+ROOM_W, ry)
+  Right:  (rx+ROOM_W,  ry)         → (rx+ROOM_W, ry+ROOM_H)
+  Bottom: (rx+ROOM_W,  ry+ROOM_H)  → (rx,        ry+ROOM_H)
+  Left:   (rx,         ry+ROOM_H)  → (rx,        ry)
+
+---
+
+## STEP 3 — FURNITURE (per room, after computing room position)
+
+PAD = 20 (minimum px from room edge)
+
+A) CHECK FIT first:
+   Item (fw×fh) fits in room (ROOM_W×ROOM_H) if:
+     fw ≤ ROOM_W - 2×PAD   AND   fh ≤ ROOM_H - 2×PAD
+   If it does NOT fit → SKIP IT, mention it in response.
+
+B) COMPUTE POSITION (furniture top-left corner):
+   Centered in room:     x = rx + floor((ROOM_W - fw) / 2),  y = ry + floor((ROOM_H - fh) / 2)
+   Against top wall:     y = ry + PAD
+   Against bottom wall:  y = ry + ROOM_H - fh - PAD
+   Against left wall:    x = rx + PAD
+   Against right wall:   x = rx + ROOM_W - fw - PAD
+   Mix combinations freely (e.g. top-left corner: x=rx+PAD, y=ry+PAD)
+
+C) ANTI-OVERLAP (15px clearance between items in same room):
+   Items A(ax,ay,aw,ah) and B(bx,by,bw,bh) overlap if ALL 4 are true:
+     ax < bx+bw+15  AND  bx < ax+aw+15  AND  ay < by+bh+15  AND  by < ay+ah+15
+   If overlap: shift new item down → new_y = existing_y + existing_h + 15. Re-check.
+   If still overlaps after shifting down: shift right → new_x = existing_x + existing_w + 15.
+   If still can't fit after both shifts → SKIP IT.
+
+EXAMPLE — Office room at (rx=40, ry=40, ROOM_W=223, ROOM_H=247):
+  Office Desk (140w×70h): fits? 140≤183✓, 70≤207✓
+    → top-center: x=40+floor((223-140)/2)=40+41=81, y=40+PAD=60
+  Office Chair (60w×60h): fits? 60≤183✓, 60≤207✓
+    → centered below desk: y=60+70+15=145, x=40+floor((223-60)/2)=40+81=121
+    overlap with desk? 121<81+140+15=236✓, 81<121+60+15=196✓, 145<60+70+15=145? (145<145 is false) ✓ no overlap
+
+---
+
+## FURNITURE IDs
+- ALWAYS use the exact UUID from the fetch_canvas catalog.
+- Copy UUIDs character-for-character — never invent or guess.
+- If set_canvas returns "Invalid furniture ID" → call fetch_canvas again, copy correct UUID.`;
 
   try {
     const result = streamText({

@@ -68,7 +68,7 @@ export const RoomLayer = memo(() => {
               y={center.y + 4}
               width={100}
               align="center"
-              text={`${room.area.toFixed(1)} sq ft`}
+              text={`${(room.area / 900).toFixed(1)} sq ft`}
               fontSize={11 / zoom}
               fontFamily="Inter, sans-serif"
               fill="#6b6b78"
