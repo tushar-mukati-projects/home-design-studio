@@ -84,7 +84,11 @@ export const EditorToolbar = ({
         </Tooltip>
 
         <div className="hidden flex-col sm:flex">
-          {isEditingName ? (
+          {!canEdit ? (
+            <span className="max-w-[120px] truncate text-sm font-semibold text-[var(--foreground)] md:max-w-[200px]">
+              {designName || "Untitled Design"}
+            </span>
+          ) : isEditingName ? (
             <input
               ref={inputRef}
               value={nameValue}

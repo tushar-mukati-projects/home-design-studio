@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -13,7 +13,7 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "./firebase";
-import { clearJwtCache } from "./axios";
+import { getQueryClient } from "./query-client";
 
 interface AuthContextValue {
   user: User | null;
@@ -26,23 +26,20 @@ interface AuthContextValue {
   getIdToken: () => Promise<string>;
 }
 
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  loading: true,
-  signIn: async () => {},
-  signUp: async () => {},
-  signInWithGoogle: async () => {},
-  signInWithGithub: async () => {},
-  signOut: async () => {},
-  getIdToken: async () => "",
-});
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const prevUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const newUid = firebaseUser?.uid ?? null;
+      if (prevUidRef.current !== null && prevUidRef.current !== newUid) {
+        getQueryClient().clear();
+      }
+      prevUidRef.current = newUid;
       setUser(firebaseUser);
       setLoading(false);
     });
@@ -68,11 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleSignOut = useCallback(async () => {
     await firebaseSignOut(auth);
-    clearJwtCache();
+    getQueryClient().clear();
   }, []);
 
   const getIdToken = useCallback(async () => {
-    if (!user) return "";
+    if (!user) throw new Error("Not authenticated");
     return user.getIdToken();
   }, [user]);
 

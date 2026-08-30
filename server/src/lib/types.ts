@@ -2,7 +2,7 @@ import type { Request } from "express";
 
 export interface AuthInfo {
   userId: string;
-  firebaseUid: string;
+  authSub: string;
   email?: string;
 }
 

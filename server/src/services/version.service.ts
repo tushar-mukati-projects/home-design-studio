@@ -1,42 +1,42 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../db";
+import { prisma } from "../lib/db";
+import { applyToCollabDoc, readCollabCanvas } from "../collaboration/hocuspocus";
+import { serializeDesign } from "../lib/serializers";
+import { editableDesignWhere, readableDesignWhere } from "../lib/design-access";
 
-export const createVersion = async (designId: string, userId: string, name?: string) => {
+export const createVersion = async (
+  designId: string,
+  userId: string,
+  name?: string,
+  email?: string,
+) => {
   const design = await prisma.design.findFirst({
-    where: {
-      id: designId,
-      OR: [{ userId }, { shares: { some: { sharedWithId: userId, permission: "readwrite" } } }],
-    },
-    include: {
-      rooms: true,
-      furniture: {
-        include: { furnitureItem: true },
-      },
-    },
+    where: editableDesignWhere(designId, userId, email),
+    select: { canvasData: true },
   });
 
   if (!design) return null;
+
+  const live = await readCollabCanvas(designId);
+  const canvasData = live
+    ? { ...((design.canvasData ?? {}) as Record<string, unknown>), ...live }
+    : (design.canvasData ?? {});
 
   const version = await prisma.designVersion.create({
     data: {
       designId,
       name: name || "Auto-save",
-      canvasData: design.canvasData as Prisma.InputJsonValue,
-      rooms: design.rooms as unknown as Prisma.InputJsonValue,
-      furniture: design.furniture as unknown as Prisma.InputJsonValue,
-      createdBy: userId,
+      canvasData: canvasData as Prisma.InputJsonValue,
+      createdById: userId,
     },
   });
 
   return version;
 };
 
-export const listVersions = async (designId: string, userId: string) => {
+export const listVersions = async (designId: string, userId: string, email?: string) => {
   const design = await prisma.design.findFirst({
-    where: {
-      id: designId,
-      OR: [{ userId }, { shares: { some: { sharedWithId: userId } } }],
-    },
+    where: readableDesignWhere(designId, userId, email),
   });
 
   if (!design) return null;
@@ -49,12 +49,14 @@ export const listVersions = async (designId: string, userId: string) => {
   return versions;
 };
 
-export const restoreVersion = async (designId: string, versionId: string, userId: string) => {
+export const restoreVersion = async (
+  designId: string,
+  versionId: string,
+  userId: string,
+  email?: string,
+) => {
   const design = await prisma.design.findFirst({
-    where: {
-      id: designId,
-      OR: [{ userId }, { shares: { some: { sharedWithId: userId, permission: "readwrite" } } }],
-    },
+    where: editableDesignWhere(designId, userId, email),
   });
 
   if (!design) return null;
@@ -65,54 +67,12 @@ export const restoreVersion = async (designId: string, versionId: string, userId
 
   if (!version) return null;
 
-  await prisma.room.deleteMany({ where: { designId } });
-  await prisma.placedFurniture.deleteMany({ where: { designId } });
+  const canvasData = (version.canvasData ?? {}) as Record<string, unknown>;
 
-  const rooms = version.rooms as Array<Record<string, unknown>>;
-  if (rooms.length > 0) {
-    await prisma.room.createMany({
-      data: rooms.map((r) => ({
-        id: r.id as string,
-        name: r.name as string,
-        type: r.type as string,
-        color: r.color as string,
-        points: r.points as Prisma.InputJsonValue,
-        area: r.area as number,
-        designId,
-      })),
-    });
-  }
+  await applyToCollabDoc(designId, { canvas: canvasData });
 
-  const furniture = version.furniture as Array<Record<string, unknown>>;
-  if (furniture.length > 0) {
-    await prisma.placedFurniture.createMany({
-      data: furniture.map((f) => ({
-        id: f.id as string,
-        x: f.x as number,
-        y: f.y as number,
-        rotation: f.rotation as number,
-        scaleX: (f.scaleX as number) ?? 1,
-        scaleY: (f.scaleY as number) ?? 1,
-        furnitureItemId: f.furnitureItemId as string,
-        roomId: (f.roomId as string) ?? null,
-        designId,
-      })),
-    });
-  }
-
-  const updated = await prisma.design.update({
-    where: { id: designId },
-    data: {
-      canvasData: version.canvasData as Prisma.InputJsonValue,
-      yjsState: null,
-    },
-    include: {
-      rooms: true,
-      furniture: { include: { furnitureItem: true } },
-    },
-  });
-
-  return updated;
+  const updated = await prisma.design.findUnique({ where: { id: designId } });
+  return updated ? serializeDesign(updated) : null;
 };
 
 export const deleteVersion = async (versionId: string, userId: string) => {
@@ -123,9 +83,7 @@ export const deleteVersion = async (versionId: string, userId: string) => {
 
   if (!version) return false;
 
-  const hasAccess = version.design.userId === userId || version.createdBy === userId;
-
-  if (!hasAccess) return false;
+  if (version.design.userId !== userId) return false;
 
   await prisma.designVersion.delete({ where: { id: versionId } });
   return true;

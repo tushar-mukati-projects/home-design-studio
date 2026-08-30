@@ -31,6 +31,7 @@ export const DoorWindowLayer = memo(function DoorWindowLayer() {
   const windows = useEditorStore((s) => s.windows);
   const zoom = useEditorStore((s) => s.zoom);
   const activeTool = useEditorStore((s) => s.activeTool);
+  const canEdit = useEditorStore((s) => s.canEdit);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
   const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
   const updateDoor = useEditorStore((s) => s.updateDoor);
@@ -88,7 +89,7 @@ export const DoorWindowLayer = memo(function DoorWindowLayer() {
             x={pos.x}
             y={pos.y}
             rotation={angleDeg}
-            draggable={activeTool === "select"}
+            draggable={canEdit && activeTool === "select"}
             onClick={() => {
               if (activeTool === "select") setSelectedElement(door.id);
             }}
@@ -218,7 +219,7 @@ export const DoorWindowLayer = memo(function DoorWindowLayer() {
             x={pos.x}
             y={pos.y}
             rotation={angleDeg}
-            draggable={activeTool === "select"}
+            draggable={canEdit && activeTool === "select"}
             onClick={() => {
               if (activeTool === "select") setSelectedElement(win.id);
             }}

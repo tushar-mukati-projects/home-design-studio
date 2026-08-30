@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import type { Response } from "express";
-import { config } from "../config";
-import { prisma } from "../db";
-import { logger } from "../logger";
+import { config } from "../lib/config";
+import { prisma } from "../lib/db";
+import { logger } from "../lib/logger";
 
 if (!config.openaiApiKey) {
   throw new Error(
@@ -72,15 +72,16 @@ export const furnishRoom = async (req: FurnishRequest, res: Response) => {
 
   try {
     const categoryMap: Record<string, string> = {
-      living_room: "living_room",
+      living_room: "living-room",
       bedroom: "bedroom",
       kitchen: "kitchen",
       bathroom: "bathroom",
       office: "office",
-      generic: "living_room",
+      dining: "living-room",
+      generic: "living-room",
     };
 
-    const category = categoryMap[req.roomType] || "living_room";
+    const category = categoryMap[req.roomType] || "living-room";
 
     const availableItems = await prisma.furnitureItem.findMany({
       where: { category },

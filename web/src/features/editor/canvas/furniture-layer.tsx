@@ -6,16 +6,25 @@ import { useEditorStore } from "@/stores/editor-store";
 import { FurnitureShape } from "./furniture-shape";
 import type Konva from "konva";
 
+function textColorFor(hex: string): string {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return "#1a1a2e";
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1a1a2e" : "#f0f0f4";
+}
+
 export const FurnitureLayer = memo(function FurnitureLayer() {
   const furniture = useEditorStore((s) => s.furniture);
   const activeTool = useEditorStore((s) => s.activeTool);
+  const canEdit = useEditorStore((s) => s.canEdit);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
   const zoom = useEditorStore((s) => s.zoom);
   const updateFurniture = useEditorStore((s) => s.updateFurniture);
   const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
   const snapPoint = useEditorStore((s) => s.snapPoint);
   const snapToGrid = useEditorStore((s) => s.snapToGrid);
-  const gridSize = useEditorStore((s) => s.gridSize);
 
   const transformerRef = useRef<Konva.Transformer>(null);
   const shapeRefs = useRef<Map<string, Konva.Group>>(new Map());
@@ -61,7 +70,7 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
             rotation={piece.rotation}
             scaleX={piece.scaleX}
             scaleY={piece.scaleY}
-            draggable={activeTool === "select"}
+            draggable={canEdit && activeTool === "select"}
             onClick={() => {
               if (activeTool === "select") {
                 setSelectedElement(piece.id);
@@ -95,10 +104,11 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
                 scaleX: scX,
                 scaleY: scY,
               });
+              node.position(pos);
             }}
           >
             <FurnitureShape
-              furnitureId={piece.furnitureItem.id}
+              furnitureId={piece.furnitureItem.icon ?? piece.furnitureItem.id}
               width={fw}
               height={fh}
               color={piece.furnitureItem.color || "#d4d4d8"}
@@ -108,7 +118,7 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               height={fh}
               offsetX={fw / 2}
               offsetY={fh / 2}
-              stroke={isSelected ? "#52525b" : "#b4b4bc"}
+              stroke={isSelected ? "#3a3a4a" : "#8a8a9480"}
               strokeWidth={isSelected ? 2 / zoom : 1 / zoom}
               shadowColor={isSelected ? "#52525b" : undefined}
               shadowBlur={isSelected ? 10 : 0}
@@ -117,13 +127,13 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
               listening={false}
             />
             <Rect
-              width={fw * 0.4}
+              width={fw * 0.35}
               height={Math.max(3, 4 / zoom)}
-              offsetX={(fw * 0.4) / 2}
+              offsetX={(fw * 0.35) / 2}
               offsetY={fh / 2}
               fill="#52525b"
               cornerRadius={1}
-              opacity={0.6}
+              opacity={0.7}
               listening={false}
             />
             {fw > 60 && fh > 40 && (
@@ -133,9 +143,18 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
                 offsetX={fw / 2}
                 offsetY={fh / 2}
                 text={piece.furnitureItem.name}
-                fontSize={Math.min(10, fw / 8, fh / 5) / Math.max(piece.scaleX, 0.5)}
+                fontSize={Math.min(11, fw / 7, fh / 4.5) / Math.max(piece.scaleX, 0.5)}
                 fontFamily="Inter, sans-serif"
-                fill="#3a3a4a"
+                fontStyle="600"
+                fill={textColorFor(piece.furnitureItem.color || "#d4d4d8")}
+                shadowColor={
+                  textColorFor(piece.furnitureItem.color || "#d4d4d8") === "#f0f0f4"
+                    ? "#00000080"
+                    : "#ffffff60"
+                }
+                shadowBlur={2}
+                shadowOffsetX={0}
+                shadowOffsetY={0.5}
                 align="center"
                 verticalAlign="middle"
                 listening={false}
@@ -159,7 +178,7 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
         anchorCornerRadius={2}
         rotateAnchorOffset={25}
         rotationSnaps={snapToGrid ? [0, 45, 90, 135, 180, 225, 270, 315] : []}
-        rotationSnapTolerance={snapToGrid ? gridSize / 2 : 0}
+        rotationSnapTolerance={snapToGrid ? 6 : 0}
         boundBoxFunc={(oldBox, newBox) => {
           if (newBox.width < 10 || newBox.height < 10) {
             return oldBox;

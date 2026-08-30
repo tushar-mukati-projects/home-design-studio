@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
-import { validate } from "../middleware/validate";
+import { validate, responds } from "../middleware/validate";
+import { asyncHandler } from "../middleware/async-handler";
+import {
+  designListResponse,
+  designResponse,
+  designWithPermissionResponse,
+  successResponse,
+} from "../schemas/response.schema";
 import { checkDesignLimit } from "../middleware/plan-gate";
 import {
   createDesignSchema,
@@ -13,16 +20,41 @@ import * as designController from "../controllers/design.controller";
 
 const router = Router();
 
-router.get("/", requireAuth, validate(listDesignsSchema), designController.list);
+router.get(
+  "/",
+  requireAuth,
+  validate(listDesignsSchema),
+  responds(designListResponse),
+  asyncHandler(designController.list),
+);
 router.post(
   "/",
   requireAuth,
-  checkDesignLimit,
+  asyncHandler(checkDesignLimit),
   validate(createDesignSchema),
-  designController.create,
+  responds(designResponse),
+  asyncHandler(designController.create),
 );
-router.get("/:id", requireAuth, validate(getDesignSchema), designController.get);
-router.patch("/:id", requireAuth, validate(updateDesignSchema), designController.update);
-router.delete("/:id", requireAuth, validate(deleteDesignSchema), designController.remove);
+router.get(
+  "/:id",
+  requireAuth,
+  validate(getDesignSchema),
+  responds(designWithPermissionResponse),
+  asyncHandler(designController.get),
+);
+router.patch(
+  "/:id",
+  requireAuth,
+  validate(updateDesignSchema),
+  responds(designResponse),
+  asyncHandler(designController.update),
+);
+router.delete(
+  "/:id",
+  requireAuth,
+  validate(deleteDesignSchema),
+  responds(successResponse),
+  asyncHandler(designController.remove),
+);
 
 export { router as designRouter };

@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { Response } from "express";
 import { randomUUID } from "crypto";
 import { getDesignById, updateDesign } from "./design.service";
-import { prisma } from "../db";
+import { prisma } from "../lib/db";
+import { logger } from "../lib/logger";
 
 const ROOM_COLORS: Record<string, string> = {
   living_room: "#d4d4d8",
@@ -95,92 +96,6 @@ interface ChatMessage {
 
 type ToolResult = { summary: string; action?: { actionType: string; payload: object } };
 
-const DEFAULT_FURNITURE = [
-  { name: "Sofa", category: "living_room", width: 200, height: 90, depth: 85, color: "#9ca3af" },
-  { name: "Armchair", category: "living_room", width: 85, height: 85, depth: 80, color: "#9ca3af" },
-  {
-    name: "Coffee Table",
-    category: "living_room",
-    width: 120,
-    height: 60,
-    depth: 45,
-    color: "#a1a1aa",
-  },
-  {
-    name: "TV Stand",
-    category: "living_room",
-    width: 150,
-    height: 40,
-    depth: 50,
-    color: "#71717a",
-  },
-  {
-    name: "Bookshelf",
-    category: "living_room",
-    width: 80,
-    height: 30,
-    depth: 200,
-    color: "#a1a1aa",
-  },
-  {
-    name: "Floor Lamp",
-    category: "living_room",
-    width: 30,
-    height: 30,
-    depth: 150,
-    color: "#d4d4d8",
-  },
-  { name: "Double Bed", category: "bedroom", width: 200, height: 160, depth: 45, color: "#b4b4bc" },
-  { name: "Single Bed", category: "bedroom", width: 200, height: 90, depth: 45, color: "#b4b4bc" },
-  { name: "Nightstand", category: "bedroom", width: 50, height: 40, depth: 55, color: "#a1a1aa" },
-  { name: "Wardrobe", category: "bedroom", width: 120, height: 60, depth: 200, color: "#71717a" },
-  { name: "Dresser", category: "bedroom", width: 100, height: 45, depth: 80, color: "#a1a1aa" },
-  { name: "Desk", category: "bedroom", width: 120, height: 60, depth: 75, color: "#a1a1aa" },
-  { name: "Dining Table", category: "dining", width: 160, height: 90, depth: 75, color: "#a1a1aa" },
-  { name: "Dining Chair", category: "dining", width: 45, height: 45, depth: 90, color: "#9ca3af" },
-  {
-    name: "Kitchen Island",
-    category: "kitchen",
-    width: 120,
-    height: 80,
-    depth: 90,
-    color: "#d4d4d8",
-  },
-  {
-    name: "Refrigerator",
-    category: "kitchen",
-    width: 70,
-    height: 70,
-    depth: 180,
-    color: "#e4e4e7",
-  },
-  { name: "Stove", category: "kitchen", width: 60, height: 60, depth: 85, color: "#52525b" },
-  { name: "Bathtub", category: "bathroom", width: 170, height: 75, depth: 60, color: "#f4f4f5" },
-  { name: "Toilet", category: "bathroom", width: 40, height: 65, depth: 40, color: "#f4f4f5" },
-  { name: "Sink", category: "bathroom", width: 60, height: 45, depth: 85, color: "#f4f4f5" },
-  { name: "Shower", category: "bathroom", width: 90, height: 90, depth: 200, color: "#e4e4e7" },
-  { name: "Office Desk", category: "office", width: 140, height: 70, depth: 75, color: "#a1a1aa" },
-  { name: "Office Chair", category: "office", width: 60, height: 60, depth: 110, color: "#52525b" },
-  {
-    name: "Filing Cabinet",
-    category: "office",
-    width: 40,
-    height: 50,
-    depth: 70,
-    color: "#d4d4d8",
-  },
-  { name: "Bookcase", category: "office", width: 90, height: 35, depth: 180, color: "#a1a1aa" },
-];
-
-async function ensureFurnitureSeeded(): Promise<void> {
-  const count = await prisma.furnitureItem.count();
-  if (count > 0) return;
-  await prisma.furnitureItem.createMany({
-    data: DEFAULT_FURNITURE.map((f) => ({ ...f, isDefault: true })),
-    skipDuplicates: true,
-  });
-}
-
 export const designChatStream = async (
   designId: string,
   userId: string,
@@ -194,8 +109,9 @@ export const designChatStream = async (
   res.flushHeaders();
 
   const canvasState: CanvasState = { walls: [], rooms: [], furniture: [], doors: [], windows: [] };
-  let viewportState = { gridSize: 20, zoom: 1, panX: 0, panY: 0 };
   let designFetched = false;
+
+  let canvasDirty = false;
   let availableFurnitureItems: FurnitureItem[] = [];
 
   const tools = {
@@ -204,13 +120,15 @@ export const designChatStream = async (
         "Fetch the complete canvas state from the database — walls, rooms, placed furniture, doors, and windows — plus all available furniture items that can be placed. ALWAYS call this first before making any changes so you know the current state and valid furniture IDs.",
       inputSchema: z.object({}),
       execute: async (): Promise<ToolResult> => {
-        await ensureFurnitureSeeded();
         const [design, dbFurnitureItems] = await Promise.all([
           getDesignById(designId, userId, email),
           prisma.furnitureItem.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
         ]);
 
         if (!design) return { summary: "Design not found or access denied." };
+        if (design.permission === "readonly") {
+          return { summary: "You have view-only access to this design, so it cannot be changed." };
+        }
 
         availableFurnitureItems = dbFurnitureItems;
 
@@ -218,15 +136,10 @@ export const designChatStream = async (
         canvasState.walls = (cd.walls as Wall[]) ?? [];
         canvasState.doors = (cd.doors as Door[]) ?? [];
         canvasState.windows = (cd.windows as Win[]) ?? [];
-        canvasState.rooms = (design.rooms as unknown as Room[]) ?? [];
-        canvasState.furniture = (design.furniture as unknown as PlacedFurniture[]) ?? [];
-        viewportState = {
-          gridSize: (cd.gridSize as number) ?? 20,
-          zoom: (cd.zoom as number) ?? 1,
-          panX: (cd.panX as number) ?? 0,
-          panY: (cd.panY as number) ?? 0,
-        };
+        canvasState.rooms = (cd.rooms as Room[]) ?? [];
+        canvasState.furniture = (cd.furniture as PlacedFurniture[]) ?? [];
         designFetched = true;
+        canvasDirty = false;
 
         const furnitureCatalog = dbFurnitureItems
           .map((f) => `${f.id} → ${f.name} (${f.width}×${f.height}px, ${f.category})`)
@@ -395,6 +308,7 @@ export const designChatStream = async (
         canvasState.furniture = placedFurniture;
         canvasState.doors = newDoors;
         canvasState.windows = newWindows;
+        canvasDirty = true;
 
         return {
           summary: `Canvas set: ${newWalls.length} walls, ${newRooms.length} rooms, ${placedFurniture.length} furniture, ${newDoors.length} doors, ${newWindows.length} windows.`,
@@ -451,6 +365,9 @@ export const designChatStream = async (
         elementId: z.string().optional(),
       }),
       execute: async (params): Promise<ToolResult> => {
+        if (!designFetched) {
+          return { summary: "Call fetch_canvas first before editing." };
+        }
         const { operation } = params;
 
         if (operation === "add_wall") {
@@ -468,6 +385,7 @@ export const designChatStream = async (
             color: "#52525b",
           };
           canvasState.walls.push(wall);
+          canvasDirty = true;
           return {
             summary: `Wall added from (${x1},${y1}) to (${x2},${y2}). Total walls: ${canvasState.walls.length}`,
             action: { actionType: "add_wall", payload: wall },
@@ -493,6 +411,7 @@ export const designChatStream = async (
             area: width * height,
           };
           canvasState.rooms.push(room);
+          canvasDirty = true;
           return {
             summary: `Room "${name}" (${roomType}) added at (${x},${y}) size ${width}×${height}px`,
             action: { actionType: "add_room", payload: room },
@@ -525,6 +444,7 @@ export const designChatStream = async (
             scaleY: 1,
           };
           canvasState.furniture.push(placed);
+          canvasDirty = true;
           return {
             summary: `${item.name} placed at (${x},${y}) rotation=${rotation ?? 0}`,
             action: { actionType: "place_furniture", payload: placed },
@@ -550,6 +470,7 @@ export const designChatStream = async (
             type: doorType ?? "single",
           };
           canvasState.doors.push(door);
+          canvasDirty = true;
           return {
             summary: `${door.type} door added on wall [${wallIndex}] at position ${position}`,
             action: { actionType: "add_door", payload: door },
@@ -569,6 +490,7 @@ export const designChatStream = async (
           }
           const win: Win = { id: randomUUID(), wallId: wall.id, position, width: width ?? 100 };
           canvasState.windows.push(win);
+          canvasDirty = true;
           return {
             summary: `Window added on wall [${wallIndex}] at position ${position}`,
             action: { actionType: "add_window", payload: win },
@@ -584,6 +506,7 @@ export const designChatStream = async (
             const idx = arr.findIndex((e) => e.id === elementId);
             if (idx === -1) return `No ${label} with id ${elementId}`;
             arr.splice(idx, 1);
+            canvasDirty = true;
             return null;
           };
           let err: string | null = null;
@@ -691,153 +614,177 @@ export const designChatStream = async (
         if (!designFetched) {
           return { summary: "Call fetch_canvas first before saving." };
         }
+        if (!canvasDirty) {
+          return {
+            summary:
+              "Nothing to save — no changes were made this turn. Saving now would overwrite " +
+              "edits other people may have made since the canvas was fetched.",
+          };
+        }
         try {
-          await updateDesign(
-            designId,
-            {
-              canvasData: {
-                ...viewportState,
-                walls: canvasState.walls,
-                doors: canvasState.doors,
-                windows: canvasState.windows,
-              },
-              rooms: canvasState.rooms.map((r) => ({
-                id: r.id,
-                name: r.name,
-                type: r.type,
-                color: r.color ?? ROOM_COLORS[r.type] ?? ROOM_COLORS.generic,
-                points: r.points,
-                area: r.area ?? 0,
-              })),
-              furniture: canvasState.furniture.map((f) => ({
-                id: f.id,
-                x: f.x,
-                y: f.y,
-                rotation: f.rotation ?? 0,
-                scaleX: f.scaleX ?? 1,
-                scaleY: f.scaleY ?? 1,
-                furnitureItemId: f.furnitureItemId,
-                roomId: null,
-              })),
-            },
-            userId,
-            email,
-          );
+          const canvasData = {
+            walls: canvasState.walls,
+            doors: canvasState.doors,
+            windows: canvasState.windows,
+            rooms: canvasState.rooms.map((r) => ({
+              ...r,
+              color: r.color ?? ROOM_COLORS[r.type] ?? ROOM_COLORS.generic,
+              area: r.area ?? 0,
+            })),
+            furniture: canvasState.furniture,
+          };
+          const saved = await updateDesign(designId, { canvasData }, userId, email);
+          if (!saved) {
+            return { summary: "Save failed: you do not have permission to edit this design." };
+          }
+          canvasDirty = false;
+
           return {
             summary: `Saved: ${canvasState.walls.length} walls, ${canvasState.rooms.length} rooms, ${canvasState.furniture.length} furniture items, ${canvasState.doors.length} doors, ${canvasState.windows.length} windows.`,
           };
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "Save failed";
-          return { summary: `Failed to save: ${msg}` };
+          logger.error("design-chat save_canvas failed", {
+            designId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return {
+            summary: "Failed to save — the change was not stored. Ask the user to try again.",
+          };
         }
       },
     }),
   };
 
-  const system = `You are an AI assistant for a 2D home design canvas editor. You build and modify 2D floor plans using tools.
+  const system = `You are a professional interior designer AI for a 2D floor plan editor. You create and modify floor plans using tools.
+
+## COORDINATE SYSTEM
+- Origin (0, 0) is top-left corner of the canvas.
+- X increases rightward, Y increases downward.
+- All units are in PIXELS. 30 pixels = 1 foot.
+- Typical canvas: ~1200×900 px (40×30 ft). Use fetch_canvas to get exact size.
+- Furniture (x, y) is the CENTER of the item, NOT its top-left corner.
+  An item of size fw x fh at (x, y) spans x-fw/2 .. x+fw/2 and y-fh/2 .. y+fh/2.
+- Furniture width/height from the catalog are in PIXELS.
 
 ## TOOLS
-- fetch_canvas   → ALWAYS call first. Loads canvas state + furniture catalog with valid UUIDs.
-- set_canvas     → Replace ENTIRE canvas in ONE call. Use for new designs, full rebuilds, "start over".
-- edit_canvas    → Add or remove ONE element. Use ONLY for tiny tweaks (≤2 calls per turn).
-- review_canvas  → Inspect exact positions and IDs. Use before targeted removals.
+- fetch_canvas   → ALWAYS call first. Returns current state + furniture catalog with UUIDs.
+- set_canvas     → Replace entire canvas atomically. Use for new designs or major rebuilds.
+- edit_canvas    → Add/remove single elements. Use for small tweaks only.
+- review_canvas  → Get exact positions/IDs. Use before removals.
 - save_canvas    → Persist to DB. ALWAYS call last.
 
-## WORKFLOW (every turn)
-New/major design:  fetch_canvas → set_canvas → save_canvas       (3 steps)
-Small tweak:       fetch_canvas → edit_canvas → save_canvas       (3 steps)
+## WORKFLOW
+New/full design:  fetch_canvas → set_canvas → save_canvas
+Small change:     fetch_canvas → edit_canvas → save_canvas
 
----
+## DESIGN RULES — READ CAREFULLY
 
-## STEP 1 — PLAN YOUR GRID BEFORE WRITING ANY COORDINATES
+### Room Layout
+1. Use the FULL canvas area. Do NOT leave large empty margins. Start rooms near (40, 40).
+2. Adjacent rooms SHARE walls — the right wall of room A is the left wall of room B.
+3. Rooms should tile in a grid with NO gaps between them (except for the shared wall thickness of ~12px).
+4. Standard room sizes (in pixels):
+   - Living room:  350–500 wide × 300–450 tall
+   - Bedroom:      300–400 wide × 280–380 tall
+   - Kitchen:      250–350 wide × 250–350 tall
+   - Bathroom:     180–250 wide × 200–280 tall
+   - Office:       250–350 wide × 250–350 tall
+   - Dining room:  300–400 wide × 280–350 tall
+   - Hallway:      80–120 wide × full height (or full width × 80–120 tall)
 
-Count total rooms N. Choose rows/cols:
-  N=1 → rows=1, cols=1
-  N=2 → rows=1, cols=2
-  N=3 → rows=1, cols=3
-  N=4 → rows=2, cols=2
-  N=5 → rows=2, cols=3  (5th room at row=1,col=1 — last slot stays empty)
-  N=6 → rows=2, cols=3
-  N=7–9 → rows=3, cols=3
+### Wall Construction
+For each room at position (rx, ry) with size (rw, rh), create 4 walls:
+  Top:    (rx, ry) → (rx+rw, ry)
+  Right:  (rx+rw, ry) → (rx+rw, ry+rh)
+  Bottom: (rx+rw, ry+rh) → (rx, ry+rh)
+  Left:   (rx, ry+rh) → (rx, ry)
+When two rooms share a boundary, they share one wall — do NOT create duplicate walls at the same position.
 
-Then compute ROOM dimensions (MARGIN=40, GAP=25):
-  ROOM_W = floor((800 - 2×MARGIN - (cols-1)×GAP) / cols)
-  ROOM_H = floor((600 - 2×MARGIN - (rows-1)×GAP) / rows)
+### Furniture Placement — CRITICAL
+PAD = 25 (minimum pixels from any wall to furniture edge)
 
-Position of room at (row r, col c) — both 0-indexed:
-  room_x = MARGIN + c × (ROOM_W + GAP)
-  room_y = MARGIN + r × (ROOM_H + GAP)
+1. CHECK FIT: item (fw × fh) fits in room (rw × rh) only if fw ≤ rw - 2×PAD AND fh ≤ rh - 2×PAD. Skip items that don't fit.
 
-EXAMPLE — 5 office rooms (rows=2, cols=3):
-  MARGIN=40, GAP=25, cols=3, rows=2
-  ROOM_W = floor((800-80-50)/3) = floor(670/3) = 223
-  ROOM_H = floor((600-80-25)/2) = floor(495/2) = 247
-  Room1 (r=0,c=0): x=40,  y=40
-  Room2 (r=0,c=1): x=288, y=40
-  Room3 (r=0,c=2): x=536, y=40
-  Room4 (r=1,c=0): x=40,  y=312
-  Room5 (r=1,c=1): x=288, y=312
+2. PLACEMENT STRATEGIES (pick one per item). All coordinates are CENTERS:
+   - Against a wall — the item's EDGE sits PAD from the wall, so its centre is
+     PAD + half the item's size away:
+     • Against top wall:    y = ry + PAD + fh/2,        x = rx + rw/2 (or slide along)
+     • Against bottom wall: y = ry + rh - PAD - fh/2,   x = rx + rw/2
+     • Against left wall:   x = rx + PAD + fw/2,        y = ry + rh/2
+     • Against right wall:  x = rx + rw - PAD - fw/2,   y = ry + rh/2
+   - Centered in the room:  x = rx + rw/2,              y = ry + rh/2
+   - Corner: combine one horizontal and one vertical wall-flush value.
 
----
+   SANITY CHECK every item before you emit it:
+     x - fw/2 >= rx + PAD   AND   x + fw/2 <= rx + rw - PAD
+     y - fh/2 >= ry + PAD   AND   y + fh/2 <= ry + rh - PAD
+   If a value fails, the item is sticking through a wall — recompute or skip it.
 
-## STEP 2 — WALLS (4 segments per room)
+3. ANTI-OVERLAP — MANDATORY:
+   Before placing each item, check against ALL previously placed items in the same room.
+   Because coordinates are centres, A and B overlap if BOTH are true:
+     |A.x - B.x| < (A.w + B.w)/2 + 20
+     |A.y - B.y| < (A.h + B.h)/2 + 20
+   If overlap detected → shift the new item. If it still doesn't fit → skip it.
 
-For each room at (rx, ry) with size (ROOM_W, ROOM_H):
-  Top:    (rx,         ry)         → (rx+ROOM_W, ry)
-  Right:  (rx+ROOM_W,  ry)         → (rx+ROOM_W, ry+ROOM_H)
-  Bottom: (rx+ROOM_W,  ry+ROOM_H)  → (rx,        ry+ROOM_H)
-  Left:   (rx,         ry+ROOM_H)  → (rx,        ry)
+4. ROTATION: Use rotation=0 for default orientation (width along X, height along Y).
+   Use rotation=90 to swap width/height (item rotated 90° clockwise).
+   When rotated 90°, the effective dimensions become (height × width) instead of (width × height).
 
----
+### Typical Room Furnishing Guide
+- Living room: Sofa against a wall, Coffee Table centered in front, TV Stand on opposite wall, maybe an Armchair
+- Bedroom: Bed centered against top or side wall, Nightstand(s) beside bed, Dresser or Wardrobe on opposite wall
+- Kitchen: Refrigerator in corner, Stove next to it along same wall, Kitchen Island centered (if space allows)
+- Bathroom: Toilet against wall, Sink nearby, Bathtub or Shower along longest wall
+- Office: Desk against wall, Office Chair in front of desk, Bookcase or Filing Cabinet on side wall
+- Dining: Dining Table centered, Chairs around the table (2-6 depending on size)
 
-## STEP 3 — FURNITURE (per room, after computing room position)
-
-PAD = 20 (minimum px from room edge)
-
-A) CHECK FIT first:
-   Item (fw×fh) fits in room (ROOM_W×ROOM_H) if:
-     fw ≤ ROOM_W - 2×PAD   AND   fh ≤ ROOM_H - 2×PAD
-   If it does NOT fit → SKIP IT, mention it in response.
-
-B) COMPUTE POSITION (furniture top-left corner):
-   Centered in room:     x = rx + floor((ROOM_W - fw) / 2),  y = ry + floor((ROOM_H - fh) / 2)
-   Against top wall:     y = ry + PAD
-   Against bottom wall:  y = ry + ROOM_H - fh - PAD
-   Against left wall:    x = rx + PAD
-   Against right wall:   x = rx + ROOM_W - fw - PAD
-   Mix combinations freely (e.g. top-left corner: x=rx+PAD, y=ry+PAD)
-
-C) ANTI-OVERLAP (15px clearance between items in same room):
-   Items A(ax,ay,aw,ah) and B(bx,by,bw,bh) overlap if ALL 4 are true:
-     ax < bx+bw+15  AND  bx < ax+aw+15  AND  ay < by+bh+15  AND  by < ay+ah+15
-   If overlap: shift new item down → new_y = existing_y + existing_h + 15. Re-check.
-   If still overlaps after shifting down: shift right → new_x = existing_x + existing_w + 15.
-   If still can't fit after both shifts → SKIP IT.
-
-EXAMPLE — Office room at (rx=40, ry=40, ROOM_W=223, ROOM_H=247):
-  Office Desk (140w×70h): fits? 140≤183✓, 70≤207✓
-    → top-center: x=40+floor((223-140)/2)=40+41=81, y=40+PAD=60
-  Office Chair (60w×60h): fits? 60≤183✓, 60≤207✓
-    → centered below desk: y=60+70+15=145, x=40+floor((223-60)/2)=40+81=121
-    overlap with desk? 121<81+140+15=236✓, 81<121+60+15=196✓, 145<60+70+15=145? (145<145 is false) ✓ no overlap
-
----
+### Door & Window Placement
+- Each room should have at least 1 door (typically in a shared wall for interior rooms, or exterior wall for entry).
+- position is 0.0–1.0 along the wall's length. Use 0.5 for center.
+- Exterior walls can have windows (position 0.3–0.7 works well).
 
 ## FURNITURE IDs
-- ALWAYS use the exact UUID from the fetch_canvas catalog.
-- Copy UUIDs character-for-character — never invent or guess.
-- If set_canvas returns "Invalid furniture ID" → call fetch_canvas again, copy correct UUID.`;
+- ALWAYS use exact UUIDs from fetch_canvas catalog. NEVER invent IDs.
+- Copy UUIDs character-for-character.
+
+## EXAMPLE — 2-Bedroom Apartment
+
+Room layout (starting at 40,40):
+  Living Room:  (40, 40)    → 420×360
+  Kitchen:      (460, 40)   → 300×360
+  Bedroom 1:    (40, 400)   → 380×340
+  Bedroom 2:    (420, 400)  → 340×340
+
+Shared walls: Living/Kitchen share wall at x=460. Living/Bedroom1 share wall at y=400. etc.
+
+Living Room (40,40, 420x360) furniture — remember x,y are CENTRES:
+  Sofa (200x90):         x = 40+420/2 = 250,        y = 40+360-25-45 = 330   (against bottom wall)
+  Coffee Table (120x60): x = 250,                   y = 330-45-20-30 = 235   (above the sofa)
+  TV Stand (150x40):     x = 250,                   y = 40+25+20 = 85        (against top wall)
+
+Bedroom 1 (40,400, 380x340) furniture:
+  Double Bed (200x160):  x = 40+380/2 = 230,        y = 400+25+80 = 505      (against top wall)
+  Nightstand (50x40):    x = 230-100-15-25 = 90,    y = 505-80+20 = 445      (left of the bed)
+  Dresser (100x45):      x = 40+380-25-50 = 345,    y = 400+340-25-22 = 693  (bottom-right)
+
+Verify the Sofa: it spans x 150..350 (inside 40..460) and y 285..375 (inside 40..400). Good.`;
+
+  const abortController = new AbortController();
+  res.on("close", () => abortController.abort());
 
   try {
     const result = streamText({
-      model: openai("gpt-5.4-mini"),
+      model: openai("gpt-4o"),
       system,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       tools,
       stopWhen: stepCountIs(25),
+      abortSignal: abortController.signal,
     });
 
     for await (const chunk of result.fullStream) {
+      if (abortController.signal.aborted) break;
       if (chunk.type === "text-delta") {
         res.write(`data: ${JSON.stringify({ type: "text", content: chunk.text })}\n\n`);
       } else if (chunk.type === "tool-call") {
@@ -848,16 +795,32 @@ EXAMPLE — Office room at (rx=40, ry=40, ROOM_W=223, ROOM_H=247):
           res.write(`data: ${JSON.stringify({ type: "action", ...output.action })}\n\n`);
         }
         res.write(`data: ${JSON.stringify({ type: "tool_done", name: chunk.toolName })}\n\n`);
+      } else if (chunk.type === "tool-error") {
+        logger.error("design-chat tool failed", {
+          designId,
+          tool: chunk.toolName,
+          error: chunk.error instanceof Error ? chunk.error.message : String(chunk.error),
+        });
+        res.write(`data: ${JSON.stringify({ type: "tool_done", name: chunk.toolName })}\n\n`);
       } else if (chunk.type === "error") {
-        const msg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-        res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+        logger.error("design-chat stream error", {
+          designId,
+          error: chunk.error instanceof Error ? chunk.error.message : String(chunk.error),
+        });
+        res.write(
+          `data: ${JSON.stringify({ type: "error", message: "The assistant hit an error. Please try again." })}\n\n`,
+        );
       }
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "AI error";
-    res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+    if (!abortController.signal.aborted && !res.writableEnded) {
+      const msg = err instanceof Error ? err.message : "AI error";
+      res.write(`data: ${JSON.stringify({ type: "error", message: msg })}\n\n`);
+    }
   }
 
-  res.write("data: [DONE]\n\n");
-  res.end();
+  if (!res.writableEnded) {
+    res.write("data: [DONE]\n\n");
+    res.end();
+  }
 };

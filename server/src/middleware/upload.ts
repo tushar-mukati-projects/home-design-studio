@@ -10,7 +10,9 @@ export const uploadImage = multer({
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only JPEG, PNG, WebP, and GIF images are allowed"));
+      const err = new multer.MulterError("LIMIT_UNEXPECTED_FILE");
+      err.message = "Only JPEG, PNG, WebP, and GIF images are allowed";
+      cb(err);
     }
   },
 });

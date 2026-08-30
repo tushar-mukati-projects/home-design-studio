@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
+import { useFetchPlan } from "@/hooks/billing";
 import { useDesignChat } from "./use-design-chat";
 import type { ChatMessage, ToolCall } from "./use-design-chat";
 import {
@@ -22,10 +23,12 @@ import {
   Save,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from "lucide-react";
 
 interface DesignChatProps {
   designId: string;
+  onUpgradeRequired?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -152,8 +155,9 @@ const AssistantMessage = ({ msg, isLoading }: { msg: ChatMessage; isLoading: boo
   );
 };
 
-export const DesignChat = ({ designId }: DesignChatProps) => {
+export const DesignChat = ({ designId, onUpgradeRequired }: DesignChatProps) => {
   const { messages, isLoading, activeTools, sendMessage, clearMessages } = useDesignChat(designId);
+  const { data: planData } = useFetchPlan();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
@@ -193,14 +197,17 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
     clearMessages();
   };
 
+  const aiLocked = planData ? !planData.canUseAI : false;
+
   if (!open) {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => (aiLocked ? onUpgradeRequired?.() : setOpen(true))}
+        aria-label={aiLocked ? "Design AI (Pro plan required)" : "Open Design AI"}
         className="fixed right-5 bottom-5 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-violet-500/30 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-violet-500/40 active:scale-95"
       >
-        <Sparkles className="size-4" />
+        {aiLocked ? <Lock className="size-4" /> : <Sparkles className="size-4" />}
         Design AI
       </button>
     );
@@ -216,7 +223,6 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
         "transition-all duration-200",
       )}
     >
-      {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-4 py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-sm">
@@ -272,7 +278,6 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
         </div>
       </div>
 
-      {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <EmptyState suggestions={SUGGESTIONS} onSuggestion={sendMessage} isLoading={isLoading} />
@@ -281,7 +286,6 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
         )}
       </div>
 
-      {/* Input */}
       <div className="shrink-0 border-t border-[var(--border)] bg-[var(--card)] p-3">
         <form
           onSubmit={(e) => {
@@ -327,8 +331,6 @@ export const DesignChat = ({ designId }: DesignChatProps) => {
   );
 };
 
-/* ─── Sub-components ──────────────────────────────────────────────────────── */
-
 const EmptyState = ({
   suggestions,
   onSuggestion,
@@ -372,14 +374,12 @@ const MessageList = ({ messages, isLoading }: { messages: ChatMessage[]; isLoadi
       return (
         <div key={msg.id} className="space-y-1">
           {msg.role === "user" ? (
-            /* User bubble — right aligned, dark fill */
             <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-[var(--foreground)] px-3.5 py-2.5 text-sm text-[var(--background)]">
                 <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
           ) : (
-            /* Assistant — left aligned, no bubble bg, inline with icon */
             <div className="flex items-start gap-2.5">
               <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">
                 <Sparkles className="size-3.5 text-white" />
@@ -393,7 +393,6 @@ const MessageList = ({ messages, isLoading }: { messages: ChatMessage[]; isLoadi
       );
     })}
 
-    {/* Typing indicator when loading but no assistant msg yet streaming */}
     {isLoading && messages[messages.length - 1]?.role === "user" && (
       <div className="flex items-start gap-2.5">
         <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600">

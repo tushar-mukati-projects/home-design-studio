@@ -1,16 +1,21 @@
 import { mockDesigns, mockFurnitureItems, mockUser } from "./data";
-import type { Design, FurnitureItem, PlacedFurniture, Room } from "@/types";
+import type { Design, FurnitureItem } from "@/types";
+
+const normalize = (design: Design): Design => ({
+  ...design,
+  canvasData: {
+    ...design.canvasData,
+    rooms: design.canvasData?.rooms ?? design.rooms ?? [],
+    furniture: design.canvasData?.furniture ?? design.furniture ?? [],
+  },
+});
 
 export const _user = structuredClone(mockUser);
-export const _designs: Design[] = structuredClone(mockDesigns);
+export const _designs: Design[] = structuredClone(mockDesigns).map(normalize);
 export const _furnitureItems: FurnitureItem[] = structuredClone(mockFurnitureItems);
 
-export const getDesignFurniture = (designId: string): PlacedFurniture[] => {
-  const design = _designs.find((d) => d.id === designId);
-  return design?.furniture ?? [];
-};
-
-export const getDesignRooms = (designId: string): Room[] => {
-  const design = _designs.find((d) => d.id === designId);
-  return design?.rooms ?? [];
-};
+export const serializeMockDesign = (design: Design): Design => ({
+  ...design,
+  rooms: design.canvasData?.rooms ?? [],
+  furniture: design.canvasData?.furniture ?? [],
+});

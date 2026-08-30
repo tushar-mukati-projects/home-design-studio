@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Layer, Group, Shape, Rect, Text } from "react-konva";
 import type { CollaboratorCursor } from "@/stores/collaboration-store";
+import { EXPORT_HIDDEN_LAYER_NAME } from "@/lib/constants";
 
 interface CollaboratorCursorsProps {
   collaborators: CollaboratorCursor[];
@@ -19,7 +20,7 @@ export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps)
   }, []);
 
   return (
-    <Layer listening={false}>
+    <Layer listening={false} name={EXPORT_HIDDEN_LAYER_NAME}>
       {collaborators.map((c) => {
         const elapsed = now - c.lastSeen;
         const opacity = elapsed > CURSOR_FADE_MS ? 0.2 : 1;

@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../types";
+import type { AuthenticatedRequest } from "../lib/types";
 import { validated } from "../middleware/validate";
 import {
   createDesignSchema,

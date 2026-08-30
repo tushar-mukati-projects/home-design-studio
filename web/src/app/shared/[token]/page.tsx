@@ -1,9 +1,24 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import { useFetchSharedDesign } from "@/hooks/designs/useFetchSharedDesign";
-import { EditorView } from "@/features/editor/editor-view";
+
+const EditorView = dynamic(
+  () =>
+    import("@/features/editor/editor-view").then((mod) => ({
+      default: mod.EditorView,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+      </div>
+    ),
+  },
+);
 
 const SharedDesignPage = () => {
   const { token } = useParams<{ token: string }>();

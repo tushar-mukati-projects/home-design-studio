@@ -20,9 +20,7 @@ interface CollaborationProvider {
 
 export const createCollaborationProvider = (
   designId: string,
-  userName: string,
-  userColor: string,
-  token?: string,
+  token: string | (() => Promise<string>),
 ): CollaborationProvider => {
   const doc = new Y.Doc();
 
@@ -30,15 +28,8 @@ export const createCollaborationProvider = (
     url: getWsUrl(),
     name: `design:${designId}`,
     document: doc,
-    token: token ?? null,
+    token,
   });
-
-  if (provider.awareness) {
-    provider.awareness.setLocalStateField("user", {
-      name: userName,
-      color: userColor,
-    });
-  }
 
   return { doc, provider, awareness: provider.awareness };
 };

@@ -35,9 +35,7 @@ export const VersionHistoryPanel = ({
       await createMutation.mutateAsync(versionName.trim() || undefined);
       toast.success("Version saved");
       setVersionName("");
-    } catch {
-      toast.error("Failed to save version");
-    }
+    } catch {}
   };
 
   const handleRestore = async (versionId: string) => {
@@ -45,18 +43,14 @@ export const VersionHistoryPanel = ({
       await restoreMutation.mutateAsync(versionId);
       toast.success("Version restored");
       onRestored();
-    } catch {
-      toast.error("Failed to restore version");
-    }
+    } catch {}
   };
 
   const handleDelete = async (versionId: string) => {
     try {
       await deleteMutation.mutateAsync(versionId);
       toast.success("Version deleted");
-    } catch {
-      toast.error("Failed to delete version");
-    }
+    } catch {}
   };
 
   return (

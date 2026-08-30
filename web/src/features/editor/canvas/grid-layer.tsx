@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { Layer, Shape } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { EXPORT_HIDDEN_LAYER_NAME } from "@/lib/constants";
 
 interface GridLayerProps {
   width: number;
@@ -19,7 +20,7 @@ export const GridLayer = memo(function GridLayer({ width, height }: GridLayerPro
   if (!showGrid) return null;
 
   return (
-    <Layer listening={false}>
+    <Layer listening={false} name={EXPORT_HIDDEN_LAYER_NAME}>
       <Shape
         sceneFunc={(ctx) => {
           const effectiveGrid = gridSize;

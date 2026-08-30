@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../types";
+import type { AuthenticatedRequest } from "../lib/types";
 import * as stripeService from "../services/stripe.service";
-import { logger } from "../logger";
+import { config } from "../lib/config";
+import { logger } from "../lib/logger";
 
 export const createCheckout = async (req: Request, res: Response) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
@@ -12,7 +13,12 @@ export const createCheckout = async (req: Request, res: Response) => {
     return;
   }
 
-  const origin = req.headers.origin || "http://localhost:3000";
+  if (!config.stripeProPriceId || priceId !== config.stripeProPriceId) {
+    res.status(400).json({ error: "Unknown price" });
+    return;
+  }
+
+  const origin = config.frontendUrl;
   const session = await stripeService.createCheckoutSession(
     userId,
     priceId,
@@ -25,9 +31,11 @@ export const createCheckout = async (req: Request, res: Response) => {
 
 export const createPortal = async (req: Request, res: Response) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
-  const origin = req.headers.origin || "http://localhost:3000";
 
-  const session = await stripeService.createPortalSession(userId, `${origin}/dashboard`);
+  const session = await stripeService.createPortalSession(
+    userId,
+    `${config.frontendUrl}/dashboard`,
+  );
   res.json({ url: session.url });
 };
 
@@ -48,9 +56,7 @@ export const webhook = async (req: Request, res: Response) => {
     logger.error("Webhook failed", {
       error: err instanceof Error ? err.message : String(err),
     });
-    res
-      .status(400)
-      .json({ error: `Webhook Error: ${err instanceof Error ? err.message : "Unknown"}` });
+    res.status(400).json({ error: "Webhook error" });
   }
 };
 

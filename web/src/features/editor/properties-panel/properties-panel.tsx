@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { Trash2, ArrowUpToLine, ArrowDownToLine, Sparkles } from "lucide-react";
+import { Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useEditorStore } from "@/stores/editor-store";
+import { feetToPx, pxToFeet, pxToSquareFeet } from "@/lib/constants";
 
 const WALL_COLORS = [
   "#3a3a4a",
@@ -31,17 +32,18 @@ const ROOM_COLORS = [
   "#8a8a9430",
 ];
 
-const PIXELS_PER_FOOT = 30;
-const pxToFt = (px: number) => (px / PIXELS_PER_FOOT).toFixed(1);
-const ftToPx = (ft: number) => ft * PIXELS_PER_FOOT;
+const pxToFt = (px: number) => pxToFeet(px).toFixed(1);
+const ftToPx = feetToPx;
 
 const ROOM_TYPE_OPTIONS = [
-  { value: "living-room", label: "Living Room" },
+  { value: "living_room", label: "Living Room" },
   { value: "bedroom", label: "Bedroom" },
   { value: "kitchen", label: "Kitchen" },
   { value: "bathroom", label: "Bathroom" },
   { value: "office", label: "Office" },
   { value: "dining", label: "Dining Room" },
+  { value: "hallway", label: "Hallway" },
+  { value: "closet", label: "Closet" },
   { value: "generic", label: "Generic" },
 ];
 
@@ -134,7 +136,9 @@ export const PropertiesPanel = () => {
               min={5}
               max={30}
               step={1}
-              onValueChange={(val) => updateWall(selectedWall.id, { thickness: val })}
+              onValueChange={(val) =>
+                updateWall(selectedWall.id, { thickness: val }, `wall-thickness:${selectedWall.id}`)
+              }
             />
           </div>
 
@@ -303,7 +307,9 @@ export const PropertiesPanel = () => {
               min={30}
               max={200}
               step={5}
-              onValueChange={(val) => updateDoor(selectedDoor.id, { width: val })}
+              onValueChange={(val) =>
+                updateDoor(selectedDoor.id, { width: val }, `door-width:${selectedDoor.id}`)
+              }
             />
           </div>
 
@@ -316,7 +322,13 @@ export const PropertiesPanel = () => {
               min={5}
               max={95}
               step={1}
-              onValueChange={(val) => updateDoor(selectedDoor.id, { position: val / 100 })}
+              onValueChange={(val) =>
+                updateDoor(
+                  selectedDoor.id,
+                  { position: val / 100 },
+                  `door-position:${selectedDoor.id}`,
+                )
+              }
             />
           </div>
 
@@ -404,7 +416,9 @@ export const PropertiesPanel = () => {
               min={20}
               max={150}
               step={5}
-              onValueChange={(val) => updateWindow(selectedWindow.id, { width: val })}
+              onValueChange={(val) =>
+                updateWindow(selectedWindow.id, { width: val }, `window-width:${selectedWindow.id}`)
+              }
             />
           </div>
 
@@ -417,7 +431,13 @@ export const PropertiesPanel = () => {
               min={5}
               max={95}
               step={1}
-              onValueChange={(val) => updateWindow(selectedWindow.id, { position: val / 100 })}
+              onValueChange={(val) =>
+                updateWindow(
+                  selectedWindow.id,
+                  { position: val / 100 },
+                  `window-position:${selectedWindow.id}`,
+                )
+              }
             />
           </div>
 
@@ -438,6 +458,18 @@ export const PropertiesPanel = () => {
   }
 
   if (selectedFurniture) {
+    const commitFurniturePos = (field: "x" | "y", raw: string) => {
+      const ft = parseFloat(raw);
+      if (isNaN(ft)) return;
+      updateFurniture(selectedFurniture.id, { [field]: ftToPx(ft) });
+    };
+
+    const commitFurnitureScale = (field: "scaleX" | "scaleY", raw: string) => {
+      const val = parseFloat(raw);
+      if (isNaN(val)) return;
+      updateFurniture(selectedFurniture.id, { [field]: Math.min(5, Math.max(0.1, val)) });
+    };
+
     return (
       <div className="flex h-full flex-col">
         <div className="border-b border-[var(--border)] px-4 py-3">
@@ -463,12 +495,13 @@ export const PropertiesPanel = () => {
               <Input
                 type="number"
                 step="0.1"
-                value={pxToFt(selectedFurniture.x)}
-                onChange={(e) =>
-                  updateFurniture(selectedFurniture.id, {
-                    x: ftToPx(Number(e.target.value)),
-                  })
-                }
+                defaultValue={parseFloat(pxToFt(selectedFurniture.x))}
+                key={`fx-${selectedFurniture.id}-${selectedFurniture.x}`}
+                onBlur={(e) => commitFurniturePos("x", e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    commitFurniturePos("x", (e.target as HTMLInputElement).value);
+                }}
                 className="h-8 text-xs"
               />
             </div>
@@ -479,12 +512,13 @@ export const PropertiesPanel = () => {
               <Input
                 type="number"
                 step="0.1"
-                value={pxToFt(selectedFurniture.y)}
-                onChange={(e) =>
-                  updateFurniture(selectedFurniture.id, {
-                    y: ftToPx(Number(e.target.value)),
-                  })
-                }
+                defaultValue={parseFloat(pxToFt(selectedFurniture.y))}
+                key={`fy-${selectedFurniture.id}-${selectedFurniture.y}`}
+                onBlur={(e) => commitFurniturePos("y", e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    commitFurniturePos("y", (e.target as HTMLInputElement).value);
+                }}
                 className="h-8 text-xs"
               />
             </div>
@@ -499,7 +533,13 @@ export const PropertiesPanel = () => {
               min={0}
               max={360}
               step={1}
-              onValueChange={(val) => updateFurniture(selectedFurniture.id, { rotation: val })}
+              onValueChange={(val) =>
+                updateFurniture(
+                  selectedFurniture.id,
+                  { rotation: val },
+                  `furniture-rotation:${selectedFurniture.id}`,
+                )
+              }
             />
           </div>
 
@@ -513,12 +553,13 @@ export const PropertiesPanel = () => {
                 step="0.1"
                 min="0.1"
                 max="5"
-                value={selectedFurniture.scaleX.toFixed(1)}
-                onChange={(e) =>
-                  updateFurniture(selectedFurniture.id, {
-                    scaleX: Math.max(0.1, Number(e.target.value)),
-                  })
-                }
+                defaultValue={selectedFurniture.scaleX.toFixed(1)}
+                key={`fsx-${selectedFurniture.id}-${selectedFurniture.scaleX}`}
+                onBlur={(e) => commitFurnitureScale("scaleX", e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    commitFurnitureScale("scaleX", (e.target as HTMLInputElement).value);
+                }}
                 className="h-8 text-xs"
               />
             </div>
@@ -531,93 +572,16 @@ export const PropertiesPanel = () => {
                 step="0.1"
                 min="0.1"
                 max="5"
-                value={selectedFurniture.scaleY.toFixed(1)}
-                onChange={(e) =>
-                  updateFurniture(selectedFurniture.id, {
-                    scaleY: Math.max(0.1, Number(e.target.value)),
-                  })
-                }
+                defaultValue={selectedFurniture.scaleY.toFixed(1)}
+                key={`fsy-${selectedFurniture.id}-${selectedFurniture.scaleY}`}
+                onBlur={(e) => commitFurnitureScale("scaleY", e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter")
+                    commitFurnitureScale("scaleY", (e.target as HTMLInputElement).value);
+                }}
                 className="h-8 text-xs"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted-foreground)]">
-              Color
-            </label>
-            <div className="flex items-center gap-2">
-              <label className="relative h-8 flex-1 cursor-pointer overflow-hidden rounded-md border border-[var(--border)]">
-                <input
-                  type="color"
-                  value={selectedFurniture.furnitureItem.color || "#d4d4d8"}
-                  onChange={(e) => {
-                    updateFurniture(selectedFurniture.id, {
-                      furnitureItem: { ...selectedFurniture.furnitureItem, color: e.target.value },
-                    });
-                  }}
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                />
-                <div
-                  className="h-full w-full rounded-md"
-                  style={{ backgroundColor: selectedFurniture.furnitureItem.color || "#d4d4d8" }}
-                />
-              </label>
-              <button
-                onClick={() => {
-                  updateFurniture(selectedFurniture.id, {
-                    furnitureItem: { ...selectedFurniture.furnitureItem, color: "#d4d4d8" },
-                  });
-                }}
-                className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[10px] font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--secondary)]"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1 text-xs"
-              onClick={() => {
-                const maxIndex = furniture.length - 1;
-                const idx = furniture.findIndex((f) => f.id === selectedFurniture.id);
-                if (idx < maxIndex) {
-                  const reordered = [...furniture];
-                  const [item] = reordered.splice(idx, 1);
-                  reordered.push(item);
-                  const store = useEditorStore.getState();
-                  store.pushHistory();
-                  useEditorStore.setState({ furniture: reordered });
-                }
-              }}
-            >
-              <ArrowUpToLine className="h-3 w-3" />
-              Front
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1 text-xs"
-              onClick={() => {
-                const idx = furniture.findIndex((f) => f.id === selectedFurniture.id);
-                if (idx > 0) {
-                  const reordered = [...furniture];
-                  const [item] = reordered.splice(idx, 1);
-                  reordered.unshift(item);
-                  const store = useEditorStore.getState();
-                  store.pushHistory();
-                  useEditorStore.setState({ furniture: reordered });
-                }
-              }}
-            >
-              <ArrowDownToLine className="h-3 w-3" />
-              Back
-            </Button>
           </div>
 
           <Button
@@ -635,6 +599,11 @@ export const PropertiesPanel = () => {
   }
 
   if (selectedRoom) {
+    const commitRoom = (patch: Partial<typeof selectedRoom>) => {
+      useEditorStore.getState().pushHistory();
+      setRooms(rooms.map((r) => (r.id === selectedRoom.id ? { ...r, ...patch } : r)));
+    };
+
     return (
       <div className="flex h-full flex-col">
         <div className="border-b border-[var(--border)] px-4 py-3">
@@ -646,12 +615,11 @@ export const PropertiesPanel = () => {
               Room Name
             </label>
             <Input
-              value={selectedRoom.name}
-              onChange={(e) => {
-                const updated = rooms.map((r) =>
-                  r.id === selectedRoom.id ? { ...r, name: e.target.value } : r,
-                );
-                setRooms(updated);
+              defaultValue={selectedRoom.name}
+              key={`room-name-${selectedRoom.id}`}
+              onBlur={(e) => commitRoom({ name: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRoom({ name: (e.target as HTMLInputElement).value });
               }}
               className="h-8 text-xs"
             />
@@ -662,14 +630,9 @@ export const PropertiesPanel = () => {
               Room Type
             </label>
             <Select
-              value={selectedRoom.type}
+              value={selectedRoom.type.replace(/-/g, "_")}
               options={ROOM_TYPE_OPTIONS}
-              onValueChange={(val) => {
-                const updated = rooms.map((r) =>
-                  r.id === selectedRoom.id ? { ...r, type: val } : r,
-                );
-                setRooms(updated);
-              }}
+              onValueChange={(val) => commitRoom({ type: val })}
             />
           </div>
 
@@ -678,7 +641,7 @@ export const PropertiesPanel = () => {
           <div className="flex items-center justify-between">
             <span className="text-xs text-[var(--muted-foreground)]">Area</span>
             <span className="font-mono text-xs text-[var(--foreground)]">
-              {(selectedRoom.area / (PIXELS_PER_FOOT * PIXELS_PER_FOOT)).toFixed(1)} sq ft
+              {pxToSquareFeet(selectedRoom.area).toFixed(1)} sq ft
             </span>
           </div>
 
@@ -695,12 +658,7 @@ export const PropertiesPanel = () => {
                     backgroundColor: color,
                     borderColor: selectedRoom.color === color ? "#2c2c2e" : "transparent",
                   }}
-                  onClick={() => {
-                    const updated = rooms.map((r) =>
-                      r.id === selectedRoom.id ? { ...r, color } : r,
-                    );
-                    setRooms(updated);
-                  }}
+                  onClick={() => commitRoom({ color })}
                 />
               ))}
             </div>

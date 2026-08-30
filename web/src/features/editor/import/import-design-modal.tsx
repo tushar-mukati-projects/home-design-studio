@@ -156,7 +156,8 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const pushHistory = useEditorStore((s) => s.pushHistory);
+  const beginBatch = useEditorStore((s) => s.beginBatch);
+  const endBatch = useEditorStore((s) => s.endBatch);
   const clearCanvas = useEditorStore((s) => s.clearCanvas);
   const addWall = useEditorStore((s) => s.addWall);
   const addDoor = useEditorStore((s) => s.addDoor);
@@ -284,14 +285,17 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
               const design = event.design as AIDesignResult;
               const editorData = convertToEditorData(design);
 
-              pushHistory();
-              clearCanvas();
-
-              for (const wall of editorData.walls) addWall(wall);
-              for (const door of editorData.doors) addDoor(door);
-              for (const win of editorData.windows) addWindow(win);
-              setRooms(editorData.rooms);
-              for (const f of editorData.furniture) addFurniture(f);
+              beginBatch();
+              try {
+                clearCanvas();
+                for (const wall of editorData.walls) addWall(wall);
+                for (const door of editorData.doors) addDoor(door);
+                for (const win of editorData.windows) addWindow(win);
+                setRooms(editorData.rooms, { recordHistory: true });
+                for (const f of editorData.furniture) addFurniture(f);
+              } finally {
+                endBatch();
+              }
 
               setResultSummary(
                 `${editorData.walls.length} walls, ${editorData.rooms.length} rooms, ${editorData.doors.length} doors, ${editorData.windows.length} windows, ${editorData.furniture.length} furniture items`,
@@ -306,7 +310,17 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
       setPhase("error");
       setErrorMessage((err as Error).message || "Analysis failed. Please try again.");
     }
-  }, [selectedFile, pushHistory, clearCanvas, addWall, addDoor, addWindow, setRooms, addFurniture]);
+  }, [
+    selectedFile,
+    beginBatch,
+    endBatch,
+    clearCanvas,
+    addWall,
+    addDoor,
+    addWindow,
+    setRooms,
+    addFurniture,
+  ]);
 
   if (!open) return null;
 

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
+import { QUERY_KEYS as DESIGN_QUERY_KEYS } from "./constants";
 
 const VERSION_KEYS = {
   all: ["versions"] as const,
@@ -11,9 +12,8 @@ interface DesignVersion {
   designId: string;
   name: string;
   canvasData: unknown;
-  rooms: unknown;
-  furniture: unknown;
-  createdBy: string;
+
+  createdById: string | null;
   createdAt: string;
 }
 
@@ -50,7 +50,7 @@ export const useRestoreVersion = (designId: string) => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: VERSION_KEYS.list(designId) });
-      qc.invalidateQueries({ queryKey: ["designs", "detail", designId] });
+      qc.invalidateQueries({ queryKey: DESIGN_QUERY_KEYS.detail(designId) });
     },
   });
 };

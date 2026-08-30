@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "build": "bun prisma generate && bun tsc",
+    "build": "bun prisma generate && bun tsc -p tsconfig.build.json",
     "start": "bun src/index.ts",
+    "db:push": "bun prisma db push",
     "db:studio": "bun prisma studio",
-    "test": "bun test",
-    "check": "bun tsc --noEmit && bun eslint && bun prettier --check \"src/**/*.ts\"",
-    "check:fix": "bun eslint --fix && bun prettier --write \"src/**/*.ts\" && bun tsc --noEmit"
+    "test": "bun test tests",
+    "check": "bun tsc --noEmit && bun eslint && bun prettier --check \"{src,tests}/**/*.ts\" && bun run test",
+    "check:fix": "bun eslint --fix && bun prettier --write \"{src,tests}/**/*.ts\" && bun tsc --noEmit",
+    "test:watch": "bun test tests --watch"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.65",
@@ -18,7 +20,6 @@
     "@hocuspocus/server": "^2.15.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
-    "@supabase/supabase-js": "^2.100.1",
     "ai": "^6.0.142",
     "cors": "^2.8.5",
     "express": "^4.21.0",
@@ -30,7 +31,8 @@
     "stripe": "^17.5.0",
     "winston": "^3.17.0",
     "yjs": "^13.6.22",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11",

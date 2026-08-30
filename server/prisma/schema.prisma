@@ -6,97 +6,142 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Plan {
+  free
+  pro
+}
+
+enum SharePermission {
+  readonly
+  readwrite
+}
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  incomplete
+}
+
 model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique @map("clerk_id")
-  email     String   @unique
-  name      String?
-  avatarUrl        String?  @map("avatar_url")
-  stripeCustomerId String?  @unique @map("stripe_customer_id")
-  stripePriceId    String?  @map("stripe_price_id")
-  stripeSubId      String?  @map("stripe_sub_id")
-  plan             String   @default("free") @map("plan")
+  id               String   @id @default(uuid())
+  authSub          String   @unique @map("auth_sub")
+  email            String?  @unique
+  name             String?
+
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  designs      Design[]
-  sharedDesigns DesignShare[]
+  subscription    Subscription?
+  designs         Design[]
+  createdVersions DesignVersion[]
 
-  @@map("home_design_studio_users")
+  @@map("users")
+}
+
+// canvas_data holds the whole drawing. Walls, rooms and furniture are not tables.
+model Subscription {
+  id                   String              @id @default(uuid())
+  userId               String              @unique @map("user_id")
+  plan                 Plan                @default(free)
+  status               SubscriptionStatus?
+
+  stripeCustomerId     String?             @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?             @unique @map("stripe_subscription_id")
+  stripePriceId        String?             @map("stripe_price_id")
+  currentPeriodEnd     DateTime?           @map("current_period_end")
+  cancelAtPeriodEnd    Boolean             @default(false) @map("cancel_at_period_end")
+
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model BillingEvent {
+  id            String   @id @default(uuid())
+  stripeEventId String   @unique @map("stripe_event_id")
+  type          String
+  userId        String?  @map("user_id")
+  payload       Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("billing_events")
 }
 
 model Design {
-  id              String   @id @default(uuid())
+  id              String           @id @default(uuid())
   name            String
   description     String?
   thumbnail       String?
-  canvasData      Json     @default("{}") @map("canvas_data")
-  yjsState        Bytes?   @map("yjs_state")
-  width           Float    @default(800)
-  height          Float    @default(600)
-  isPublic        Boolean  @default(false) @map("is_public")
-  shareToken      String?  @unique @map("share_token")
-  shareLinkAccess String?  @map("share_link_access") // "readonly" | "readwrite"
-  userId          String   @map("user_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rooms     Room[]
-  furniture PlacedFurniture[]
-  shares    DesignShare[]
-  versions  DesignVersion[]
+  canvasData      Json             @default("{}") @map("canvas_data")
+  yjsState        Bytes?           @map("yjs_state")
+
+  width           Float            @default(800)
+  height          Float            @default(600)
+
+  userId          String           @map("user_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members  DesignMember[]
+  links    DesignLink[]
+  versions DesignVersion[]
 
   @@index([userId])
-  @@map("home_design_studio_designs")
+  @@map("designs")
 }
 
 model DesignVersion {
-  id         String   @id @default(uuid())
-  designId   String   @map("design_id")
-  name       String   @default("Auto-save")
-  canvasData Json     @map("canvas_data")
-  rooms      Json     @default("[]")
-  furniture  Json     @default("[]")
-  createdBy  String   @map("created_by")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid())
+  name        String   @default("Auto-save")
 
-  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+  canvasData  Json     @map("canvas_data")
 
-  @@index([designId])
-  @@map("home_design_studio_design_versions")
-}
-
-model DesignShare {
-  id              String   @id @default(uuid())
-  designId        String   @map("design_id")
-  sharedWithEmail String   @map("shared_with_email")
-  sharedWithId    String?  @map("shared_with_id")
-  permission      String   @default("readonly") // "readonly" | "readwrite"
-  createdAt       DateTime @default(now()) @map("created_at")
+  designId    String   @map("design_id")
+  createdById String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   design    Design @relation(fields: [designId], references: [id], onDelete: Cascade)
-  sharedWith User?  @relation(fields: [sharedWithId], references: [id], onDelete: SetNull)
+  createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
-  @@unique([designId, sharedWithEmail])
-  @@index([sharedWithEmail])
-  @@index([sharedWithId])
-  @@map("home_design_studio_design_shares")
+  @@index([designId, createdAt])
+  @@map("design_versions")
 }
 
-model Room {
-  id       String @id @default(uuid())
-  name     String @default("Room")
-  type     String @default("generic")
-  color    String @default("#E5E7EB")
-  points   Json
-  area     Float  @default(0)
-  designId String @map("design_id")
+model DesignMember {
+  id         String          @id @default(uuid())
+  designId   String          @map("design_id")
+  email      String
+  permission SharePermission @default(readonly)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@unique([designId, email])
+  @@index([email])
+  @@map("design_members")
+}
+
+model DesignLink {
+  id         String          @id @default(uuid())
+  designId   String          @map("design_id")
+  code       String          @unique
+  permission SharePermission @default(readonly)
+  expiresAt  DateTime?       @map("expires_at")
+  createdAt  DateTime        @default(now()) @map("created_at")
 
   design Design @relation(fields: [designId], references: [id], onDelete: Cascade)
 
   @@index([designId])
-  @@map("home_design_studio_rooms")
+  @@map("design_links")
 }
 
 model FurnitureItem {
@@ -111,28 +156,9 @@ model FurnitureItem {
   description String?
   isDefault   Boolean @default(false) @map("is_default")
 
-  placements PlacedFurniture[]
-
   @@index([category])
-  @@map("home_design_studio_furniture_items")
-}
-
-model PlacedFurniture {
-  id              String  @id @default(uuid())
-  x               Float
-  y               Float
-  rotation        Float   @default(0)
-  scaleX          Float   @default(1) @map("scale_x")
-  scaleY          Float   @default(1) @map("scale_y")
-  designId        String  @map("design_id")
-  furnitureItemId String  @map("furniture_item_id")
-  roomId          String? @map("room_id")
-
-  design        Design        @relation(fields: [designId], references: [id], onDelete: Cascade)
-  furnitureItem FurnitureItem @relation(fields: [furnitureItemId], references: [id], onDelete: Cascade)
-
-  @@index([designId])
-  @@map("home_design_studio_placed_furniture")
+  @@index([isDefault, name])
+  @@map("furniture_items")
 }
 
 model DesignTemplate {
@@ -142,12 +168,10 @@ model DesignTemplate {
   category    String
   thumbnail   String?
   canvasData  Json    @map("canvas_data")
-  rooms       Json    @default("[]")
-  furniture   Json    @default("[]")
   width       Float   @default(800)
   height      Float   @default(600)
   sortOrder   Int     @default(0) @map("sort_order")
 
   @@index([category])
-  @@map("home_design_studio_templates")
+  @@map("design_templates")
 }

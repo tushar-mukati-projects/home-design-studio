@@ -26,9 +26,20 @@ export async function uploadExport(
 }
 
 export async function deleteDesignFiles(designId: string): Promise<void> {
-  await supabase.storage.from(BUCKET).remove([`thumbnails/${designId}.png`]);
-  const { data } = await supabase.storage.from(BUCKET).list(`exports/${designId}`);
+  const { error: thumbError } = await supabase.storage
+    .from(BUCKET)
+    .remove([`thumbnails/${designId}.png`]);
+  if (thumbError) throw thumbError;
+
+  const { data, error: listError } = await supabase.storage
+    .from(BUCKET)
+    .list(`exports/${designId}`);
+  if (listError) throw listError;
+
   if (data?.length) {
-    await supabase.storage.from(BUCKET).remove(data.map((f) => `exports/${designId}/${f.name}`));
+    const { error: removeError } = await supabase.storage
+      .from(BUCKET)
+      .remove(data.map((f) => `exports/${designId}/${f.name}`));
+    if (removeError) throw removeError;
   }
 }

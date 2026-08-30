@@ -1,18 +1,26 @@
 import nodemailer from "nodemailer";
-import { logger } from "../logger";
+import { config } from "../lib/config";
+import { logger } from "../lib/logger";
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST ?? "smtp.gmail.com",
-  port: Number(process.env.SMTP_PORT ?? 587),
+  host: config.smtpHost,
+  port: config.smtpPort,
   secure: false,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: config.smtpUser,
+    pass: config.smtpPass,
   },
 });
 
-const fromEmail = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "noreply@designstudio.app";
-const clientUrl = process.env.CLIENT_URL ?? "http://localhost:3000";
+const fromEmail = config.smtpFrom;
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 export const sendShareInviteEmail = async (
   toEmail: string,
@@ -21,13 +29,15 @@ export const sendShareInviteEmail = async (
   permission: string,
   designId: string,
 ) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (!config.smtpUser || !config.smtpPass) {
     logger.warn("SMTP not configured, skipping email send");
     return;
   }
 
   const permLabel = permission === "readwrite" ? "edit" : "view";
-  const link = `${clientUrl}/editor/${designId}`;
+  const link = `${config.frontendUrl}/editor/${designId}`;
+  const safeInviter = escapeHtml(inviterName);
+  const safeDesignName = escapeHtml(designName);
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; background: #0C0C0C; border-radius: 12px; overflow: hidden;">
@@ -36,10 +46,10 @@ export const sendShareInviteEmail = async (
       </div>
       <div style="padding: 32px;">
         <p style="color: #F5F0EB; font-size: 16px; margin: 0 0 16px;">
-          <strong>${inviterName}</strong> shared a design with you
+          <strong>${safeInviter}</strong> shared a design with you
         </p>
         <div style="background: #1A1510; border: 1px solid #2A2520; border-radius: 8px; padding: 16px; margin: 0 0 24px;">
-          <p style="color: #D4A853; font-size: 14px; margin: 0 0 4px; font-weight: 600;">${designName}</p>
+          <p style="color: #D4A853; font-size: 14px; margin: 0 0 4px; font-weight: 600;">${safeDesignName}</p>
           <p style="color: #8A8278; font-size: 13px; margin: 0;">Permission: <strong style="color: #C4B99A;">${permLabel}</strong></p>
         </div>
         <a href="${link}" style="display: inline-block; background: #D4A853; color: #0C0C0C; font-weight: 600; font-size: 14px; padding: 12px 28px; border-radius: 8px; text-decoration: none;">
@@ -56,7 +66,7 @@ export const sendShareInviteEmail = async (
     await transporter.sendMail({
       from: `"DesignStudio" <${fromEmail}>`,
       to: toEmail,
-      subject: `${inviterName} shared "${designName}" with you`,
+      subject: `${inviterName} shared "${designName}" with you`.replace(/[\r\n]/g, " "),
       html,
     });
     logger.info(`Share invite email sent to ${toEmail}`);

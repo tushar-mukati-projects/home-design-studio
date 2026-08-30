@@ -1,15 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
-import type { Design } from "@/types";
+import type { DesignSummary } from "@/types";
 import { API_ROUTES, QUERY_KEYS } from "./constants";
 
 interface FetchDesignsFilters {
   search?: string;
-  isPublic?: boolean;
 }
 
 interface DesignsResponse {
-  designs: Design[];
+  designs: DesignSummary[];
   total: number;
   limit: number;
   offset: number;

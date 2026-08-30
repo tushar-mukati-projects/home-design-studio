@@ -553,9 +553,8 @@ const featureData = [
   },
   {
     icon: ScanLine,
-    title: "Smart Room Detection",
-    description:
-      "Automatically detect enclosed rooms from your wall layout. No manual tagging needed.",
+    title: "Rooms & Areas",
+    description: "Name rooms, colour them by type, and see live square footage as you draw.",
   },
   {
     icon: Armchair,

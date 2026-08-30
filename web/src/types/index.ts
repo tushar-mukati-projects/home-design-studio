@@ -66,7 +66,6 @@ export interface Design {
   thumbnail?: string | null;
   width: number;
   height: number;
-  isPublic: boolean;
   canvasData: CanvasData;
   rooms: Room[];
   furniture: PlacedFurniture[];
@@ -87,6 +86,8 @@ export interface CanvasData {
   panY: number;
 }
 
+export type DesignSummary = Omit<Design, "canvasData">;
+
 export interface DesignTemplate {
   id: string;
   name: string;
@@ -94,8 +95,6 @@ export interface DesignTemplate {
   category: string;
   thumbnail: string | null;
   canvasData: CanvasData;
-  rooms: unknown[];
-  furniture: unknown[];
   width: number;
   height: number;
   sortOrder: number;

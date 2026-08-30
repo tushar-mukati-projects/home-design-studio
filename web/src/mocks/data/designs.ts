@@ -9,7 +9,6 @@ export const mockDesigns: Design[] = [
     thumbnail: null,
     width: 800,
     height: 600,
-    isPublic: false,
     canvasData: {
       walls: [
         { id: "w1", x1: 50, y1: 50, x2: 650, y2: 50, thickness: 15, color: "#6B5B4D" },
@@ -213,7 +212,6 @@ export const mockDesigns: Design[] = [
     thumbnail: null,
     width: 600,
     height: 500,
-    isPublic: true,
     canvasData: {
       walls: [
         { id: "w1", x1: 50, y1: 50, x2: 550, y2: 50, thickness: 15, color: "#6B5B4D" },
@@ -312,7 +310,6 @@ export const mockDesigns: Design[] = [
     thumbnail: null,
     width: 500,
     height: 400,
-    isPublic: false,
     canvasData: {
       walls: [
         { id: "w1", x1: 50, y1: 50, x2: 450, y2: 50, thickness: 15, color: "#6B5B4D" },

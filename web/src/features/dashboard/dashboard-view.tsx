@@ -54,7 +54,7 @@ import { BILLING_QUERY_KEYS } from "@/hooks/billing/constants";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { PlanBadge } from "@/features/billing/plan-badge";
 import { cn } from "@/lib/utils";
-import type { Design, DesignTemplate } from "@/types";
+import type { Design, DesignTemplate, DesignSummary } from "@/types";
 import { TemplateGallery } from "./template-gallery";
 
 const DIMENSION_PRESETS = [
@@ -65,7 +65,7 @@ const DIMENSION_PRESETS = [
 ] as const;
 
 interface DesignThumbnailProps {
-  design: Design;
+  design: DesignSummary;
 }
 
 const DesignThumbnail = ({ design }: DesignThumbnailProps) => {
@@ -280,9 +280,9 @@ export const DashboardView = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [designToDelete, setDesignToDelete] = useState<Design | null>(null);
+  const [designToDelete, setDesignToDelete] = useState<DesignSummary | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [, setDesignToRename] = useState<Design | null>(null);
+  const [, setDesignToRename] = useState<DesignSummary | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   const [newDesignName, setNewDesignName] = useState("");
@@ -338,9 +338,7 @@ export const DashboardView = () => {
       resetCreateForm();
       NProgress.start();
       router.push(`/editor/${design.id}`);
-    } catch {
-      toast.error("Failed to create design. Please try again.");
-    }
+    } catch {}
   };
 
   const handleCreateFromSelectedTemplate = async () => {
@@ -362,9 +360,7 @@ export const DashboardView = () => {
       resetCreateForm();
       NProgress.start();
       router.push(`/editor/${design.id}`);
-    } catch {
-      toast.error("Failed to create design from template");
-    }
+    } catch {}
   };
 
   const handleDeleteDesign = async () => {
@@ -375,12 +371,10 @@ export const DashboardView = () => {
       toast.success(`"${designToDelete.name}" has been deleted`);
       setDeleteDialogOpen(false);
       setDesignToDelete(null);
-    } catch {
-      toast.error("Failed to delete design. Please try again.");
-    }
+    } catch {}
   };
 
-  const handleDuplicateDesign = async (design: Design) => {
+  const handleDuplicateDesign = async (design: DesignSummary) => {
     try {
       const duplicated = await createDesign.mutateAsync({
         name: `${design.name} (Copy)`,
@@ -389,17 +383,15 @@ export const DashboardView = () => {
         height: design.height,
       });
       toast.success(`Duplicated as "${duplicated.name}"`);
-    } catch {
-      toast.error("Failed to duplicate design. Please try again.");
-    }
+    } catch {}
   };
 
-  const openDeleteDialog = (design: Design) => {
+  const openDeleteDialog = (design: DesignSummary) => {
     setDesignToDelete(design);
     setDeleteDialogOpen(true);
   };
 
-  const openRenameDialog = (design: Design) => {
+  const openRenameDialog = (design: DesignSummary) => {
     setDesignToRename(design);
     setRenameValue(design.name);
     setRenameDialogOpen(true);
@@ -899,7 +891,7 @@ export const DashboardView = () => {
 };
 
 interface DesignCardProps {
-  design: Design;
+  design: DesignSummary;
   onOpen: () => void;
   onDuplicate: () => void;
   onRename: () => void;

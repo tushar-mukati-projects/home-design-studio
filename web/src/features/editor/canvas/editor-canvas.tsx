@@ -176,6 +176,8 @@ export const EditorCanvas = ({
         return;
       }
 
+      if (!s.canEdit && s.activeTool !== "select") return;
+
       if (s.activeTool === "wall") {
         const point = getCanvasPoint(stage);
         if (!point) return;
@@ -242,6 +244,7 @@ export const EditorCanvas = ({
       }
 
       if (s.activeTool === "eraser") {
+        if (!s.canEdit) return;
         const point = getCanvasPoint(stage);
         if (!point) return;
 
@@ -280,11 +283,14 @@ export const EditorCanvas = ({
         }
 
         const hitFurniture = s.furniture.find((f) => {
-          const hw = (f.furnitureItem.width * f.scaleX) / 2;
-          const hh = (f.furnitureItem.height * f.scaleY) / 2;
-          return (
-            point.x >= f.x - hw && point.x <= f.x + hw && point.y >= f.y - hh && point.y <= f.y + hh
-          );
+          const hw = Math.abs(f.furnitureItem.width * f.scaleX) / 2;
+          const hh = Math.abs(f.furnitureItem.height * f.scaleY) / 2;
+          const rad = ((f.rotation || 0) * Math.PI) / 180;
+          const dx = point.x - f.x;
+          const dy = point.y - f.y;
+          const localX = dx * Math.cos(rad) + dy * Math.sin(rad);
+          const localY = -dx * Math.sin(rad) + dy * Math.cos(rad);
+          return Math.abs(localX) <= hw && Math.abs(localY) <= hh;
         });
 
         if (hitFurniture) {
@@ -372,6 +378,11 @@ export const EditorCanvas = ({
       }
     }
   }, [stageRef]);
+
+  useEffect(() => {
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseUp]);
 
   const handleDblClick = useCallback(() => {
     const s = useEditorStore.getState();

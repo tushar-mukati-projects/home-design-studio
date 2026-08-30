@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import type { Response } from "express";
-import { config } from "../config";
-import { logger } from "../logger";
+import { config } from "../lib/config";
+import { logger } from "../lib/logger";
 
 if (!config.openaiApiKey) {
   throw new Error(
@@ -251,7 +251,6 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
         thickness: w.thickness || 12,
       }));
 
-    // Snap wall endpoints that are within SNAP_THRESHOLD of each other
     for (let i = 0; i < walls.length; i++) {
       for (let j = i + 1; j < walls.length; j++) {
         const endpoints: Array<{
@@ -275,7 +274,6 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
             const dx = Math.abs(ep.wall[ep.key] - tg.wall[tg.key]);
             const dy = Math.abs(ep.wall[ep.yKey] - tg.wall[tg.yKey]);
             if (dx <= SNAP_THRESHOLD && dy <= SNAP_THRESHOLD && (dx > 0 || dy > 0)) {
-              // Snap the target endpoint to the source endpoint
               tg.wall[tg.key] = ep.wall[ep.key];
               tg.wall[tg.yKey] = ep.wall[ep.yKey];
             }
@@ -319,7 +317,6 @@ export const analyzeImage = async (imageBuffer: Buffer, mimeType: string, res: R
         })),
       }));
 
-    // Compute room bounding boxes for furniture validation
     const roomBounds = rooms.map((r) => {
       const xs = r.points.map((p) => p.x);
       const ys = r.points.map((p) => p.y);

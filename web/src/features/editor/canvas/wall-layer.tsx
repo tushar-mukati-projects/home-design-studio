@@ -3,6 +3,7 @@
 import { memo, useRef, useCallback, useEffect, useState } from "react";
 import { Layer, Line, Circle, Text, Group, Shape } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { pxToFeet } from "@/lib/constants";
 
 interface WallLayerProps {
   mousePosRef: React.RefObject<{ x: number; y: number } | null>;
@@ -30,6 +31,7 @@ export const WallLayer = memo(
     const isDrawing = useEditorStore((s) => s.isDrawing);
     const currentWallStart = useEditorStore((s) => s.currentWallStart);
     const zoom = useEditorStore((s) => s.zoom);
+    const canEdit = useEditorStore((s) => s.canEdit);
     const updateWall = useEditorStore((s) => s.updateWall);
     const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
     const snapPoint = useEditorStore((s) => s.snapPoint);
@@ -109,7 +111,7 @@ export const WallLayer = memo(
                     shadowColor="#7c6350"
                     shadowBlur={8 / zoom}
                     shadowOpacity={0.6}
-                    draggable
+                    draggable={canEdit}
                     onDragStart={() => {
                       draggingRef.current = true;
                     }}
@@ -139,7 +141,7 @@ export const WallLayer = memo(
                     shadowColor="#7c6350"
                     shadowBlur={8 / zoom}
                     shadowOpacity={0.6}
-                    draggable
+                    draggable={canEdit}
                     onDragStart={() => {
                       draggingRef.current = true;
                     }}
@@ -155,7 +157,7 @@ export const WallLayer = memo(
                     y={labelY - 8}
                     width={80}
                     align="center"
-                    text={`${(length / 30).toFixed(1)} ft`}
+                    text={`${pxToFeet(length).toFixed(1)} ft`}
                     fontSize={12 / zoom}
                     fontFamily="Inter, sans-serif"
                     fill="#8b6f4e"
@@ -204,7 +206,7 @@ export const WallLayer = memo(
               ctx.font = `bold ${13 / zoom}px Inter, sans-serif`;
               ctx.textAlign = "center";
               ctx.fillStyle = "#8b6f4e";
-              ctx.fillText(`${(length / 30).toFixed(1)} ft`, mid.x, mid.y - 14 / zoom);
+              ctx.fillText(`${pxToFeet(length).toFixed(1)} ft`, mid.x, mid.y - 14 / zoom);
             }}
             listening={false}
           />

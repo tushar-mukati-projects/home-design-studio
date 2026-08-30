@@ -7,8 +7,6 @@ import {
   Check,
   Mail,
   Trash2,
-  Globe,
-  Lock,
   UserPlus,
   Eye,
   Pencil,
@@ -21,10 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
-  useDesignShares,
-  useShareDesign,
-  useRevokeShare,
-  useToggleShareLink,
+  useDesignAccess,
+  useAddMember,
+  useRemoveMember,
+  useCreateLink,
+  useRevokeLink,
 } from "@/hooks/designs/useSharing";
 
 interface ShareModalProps {
@@ -37,49 +36,42 @@ interface ShareModalProps {
 export const ShareModal = ({ open, onClose, designId, designName }: ShareModalProps) => {
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<"readonly" | "readwrite">("readonly");
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { data, isLoading } = useDesignShares(designId);
-  const shareMutation = useShareDesign(designId);
-  const revokeMutation = useRevokeShare(designId);
-  const linkMutation = useToggleShareLink(designId);
+  const { data, isLoading } = useDesignAccess(designId);
+  const addMember = useAddMember(designId);
+  const removeMember = useRemoveMember(designId);
+  const createLink = useCreateLink(designId);
+  const revokeLink = useRevokeLink(designId);
 
-  const shares = data?.shares ?? [];
-  const shareToken = data?.shareToken ?? null;
-  const shareLinkAccess = data?.shareLinkAccess ?? "readonly";
+  const members = data?.members ?? [];
+  const links = data?.links ?? [];
 
-  const handleShare = async () => {
+  const handleInvite = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes("@")) {
       toast.error("Enter a valid email address");
       return;
     }
     try {
-      await shareMutation.mutateAsync({ email: trimmed, permission });
+      await addMember.mutateAsync({ email: trimmed, permission });
       toast.success(`Invitation sent to ${trimmed}`);
       setEmail("");
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      toast.error(msg || "Failed to share");
-    }
+    } catch {}
   };
 
-  const handleCopyLink = () => {
-    if (!shareToken) return;
-    const url = `${window.location.origin}/shared/${shareToken}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    toast.success("Link copied!");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCreateLink = async () => {
+    try {
+      await createLink.mutateAsync({ permission: "readonly" });
+      toast.success("Share link created");
+    } catch {}
   };
 
-  const handleToggleLink = async (enabled: boolean) => {
-    await linkMutation.mutateAsync({ enabled, access: shareLinkAccess });
-    toast.success(enabled ? "Share link enabled" : "Share link disabled");
-  };
-
-  const handleLinkAccessChange = async (access: string) => {
-    await linkMutation.mutateAsync({ enabled: true, access });
+  const handleCopy = (code: string, id: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/shared/${code}`);
+    setCopiedId(id);
+    toast.success("Link copied");
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -99,7 +91,7 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
                 placeholder="Add people by email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleShare()}
+                onKeyDown={(e) => e.key === "Enter" && handleInvite()}
                 className="h-10 pl-9 text-sm"
               />
             </div>
@@ -113,10 +105,10 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
             </select>
             <Button
               className="h-10 gap-2 px-4"
-              onClick={handleShare}
-              disabled={shareMutation.isPending || !email.trim()}
+              onClick={handleInvite}
+              disabled={addMember.isPending || !email.trim()}
             >
-              {shareMutation.isPending ? (
+              {addMember.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <UserPlus className="h-4 w-4" />
@@ -141,45 +133,37 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
               </div>
             </div>
 
-            {isLoading && (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-[var(--muted-foreground)]" />
-              </div>
-            )}
-
-            {shares.map((s) => (
+            {members.map((m) => (
               <div
-                key={s.id}
-                className="group flex items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0"
+                key={m.id}
+                className="group flex items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary)] text-[var(--muted-foreground)]">
-                  {s.permission === "readwrite" ? (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary)]">
+                  {m.permission === "readwrite" ? (
                     <Pencil className="h-3.5 w-3.5" />
                   ) : (
                     <Eye className="h-3.5 w-3.5" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-[var(--foreground)]">
-                    {s.sharedWithEmail}
-                  </p>
+                  <p className="truncate text-sm text-[var(--foreground)]">{m.email}</p>
                   <p className="text-xs text-[var(--muted-foreground)]">
-                    {s.permission === "readwrite" ? "Can edit" : "Can view"}
+                    {m.permission === "readwrite" ? "Can edit" : "Can view"}
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0 text-[var(--muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--destructive)]"
-                  onClick={() => revokeMutation.mutate(s.id)}
-                  disabled={revokeMutation.isPending}
+                  onClick={() => removeMember.mutate(m.id)}
+                  disabled={removeMember.isPending}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
 
-            {!isLoading && shares.length === 0 && (
+            {!isLoading && members.length === 0 && (
               <div className="py-6 text-center text-xs text-[var(--muted-foreground)]">
                 No one else has access yet
               </div>
@@ -191,73 +175,66 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
 
         <div className="px-6 py-4">
           <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {shareToken ? (
-                <Globe className="h-4 w-4 text-green-400" />
-              ) : (
-                <Lock className="h-4 w-4 text-[var(--muted-foreground)]" />
-              )}
-              <div>
-                <p className="text-sm font-medium text-[var(--foreground)]">
-                  {shareToken ? "Anyone with the link" : "Link sharing off"}
-                </p>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  {shareToken
-                    ? `Can ${shareLinkAccess === "readwrite" ? "edit" : "view"} this design`
-                    : "Only people you invite can access"}
-                </p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-[var(--foreground)]">Share links</p>
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Anyone with a link can view this design
+              </p>
             </div>
-            <button
-              onClick={() => handleToggleLink(!shareToken)}
-              disabled={linkMutation.isPending}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                shareToken ? "bg-green-500" : "bg-[var(--muted)]"
-              }`}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5"
+              onClick={handleCreateLink}
+              disabled={createLink.isPending}
             >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                  shareToken ? "translate-x-[22px]" : "translate-x-[3px]"
-                }`}
-              />
-            </button>
+              {createLink.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Link2 className="h-3.5 w-3.5" />
+              )}
+              New link
+            </Button>
           </div>
 
-          {shareToken && (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <div className="flex flex-1 items-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--secondary)] px-3">
-                  <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
-                  <span className="ml-2 truncate font-mono text-xs text-[var(--muted-foreground)]">
-                    {typeof window !== "undefined" ? window.location.origin : ""}/shared/
-                    {shareToken}
-                  </span>
+          {links.length === 0 ? (
+            <p className="py-3 text-center text-xs text-[var(--muted-foreground)]">
+              No share links yet
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {links.map((link) => (
+                <div key={link.id} className="flex gap-2">
+                  <div className="flex flex-1 items-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--secondary)] px-3">
+                    <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
+                    <span className="ml-2 truncate font-mono text-xs text-[var(--muted-foreground)]">
+                      /shared/{link.code}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 gap-1.5"
+                    onClick={() => handleCopy(link.code, link.id)}
+                  >
+                    {copiedId === link.id ? (
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    {copiedId === link.id ? "Copied" : "Copy"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 text-[var(--muted-foreground)] hover:text-[var(--destructive)]"
+                    onClick={() => revokeLink.mutate(link.id)}
+                    disabled={revokeLink.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 shrink-0 gap-1.5"
-                  onClick={handleCopyLink}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  {copied ? "Copied!" : "Copy link"}
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[var(--muted-foreground)]">Anyone with link can</span>
-                <select
-                  value={shareLinkAccess}
-                  onChange={(e) => handleLinkAccessChange(e.target.value)}
-                  className="rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs font-medium text-[var(--foreground)] outline-none"
-                >
-                  <option value="readonly">View</option>
-                  <option value="readwrite">Edit</option>
-                </select>
-              </div>
+              ))}
             </div>
           )}
         </div>
