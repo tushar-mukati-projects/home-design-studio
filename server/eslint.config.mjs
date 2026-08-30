@@ -5,7 +5,7 @@ export default [
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "tests/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-namespace": "off",

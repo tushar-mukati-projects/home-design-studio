@@ -7,7 +7,9 @@ interface PlanResponse {
   canCreateDesign: boolean;
   canShare: boolean;
   canUseAI: boolean;
-  designLimit: number;
+
+  designLimit: number | null;
+  designCount: number;
 }
 
 export const useFetchPlan = () => {

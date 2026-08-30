@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../types";
+import type { AuthenticatedRequest } from "../lib/types";
 import * as imageToDesignService from "../services/image-to-design.service";
 
 export const imageToDesign = async (req: Request, res: Response) => {

@@ -8,7 +8,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 200,
     height: 90,
     depth: 85,
-    color: "#9ca3af",
+    color: "#7b8ea0",
   },
   {
     id: "armchair",
@@ -17,7 +17,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 85,
     height: 85,
     depth: 80,
-    color: "#9ca3af",
+    color: "#7b8ea0",
   },
   {
     id: "coffee-table",
@@ -26,7 +26,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 120,
     height: 60,
     depth: 45,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
   {
     id: "tv-stand",
@@ -35,7 +35,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 150,
     height: 40,
     depth: 50,
-    color: "#71717a",
+    color: "#6b5f52",
   },
   {
     id: "bookshelf",
@@ -44,7 +44,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 80,
     height: 30,
     depth: 200,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
   {
     id: "floor-lamp",
@@ -53,7 +53,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 30,
     height: 30,
     depth: 150,
-    color: "#d4d4d8",
+    color: "#c8c0b8",
   },
 
   {
@@ -63,7 +63,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 200,
     height: 160,
     depth: 45,
-    color: "#b4b4bc",
+    color: "#9eaabb",
   },
   {
     id: "single-bed",
@@ -72,7 +72,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 200,
     height: 90,
     depth: 45,
-    color: "#b4b4bc",
+    color: "#9eaabb",
   },
   {
     id: "nightstand",
@@ -81,7 +81,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 50,
     height: 40,
     depth: 55,
-    color: "#a1a1aa",
+    color: "#8c7a66",
   },
   {
     id: "wardrobe",
@@ -90,7 +90,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 120,
     height: 60,
     depth: 200,
-    color: "#71717a",
+    color: "#6b5f52",
   },
   {
     id: "dresser",
@@ -99,7 +99,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 100,
     height: 45,
     depth: 80,
-    color: "#a1a1aa",
+    color: "#8c7a66",
   },
   {
     id: "desk",
@@ -108,7 +108,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 120,
     height: 60,
     depth: 75,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
 
   {
@@ -118,7 +118,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 160,
     height: 90,
     depth: 75,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
   {
     id: "dining-chair",
@@ -127,7 +127,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 45,
     height: 45,
     depth: 90,
-    color: "#9ca3af",
+    color: "#96836e",
   },
   {
     id: "kitchen-island",
@@ -136,7 +136,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 120,
     height: 80,
     depth: 90,
-    color: "#d4d4d8",
+    color: "#c8c4c0",
   },
   {
     id: "refrigerator",
@@ -145,7 +145,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 70,
     height: 70,
     depth: 180,
-    color: "#e4e4e7",
+    color: "#d0d0d8",
   },
   {
     id: "stove",
@@ -154,7 +154,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 60,
     height: 60,
     depth: 85,
-    color: "#52525b",
+    color: "#3c3c44",
   },
 
   {
@@ -164,7 +164,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 170,
     height: 75,
     depth: 60,
-    color: "#f4f4f5",
+    color: "#eae8e5",
   },
   {
     id: "toilet",
@@ -173,7 +173,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 40,
     height: 65,
     depth: 40,
-    color: "#f4f4f5",
+    color: "#eae8e5",
   },
   {
     id: "sink",
@@ -182,7 +182,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 60,
     height: 45,
     depth: 85,
-    color: "#f4f4f5",
+    color: "#eae8e5",
   },
   {
     id: "shower",
@@ -191,7 +191,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 90,
     height: 90,
     depth: 200,
-    color: "#e4e4e7",
+    color: "#dcdce0",
   },
 
   {
@@ -201,7 +201,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 140,
     height: 70,
     depth: 75,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
   {
     id: "office-chair",
@@ -210,7 +210,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 60,
     height: 60,
     depth: 110,
-    color: "#52525b",
+    color: "#404550",
   },
   {
     id: "filing-cabinet",
@@ -219,7 +219,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 40,
     height: 50,
     depth: 70,
-    color: "#d4d4d8",
+    color: "#b8b8c0",
   },
   {
     id: "bookcase",
@@ -228,7 +228,7 @@ export const LOCAL_FURNITURE_ITEMS: FurnitureItem[] = [
     width: 90,
     height: 35,
     depth: 180,
-    color: "#a1a1aa",
+    color: "#96836e",
   },
 ];
 

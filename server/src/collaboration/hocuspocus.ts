@@ -3,42 +3,51 @@ import { Database } from "@hocuspocus/extension-database";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../db";
-import { logger } from "../logger";
+import { prisma } from "../lib/db";
+import { getDesignPermission } from "../lib/design-access";
+import { firebaseAuth } from "../lib/firebase-admin";
+import { logger } from "../lib/logger";
+import { extractCanvasFromDoc, buildYjsState, COLLECTION_KEYS } from "./yjs-doc";
 
-const extractCanvasFromDoc = (doc: Y.Doc) => {
-  const toArray = (yMap: Y.Map<unknown>) => {
-    const arr: Record<string, unknown>[] = [];
-    yMap.forEach((v) => arr.push(v as Record<string, unknown>));
-    return arr;
-  };
-
-  return {
-    walls: toArray(doc.getMap("walls")),
-    doors: toArray(doc.getMap("doors")),
-    windows: toArray(doc.getMap("windows")),
-    furniture: toArray(doc.getMap("furniture")),
-    rooms: toArray(doc.getMap("rooms")),
-  };
-};
+const collabDocumentName = (designId: string) => `design:${designId}`;
 
 const hocuspocus = new Hocuspocus({
   quiet: true,
-  async onAuthenticate(data: { token: string }) {
-    const { token } = data;
+  async onAuthenticate(data: {
+    token: string;
+    documentName: string;
+    connection: { readOnly: boolean };
+  }) {
+    const { token, documentName } = data;
     if (!token) throw new Error("Authentication required");
 
-    const user = await prisma.user.findUnique({
-      where: { clerkId: token },
-    });
+    const decoded = await firebaseAuth.verifyIdToken(token);
 
+    const user = await prisma.user.findUnique({ where: { authSub: decoded.uid } });
     if (!user) {
-      logger.warn("Collab auth failed: user not found", { token });
+      logger.warn("Collab auth failed: user not found", { uid: decoded.uid });
       throw new Error("User not found");
     }
 
+    const designId = documentName.replace(/^design:/, "");
+    const design = await prisma.design.findUnique({
+      where: { id: designId },
+      select: { id: true, userId: true },
+    });
+
+    if (!design) throw new Error("Design not found");
+
+    const email = decoded.email_verified && decoded.email ? decoded.email.toLowerCase() : undefined;
+    const permission = await getDesignPermission(design, user.id, email);
+
+    if (!permission) throw new Error("Access denied");
+    if (permission === "readonly") data.connection.readOnly = true;
+
     logger.debug("Collab auth success", { userId: user.id });
-    return { user: { id: user.id, firebaseUid: token } };
+    return {
+      user: { id: user.id, authSub: decoded.uid },
+      readOnly: data.connection.readOnly,
+    };
   },
   extensions: [
     new Database({
@@ -48,10 +57,35 @@ const hocuspocus = new Hocuspocus({
 
         const design = await prisma.design.findUnique({
           where: { id: designId },
-          select: { yjsState: true },
+          select: {
+            yjsState: true,
+            canvasData: true,
+            name: true,
+            user: { select: { authSub: true } },
+          },
         });
 
-        return design?.yjsState ? new Uint8Array(design.yjsState) : null;
+        if (!design) return null;
+
+        const doc = new Y.Doc();
+
+        if (design.yjsState) {
+          Y.applyUpdate(doc, new Uint8Array(design.yjsState));
+        } else if (design.canvasData) {
+          Y.applyUpdate(doc, buildYjsState(design.canvasData as Record<string, unknown>));
+        }
+
+        const meta = doc.getMap("metadata");
+        doc.transact(() => {
+          if (meta.get("name") !== design.name) meta.set("name", design.name);
+          if (meta.get("ownerUid") !== design.user.authSub) {
+            meta.set("ownerUid", design.user.authSub);
+          }
+        });
+
+        const state = Y.encodeStateAsUpdate(doc);
+        doc.destroy();
+        return state;
       },
       store: async ({ documentName, state }: { documentName: string; state: Uint8Array }) => {
         const designId = documentName.replace(/^design:/, "");
@@ -59,20 +93,86 @@ const hocuspocus = new Hocuspocus({
 
         const doc = new Y.Doc();
         Y.applyUpdate(doc, state);
-        const canvasData = extractCanvasFromDoc(doc);
+        const canvas = extractCanvasFromDoc(doc);
+
+        const meta = doc.getMap("metadata");
+        const name = meta.get("name") as string | undefined;
+
         doc.destroy();
+
+        const existing = await prisma.design.findUnique({
+          where: { id: designId },
+          select: { canvasData: true },
+        });
+        if (!existing) return;
+
+        const prev = (existing.canvasData ?? {}) as Record<string, unknown>;
+        const canvasData = { ...prev, ...canvas };
 
         await prisma.design.update({
           where: { id: designId },
           data: {
             yjsState: Buffer.from(state),
             canvasData: canvasData as unknown as Prisma.InputJsonValue,
+            ...(name ? { name } : {}),
           },
         });
       },
     }),
   ],
 });
+
+// The write path for a design's canvas: an open document would otherwise flush its own
+// stale copy over a direct column write, and a rebuilt state would lose deletion history.
+export const applyToCollabDoc = async (
+  designId: string,
+  update: { canvas?: Record<string, unknown>; name?: string },
+): Promise<void> => {
+  const documentName = collabDocumentName(designId);
+  let connection: Awaited<ReturnType<typeof hocuspocus.openDirectConnection>> | null = null;
+
+  try {
+    connection = await hocuspocus.openDirectConnection(documentName);
+    await connection.transact((doc) => {
+      doc.transact(() => {
+        if (update.canvas) {
+          for (const key of COLLECTION_KEYS) {
+            const map = doc.getMap(key);
+            map.clear();
+            const items = Array.isArray(update.canvas[key])
+              ? (update.canvas[key] as Array<Record<string, unknown>>)
+              : [];
+            for (const item of items) {
+              if (item && typeof item.id === "string") {
+                map.set(item.id, item);
+              }
+            }
+          }
+        }
+        if (update.name !== undefined) {
+          doc.getMap("metadata").set("name", update.name);
+        }
+      });
+    });
+    logger.debug("Applied server-side change to collab doc", { designId });
+  } catch (err) {
+    logger.error("Failed to apply server-side change to collab doc", {
+      designId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err instanceof Error ? err : new Error("Collaboration update failed");
+  } finally {
+    await connection?.disconnect().catch(() => undefined);
+  }
+};
+
+export const readCollabCanvas = async (
+  designId: string,
+): Promise<Record<string, unknown> | null> => {
+  const documentName = collabDocumentName(designId);
+  const doc = hocuspocus.documents.get(documentName);
+  return doc ? extractCanvasFromDoc(doc) : null;
+};
 
 export const startCollab = () => {
   const wss = new WebSocketServer({ noServer: true });

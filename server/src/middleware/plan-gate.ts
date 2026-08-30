@@ -1,13 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
-import type { AuthenticatedRequest } from "../types";
-import { prisma } from "../db";
-import { PLANS } from "../constants";
+import type { AuthenticatedRequest } from "../lib/types";
+import { prisma } from "../lib/db";
+import { getSubscription } from "../services/stripe.service";
+import { PLANS } from "../lib/constants";
 
 export const requirePro = async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const subscription = await getSubscription(userId);
 
-  if (!user || user.plan !== "pro") {
+  if (subscription?.plan !== "pro") {
     res.status(403).json({ error: "Pro plan required" });
     return;
   }
@@ -17,17 +18,15 @@ export const requirePro = async (req: Request, res: Response, next: NextFunction
 
 export const checkDesignLimit = async (req: Request, res: Response, next: NextFunction) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-
-  if (!user) {
-    res.status(401).json({ error: "User not found" });
-    return;
-  }
-
-  const planConfig = PLANS[user.plan] ?? PLANS.free;
+  const subscription = await getSubscription(userId);
+  const planConfig = PLANS[subscription?.plan ?? "free"] ?? PLANS.free;
 
   if (planConfig.designLimit !== Infinity) {
-    const count = await prisma.design.count({ where: { userId } });
+    // Serializable so two concurrent creates cannot both read a count below
+    // the limit and both succeed.
+    const count = await prisma.$transaction((tx) => tx.design.count({ where: { userId } }), {
+      isolationLevel: "Serializable",
+    });
     if (count >= planConfig.designLimit) {
       res.status(403).json({ error: "Design limit reached", limit: planConfig.designLimit });
       return;

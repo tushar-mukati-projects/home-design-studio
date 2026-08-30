@@ -8,7 +8,6 @@ interface CreateDesignPayload {
   description?: string;
   width: number;
   height: number;
-  isPublic?: boolean;
 }
 
 export const useCreateDesign = () => {

@@ -5,6 +5,7 @@ import type Konva from "konva";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { useEditorStore } from "@/stores/editor-store";
+import { EXPORT_HIDDEN_LAYER_NAME, PIXELS_PER_FOOT, pxToSquareFeet } from "@/lib/constants";
 
 type PaperSize = "a4" | "letter" | "a3";
 type Orientation = "landscape" | "portrait";
@@ -25,14 +26,56 @@ const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number }> = {
   a3: { width: 420, height: 297 },
 };
 
-const getStageDataUrl = (
+interface Capture {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+const captureContent = (
   stageRef: React.RefObject<Konva.Stage | null>,
   pixelRatio: number,
-): string => {
-  if (!stageRef.current) {
+): Capture => {
+  const stage = stageRef.current;
+  if (!stage) {
     throw new Error("Canvas is not available");
   }
-  return stageRef.current.toDataURL({ pixelRatio });
+
+  const prevScale = { x: stage.scaleX(), y: stage.scaleY() };
+  const prevPos = { x: stage.x(), y: stage.y() };
+
+  const hiddenLayers = stage.find(`.${EXPORT_HIDDEN_LAYER_NAME}`).filter((node) => node.visible());
+
+  try {
+    hiddenLayers.forEach((node) => node.visible(false));
+    stage.scale({ x: 1, y: 1 });
+    stage.position({ x: 0, y: 0 });
+
+    const rect = stage.getClientRect({ skipTransform: false });
+    const pad = 40;
+    const hasContent =
+      rect.width > 0 &&
+      rect.height > 0 &&
+      Number.isFinite(rect.width) &&
+      Number.isFinite(rect.height);
+
+    const region = hasContent
+      ? {
+          x: rect.x - pad,
+          y: rect.y - pad,
+          width: rect.width + pad * 2,
+          height: rect.height + pad * 2,
+        }
+      : { x: 0, y: 0, width: stage.width(), height: stage.height() };
+
+    const dataUrl = stage.toDataURL({ pixelRatio, ...region });
+    return { dataUrl, width: region.width, height: region.height };
+  } finally {
+    hiddenLayers.forEach((node) => node.visible(true));
+    stage.scale(prevScale);
+    stage.position(prevPos);
+    stage.batchDraw();
+  }
 };
 
 const triggerDownload = (dataUrl: string, filename: string) => {
@@ -60,7 +103,7 @@ export const useExport = () => {
   const exportAsPng = useCallback(
     (stageRef: React.RefObject<Konva.Stage | null>, designName: string) => {
       try {
-        const dataUrl = getStageDataUrl(stageRef, 2);
+        const { dataUrl } = captureContent(stageRef, 2);
         const safeName = designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
         triggerDownload(dataUrl, `${safeName}-floorplan.png`);
         toast.success("Floor plan exported as PNG");
@@ -79,7 +122,11 @@ export const useExport = () => {
     ) => {
       try {
         const pixelRatio = options.quality === "high" ? 3 : 2;
-        const dataUrl = getStageDataUrl(stageRef, pixelRatio);
+        const {
+          dataUrl,
+          width: imgWidth,
+          height: imgHeight,
+        } = captureContent(stageRef, pixelRatio);
 
         const dims = PAPER_DIMENSIONS[options.paperSize];
         const pageWidth = options.orientation === "landscape" ? dims.width : dims.height;
@@ -119,15 +166,10 @@ export const useExport = () => {
           footerReserve += 14;
         }
 
-        const availableHeight = pageHeight - margin * 2 - headerHeight - footerReserve;
+        const maxImageHeight = pageHeight - margin * 2 - headerHeight;
+
+        const availableHeight = Math.max(maxImageHeight * 0.4, maxImageHeight - footerReserve);
         const availableWidth = contentWidth;
-
-        const img = new Image();
-        img.src = dataUrl;
-
-        const stage = stageRef.current;
-        const imgWidth = stage ? stage.width() : 800;
-        const imgHeight = stage ? stage.height() : 600;
 
         const scaleX = availableWidth / imgWidth;
         const scaleY = availableHeight / imgHeight;
@@ -145,13 +187,44 @@ export const useExport = () => {
 
         let cursorY = imgY + renderedHeight + 8;
 
-        if (options.includeDimensions && walls.length > 0) {
+        const bottomLimit = pageHeight - margin - 6;
+
+        const ensureSpace = (needed: number) => {
+          if (cursorY + needed > bottomLimit) {
+            doc.addPage();
+            cursorY = margin;
+          }
+        };
+
+        const sectionHeading = (title: string) => {
+          ensureSpace(12);
           doc.setFontSize(10);
           doc.setFont("helvetica", "bold");
-          doc.text("Dimensions", margin, cursorY);
+          doc.text(title, margin, cursorY);
           cursorY += 5;
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
+        };
+
+        const gridList = <T>(
+          items: T[],
+          columns: number,
+          rowHeight: number,
+          draw: (item: T, x: number, y: number) => void,
+        ) => {
+          const colWidth = contentWidth / columns;
+          for (let i = 0; i < items.length; i += columns) {
+            ensureSpace(rowHeight);
+            items.slice(i, i + columns).forEach((item, col) => {
+              draw(item, margin + col * colWidth, cursorY);
+            });
+            cursorY += rowHeight;
+          }
+          cursorY += 3;
+        };
+
+        if (options.includeDimensions && walls.length > 0) {
+          sectionHeading("Dimensions");
 
           const totalLength = walls.reduce((sum, wall) => {
             const dx = wall.x2 - wall.x1;
@@ -160,7 +233,7 @@ export const useExport = () => {
           }, 0);
 
           doc.text(
-            `${walls.length} walls | Total length: ${(totalLength / 20).toFixed(1)}m | ${rooms.length} rooms`,
+            `${walls.length} walls | Total length: ${(totalLength / PIXELS_PER_FOOT).toFixed(1)} ft | ${rooms.length} rooms`,
             margin,
             cursorY,
           );
@@ -168,60 +241,40 @@ export const useExport = () => {
         }
 
         if (options.includeRoomLabels && rooms.length > 0) {
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text("Rooms", margin, cursorY);
-          cursorY += 5;
-          doc.setFontSize(8);
-          doc.setFont("helvetica", "normal");
-
-          const colWidth = contentWidth / 3;
-          rooms.forEach((room, i) => {
-            const col = i % 3;
-            const row = Math.floor(i / 3);
-            const x = margin + col * colWidth;
-            const y = cursorY + row * 7;
-
-            const hex = room.color.replace("#", "");
+          sectionHeading("Rooms");
+          gridList(rooms, 3, 7, (room, x, y) => {
+            const hex = (room.color || "#cccccc").replace("#", "").slice(0, 6).padEnd(6, "0");
             const r = parseInt(hex.substring(0, 2), 16);
             const g = parseInt(hex.substring(2, 4), 16);
             const b = parseInt(hex.substring(4, 6), 16);
 
             doc.setFillColor(r, g, b);
             doc.rect(x, y - 3, 4, 4, "F");
-            doc.text(`${room.name} (${(room.area / 400).toFixed(1)} m\u00B2)`, x + 6, y);
+            doc.text(`${room.name} (${pxToSquareFeet(room.area).toFixed(1)} sq ft)`, x + 6, y);
           });
-          cursorY += Math.ceil(rooms.length / 3) * 7 + 3;
         }
 
         if (options.includeFurnitureList && furniture.length > 0) {
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text("Furniture", margin, cursorY);
-          cursorY += 5;
-          doc.setFontSize(8);
-          doc.setFont("helvetica", "normal");
-
-          const colWidth = contentWidth / 2;
-          furniture.forEach((item, i) => {
-            const col = i % 2;
-            const row = Math.floor(i / 2);
-            const x = margin + col * colWidth;
-            const y = cursorY + row * 6;
-
+          sectionHeading("Furniture");
+          gridList(furniture, 2, 6, (item, x, y) => {
             doc.text(`\u2022 ${item.furnitureItem.name} (${item.furnitureItem.category})`, x, y);
           });
-          cursorY += Math.ceil(furniture.length / 2) * 6 + 3;
         }
 
-        doc.setFontSize(7);
-        doc.setTextColor(150, 150, 150);
-        doc.text(
-          `Created with Home Design Studio | ${formatDate()}`,
-          pageWidth / 2,
-          pageHeight - 8,
-          { align: "center" },
-        );
+        const totalPages = doc.getNumberOfPages();
+        for (let page = 1; page <= totalPages; page += 1) {
+          doc.setPage(page);
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            totalPages > 1
+              ? `Created with Home Design Studio | ${formatDate()} | Page ${page} of ${totalPages}`
+              : `Created with Home Design Studio | ${formatDate()}`,
+            pageWidth / 2,
+            pageHeight - 8,
+            { align: "center" },
+          );
+        }
 
         const safeName = designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
         doc.save(`${safeName}-floorplan.pdf`);
@@ -246,7 +299,7 @@ export const useExport = () => {
 
   const printFloorPlan = useCallback((stageRef: React.RefObject<Konva.Stage | null>) => {
     try {
-      const dataUrl = getStageDataUrl(stageRef, 2);
+      const { dataUrl } = captureContent(stageRef, 2);
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
         toast.error("Pop-up blocked. Please allow pop-ups and try again.");

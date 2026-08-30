@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { getToken } from "@/lib/axios";
 import { useEditorStore } from "@/stores/editor-store";
 import type { Wall, Room, PlacedFurniture, Door, Window } from "@/types";
@@ -25,6 +25,20 @@ type SSEEvent =
   | { type: "error"; message: string }
   | { type: "done" };
 
+const readErrorMessage = async (res: Response): Promise<string> => {
+  if (res.status === 403) {
+    return "The AI design assistant is a Pro feature. Upgrade your plan to use it.";
+  }
+  if (res.status === 401) {
+    return "Your session expired. Please refresh the page and sign in again.";
+  }
+  try {
+    const body = (await res.json()) as { error?: string };
+    if (body?.error) return body.error;
+  } catch {}
+  return "Sorry, something went wrong. Please try again.";
+};
+
 export const useDesignChat = (designId: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +52,7 @@ export const useDesignChat = (designId: string) => {
         store.addWall(payload as unknown as Wall);
         break;
       case "add_room":
-        store.setRooms([...store.rooms, payload as unknown as Room]);
+        store.setRooms([...store.rooms, payload as unknown as Room], { recordHistory: true });
         break;
       case "place_furniture":
         store.addFurniture(payload as unknown as PlacedFurniture);
@@ -56,7 +70,10 @@ export const useDesignChat = (designId: string) => {
             store.removeWall(elementId);
             break;
           case "room":
-            store.setRooms(store.rooms.filter((r) => r.id !== elementId));
+            store.setRooms(
+              store.rooms.filter((r) => r.id !== elementId),
+              { recordHistory: true },
+            );
             break;
           case "furniture":
             store.removeFurniture(elementId);
@@ -105,14 +122,16 @@ export const useDesignChat = (designId: string) => {
       setActiveTools([]);
 
       const token = await getToken();
-      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const history = [...messages, userMsg]
+        .filter((m) => m.content.trim().length > 0)
+        .map((m) => ({ role: m.role, content: m.content }));
 
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/ai/design-chat`,
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"}/ai/design-chat`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -121,7 +140,8 @@ export const useDesignChat = (designId: string) => {
           },
         );
 
-        if (!res.ok || !res.body) throw new Error("Request failed");
+        if (!res.ok) throw new Error(await readErrorMessage(res));
+        if (!res.body) throw new Error("The assistant returned an empty response.");
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -163,24 +183,50 @@ export const useDesignChat = (designId: string) => {
                 ),
               );
             } else if (event.type === "tool_done") {
-              setActiveTools((prev) => prev.filter((t) => t !== event.name));
+              const doneName = event.name;
+              setActiveTools((prev) => {
+                const idx = prev.indexOf(doneName);
+                if (idx === -1) return prev;
+                return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+              });
               setMessages((prev) =>
                 prev.map((m) => {
                   if (m.id !== assistantMsgId) return m;
-                  const calls = (m.toolCalls ?? []).map((tc) =>
-                    tc.name === event.name && tc.status === "running"
-                      ? { ...tc, status: "done" as const }
-                      : tc,
+                  const calls = [...(m.toolCalls ?? [])];
+                  const idx = calls.findIndex(
+                    (tc) => tc.name === doneName && tc.status === "running",
                   );
+                  if (idx !== -1) calls[idx] = { ...calls[idx], status: "done" as const };
                   return { ...m, toolCalls: calls };
                 }),
               );
             } else if (event.type === "action") {
-              applyAction(event.actionType, event.payload);
+              const store = useEditorStore.getState();
+              store.beginBatch();
+              try {
+                applyAction(event.actionType, event.payload);
+              } finally {
+                store.endBatch();
+              }
             } else if (event.type === "text") {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantMsgId ? { ...m, content: m.content + event.content } : m,
+                ),
+              );
+            } else if (event.type === "error") {
+              const message = event.message;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                        ...m,
+                        content: m.content || `Error: ${message}`,
+                        toolCalls: (m.toolCalls ?? []).map((tc) =>
+                          tc.status === "running" ? { ...tc, status: "done" as const } : tc,
+                        ),
+                      }
+                    : m,
                 ),
               );
             }
@@ -188,10 +234,20 @@ export const useDesignChat = (designId: string) => {
         }
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "Sorry, something went wrong. Please try again.";
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsgId
-              ? { ...m, content: "Sorry, something went wrong. Please try again." }
+              ? {
+                  ...m,
+                  content: message,
+                  toolCalls: (m.toolCalls ?? []).map((tc) =>
+                    tc.status === "running" ? { ...tc, status: "done" as const } : tc,
+                  ),
+                }
               : m,
           ),
         );
@@ -204,8 +260,13 @@ export const useDesignChat = (designId: string) => {
     [isLoading, messages, designId, applyAction],
   );
 
-  const clearMessages = useCallback(() => setMessages([]), []);
   const abort = useCallback(() => abortRef.current?.abort(), []);
+  const clearMessages = useCallback(() => {
+    abortRef.current?.abort();
+    setMessages([]);
+  }, []);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   return { messages, isLoading, activeTools, sendMessage, clearMessages, abort };
 };

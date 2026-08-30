@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { Rect, Circle, Line, Shape, Group } from "react-konva";
 
-function darkenColor(hex: string, amount = 0.15): string {
+function darkenColor(hex: string, amount = 0.22): string {
   const c = hex.replace("#", "");
   if (c.length !== 6) return hex;
   const r = Math.max(0, Math.round(parseInt(c.substring(0, 2), 16) * (1 - amount)));
@@ -30,8 +30,6 @@ export const FurnitureShape = memo(function FurnitureShape({
   const hh = h / 2;
 
   switch (furnitureId) {
-    /* ───────── LIVING ROOM ───────── */
-
     case "sofa": {
       const backH = h * 0.15;
       const cushions = w > 120 ? 3 : 2;
@@ -137,8 +135,6 @@ export const FurnitureShape = memo(function FurnitureShape({
         </Group>
       );
     }
-
-    /* ───────── BEDROOM ───────── */
 
     case "double-bed": {
       const headH = h * 0.1;
@@ -267,8 +263,6 @@ export const FurnitureShape = memo(function FurnitureShape({
       );
     }
 
-    /* ───────── KITCHEN ───────── */
-
     case "dining-table": {
       const legR = Math.min(4, w * 0.04);
       const inset = Math.max(8, w * 0.08);
@@ -368,8 +362,6 @@ export const FurnitureShape = memo(function FurnitureShape({
       );
     }
 
-    /* ───────── BATHROOM ───────── */
-
     case "bathtub": {
       const inset = Math.min(8, Math.min(w, h) * 0.12);
       const outerR = Math.min(w, h) * 0.15;
@@ -464,8 +456,6 @@ export const FurnitureShape = memo(function FurnitureShape({
       );
     }
 
-    /* ───────── OFFICE ───────── */
-
     case "office-desk": {
       const returnW = w * 0.4;
       const returnH = h * 0.45;
@@ -523,8 +513,6 @@ export const FurnitureShape = memo(function FurnitureShape({
         </Group>
       );
     }
-
-    /* ───────── DEFAULT FALLBACK ───────── */
 
     default:
       return <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={4} />;

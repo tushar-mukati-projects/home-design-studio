@@ -1,8 +1,7 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "../db";
-import { DEFAULT_FURNITURE_ITEMS } from "../constants";
-import { serializeFurnitureItem, serializePlacement } from "../utils";
-import { logger } from "../logger";
+import { prisma } from "../lib/db";
+import { DEFAULT_FURNITURE_ITEMS } from "../lib/constants";
+import { serializeFurnitureItem } from "../lib/serializers";
 
 export const listFurnitureItems = async (filters: { category?: string; search?: string }) => {
   const where: Prisma.FurnitureItemWhereInput = {};
@@ -23,105 +22,21 @@ export const listFurnitureItems = async (filters: { category?: string; search?: 
   return items.map(serializeFurnitureItem);
 };
 
-export const placeFurniture = async (
-  data: {
-    designId: string;
-    furnitureItemId: string;
-    x: number;
-    y: number;
-    rotation?: number;
-    scaleX?: number;
-    scaleY?: number;
-    roomId?: string | null;
-  },
-  userId: string,
-) => {
-  const design = await prisma.design.findFirst({
-    where: { id: data.designId, userId },
-  });
-
-  if (!design) return null;
-
-  const furnitureItem = await prisma.furnitureItem.findUnique({
-    where: { id: data.furnitureItemId },
-  });
-
-  if (!furnitureItem) return null;
-
-  const placement = await prisma.placedFurniture.create({
-    data: {
-      designId: data.designId,
-      furnitureItemId: data.furnitureItemId,
-      x: data.x,
-      y: data.y,
-      rotation: data.rotation ?? 0,
-      scaleX: data.scaleX ?? 1,
-      scaleY: data.scaleY ?? 1,
-      roomId: data.roomId ?? null,
-    },
-    include: {
-      furnitureItem: true,
-    },
-  });
-
-  return serializePlacement(placement);
-};
-
-export const updatePlacement = async (
-  id: string,
-  data: {
-    x?: number;
-    y?: number;
-    rotation?: number;
-    scaleX?: number;
-    scaleY?: number;
-    roomId?: string | null;
-  },
-  userId: string,
-) => {
-  const existing = await prisma.placedFurniture.findFirst({
-    where: {
-      id,
-      design: { userId },
-    },
-  });
-
-  if (!existing) return null;
-
-  const placement = await prisma.placedFurniture.update({
-    where: { id },
-    data,
-    include: {
-      furnitureItem: true,
-    },
-  });
-
-  return serializePlacement(placement);
-};
-
-export const removePlacement = async (id: string, userId: string) => {
-  const existing = await prisma.placedFurniture.findFirst({
-    where: {
-      id,
-      design: { userId },
-    },
-  });
-
-  if (!existing) return false;
-
-  await prisma.placedFurniture.delete({ where: { id } });
-  return true;
-};
-
 export const seedDefaultFurniture = async () => {
-  await prisma.furnitureItem.deleteMany({ where: { isDefault: true } });
+  for (const item of DEFAULT_FURNITURE_ITEMS) {
+    const existing = await prisma.furnitureItem.findFirst({
+      where: { name: item.name, isDefault: true },
+    });
 
-  await prisma.furnitureItem.createMany({
-    data: DEFAULT_FURNITURE_ITEMS.map((item) => ({
-      ...item,
-      isDefault: true,
-    })),
-  });
-
-  logger.info(`Default furniture seeded`);
+    if (existing) {
+      await prisma.furnitureItem.update({
+        where: { id: existing.id },
+        data: { ...item, isDefault: true },
+      });
+    } else {
+      await prisma.furnitureItem.create({
+        data: { ...item, isDefault: true },
+      });
+    }
+  }
 };

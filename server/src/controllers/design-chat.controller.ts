@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { validated } from "../middleware/validate";
 import { designChatSchema } from "../schemas/design-chat.schema";
 import { designChatStream } from "../services/design-chat.service";
-import type { AuthenticatedRequest } from "../types";
+import type { AuthenticatedRequest } from "../lib/types";
 
 export const designChat = async (req: Request, res: Response) => {
   const { body } = validated(req, designChatSchema);

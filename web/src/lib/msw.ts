@@ -9,11 +9,18 @@ export const useMswReady = () => {
 
   useEffect(() => {
     if (!ENABLE_MOCKS) return;
-    import("@/mocks/browser").then(({ worker }) => {
-      worker.start({ onUnhandledRequest: "bypass" }).then(() => {
-        setReady(true);
+    let cancelled = false;
+    import("@/mocks/browser")
+      .then(({ worker }) => worker.start({ onUnhandledRequest: "bypass" }))
+      .catch((err) => {
+        console.error("[MSW] failed to start, falling back to real API", err);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
       });
-    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return ready;

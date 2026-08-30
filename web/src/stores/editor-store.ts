@@ -19,6 +19,11 @@ interface HistorySnapshot {
   rooms: Room[];
 }
 
+// Edits sharing a coalesce key inside this window collapse into one undo step.
+const HISTORY_COALESCE_MS = 700;
+
+const MAX_HISTORY = 50;
+
 interface EditorState {
   walls: Wall[];
   doors: Door[];
@@ -29,6 +34,8 @@ interface EditorState {
   activeTool: EditorTool;
   selectedElementId: string | null;
   isDrawing: boolean;
+
+  canEdit: boolean;
 
   zoom: number;
   panX: number;
@@ -42,27 +49,33 @@ interface EditorState {
   past: HistorySnapshot[];
   future: HistorySnapshot[];
 
+  batchDepth: number;
+  pendingBatchSnapshot: HistorySnapshot | null;
+  lastCoalesceKey: string | null;
+  lastCoalesceAt: number;
+
   setTool: (tool: EditorTool) => void;
   setSelectedElement: (id: string | null) => void;
   clearSelection: () => void;
+  setCanEdit: (canEdit: boolean) => void;
 
   addWall: (wall: Wall) => void;
   removeWall: (id: string) => void;
-  updateWall: (id: string, updates: Partial<Wall>) => void;
+  updateWall: (id: string, updates: Partial<Wall>, coalesceKey?: string) => void;
 
   addDoor: (door: Door) => void;
   removeDoor: (id: string) => void;
-  updateDoor: (id: string, updates: Partial<Door>) => void;
+  updateDoor: (id: string, updates: Partial<Door>, coalesceKey?: string) => void;
 
   addWindow: (window: Window) => void;
   removeWindow: (id: string) => void;
-  updateWindow: (id: string, updates: Partial<Window>) => void;
+  updateWindow: (id: string, updates: Partial<Window>, coalesceKey?: string) => void;
 
   addFurniture: (item: PlacedFurniture) => void;
   removeFurniture: (id: string) => void;
-  updateFurniture: (id: string, updates: Partial<PlacedFurniture>) => void;
+  updateFurniture: (id: string, updates: Partial<PlacedFurniture>, coalesceKey?: string) => void;
 
-  setRooms: (rooms: Room[]) => void;
+  setRooms: (rooms: Room[], options?: { recordHistory?: boolean }) => void;
   setCanvas: (state: {
     walls: Wall[];
     rooms: Room[];
@@ -83,6 +96,8 @@ interface EditorState {
   undo: () => void;
   redo: () => void;
   pushHistory: () => void;
+  beginBatch: () => void;
+  endBatch: () => void;
 
   loadDesign: (design: Design) => void;
   getCanvasData: () => CanvasData;
@@ -101,7 +116,49 @@ const createSnapshot = (state: EditorState): HistorySnapshot => {
   };
 };
 
-const MAX_HISTORY = 50;
+type HistoryPatch = Partial<
+  Pick<
+    EditorState,
+    "past" | "future" | "pendingBatchSnapshot" | "lastCoalesceKey" | "lastCoalesceAt"
+  >
+>;
+
+const appendSnapshot = (past: HistorySnapshot[], snapshot: HistorySnapshot): HistorySnapshot[] => [
+  ...past.slice(-MAX_HISTORY + 1),
+  snapshot,
+];
+
+const recordHistory = (state: EditorState, coalesceKey?: string): HistoryPatch => {
+  if (state.batchDepth > 0) {
+    if (state.pendingBatchSnapshot) {
+      return {
+        past: appendSnapshot(state.past, state.pendingBatchSnapshot),
+        future: [],
+        pendingBatchSnapshot: null,
+        lastCoalesceKey: null,
+        lastCoalesceAt: 0,
+      };
+    }
+    return {};
+  }
+
+  const now = Date.now();
+  const isContinuation =
+    !!coalesceKey &&
+    state.lastCoalesceKey === coalesceKey &&
+    now - state.lastCoalesceAt < HISTORY_COALESCE_MS;
+
+  if (isContinuation) {
+    return { future: [], lastCoalesceAt: now };
+  }
+
+  return {
+    past: appendSnapshot(state.past, createSnapshot(state)),
+    future: [],
+    lastCoalesceKey: coalesceKey ?? null,
+    lastCoalesceAt: coalesceKey ? now : 0,
+  };
+};
 
 export const useEditorStore = create<EditorState>()((set, get) => ({
   walls: [],
@@ -113,6 +170,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   activeTool: "select",
   selectedElementId: null,
   isDrawing: false,
+  canEdit: true,
 
   zoom: 1,
   panX: 0,
@@ -126,6 +184,11 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   past: [],
   future: [],
 
+  batchDepth: 0,
+  pendingBatchSnapshot: null,
+  lastCoalesceKey: null,
+  lastCoalesceAt: 0,
+
   setTool: (tool) =>
     set({
       activeTool: tool,
@@ -138,138 +201,123 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   clearSelection: () => set({ selectedElementId: null }),
 
+  setCanEdit: (canEdit) => set({ canEdit }),
+
   addWall: (wall) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       walls: [...state.walls, wall],
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   removeWall: (id) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       walls: state.walls.filter((w) => w.id !== id),
       doors: state.doors.filter((d) => d.wallId !== id),
       windows: state.windows.filter((w) => w.wallId !== id),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
       selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
     });
   },
 
-  updateWall: (id, updates) => {
+  updateWall: (id, updates, coalesceKey) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state, coalesceKey),
       walls: state.walls.map((w) => (w.id === id ? { ...w, ...updates } : w)),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   addDoor: (door) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       doors: [...state.doors, door],
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   removeDoor: (id) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       doors: state.doors.filter((d) => d.id !== id),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
       selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
     });
   },
 
-  updateDoor: (id, updates) => {
+  updateDoor: (id, updates, coalesceKey) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state, coalesceKey),
       doors: state.doors.map((d) => (d.id === id ? { ...d, ...updates } : d)),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   addWindow: (window) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       windows: [...state.windows, window],
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   removeWindow: (id) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       windows: state.windows.filter((w) => w.id !== id),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
       selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
     });
   },
 
-  updateWindow: (id, updates) => {
+  updateWindow: (id, updates, coalesceKey) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state, coalesceKey),
       windows: state.windows.map((w) => (w.id === id ? { ...w, ...updates } : w)),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   addFurniture: (item) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       furniture: [...state.furniture, item],
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
   removeFurniture: (id) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       furniture: state.furniture.filter((f) => f.id !== id),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
       selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
     });
   },
 
-  updateFurniture: (id, updates) => {
+  updateFurniture: (id, updates, coalesceKey) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state, coalesceKey),
       furniture: state.furniture.map((f) => (f.id === id ? { ...f, ...updates } : f)),
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
-  setRooms: (rooms) => set({ rooms }),
+  setRooms: (rooms, options) => {
+    if (!options?.recordHistory) {
+      set({ rooms });
+      return;
+    }
+    const state = get();
+    set({ ...recordHistory(state), rooms });
+  },
 
   setCanvas: (newState) => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       walls: newState.walls,
       rooms: newState.rooms,
       furniture: newState.furniture,
@@ -278,8 +326,6 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       selectedElementId: null,
       isDrawing: false,
       currentWallStart: null,
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 
@@ -313,6 +359,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       past: state.past.slice(0, -1),
       future: [currentSnapshot, ...state.future.slice(0, MAX_HISTORY - 1)],
       selectedElementId: null,
+      lastCoalesceKey: null,
+      lastCoalesceAt: 0,
     });
   },
 
@@ -329,18 +377,34 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       windows: nextSnapshot.windows,
       furniture: nextSnapshot.furniture,
       rooms: nextSnapshot.rooms,
-      past: [...state.past, currentSnapshot],
+      past: appendSnapshot(state.past, currentSnapshot),
       future: state.future.slice(1),
       selectedElementId: null,
+      lastCoalesceKey: null,
+      lastCoalesceAt: 0,
     });
   },
 
   pushHistory: () => {
     const state = get();
-    const snapshot = createSnapshot(state);
+    set(recordHistory(state));
+  },
+
+  beginBatch: () => {
+    const state = get();
     set({
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
+      batchDepth: state.batchDepth + 1,
+      pendingBatchSnapshot:
+        state.batchDepth === 0 ? createSnapshot(state) : state.pendingBatchSnapshot,
+    });
+  },
+
+  endBatch: () => {
+    const state = get();
+    const batchDepth = Math.max(0, state.batchDepth - 1);
+    set({
+      batchDepth,
+      pendingBatchSnapshot: batchDepth === 0 ? null : state.pendingBatchSnapshot,
     });
   },
 
@@ -350,8 +414,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       walls: canvasData.walls || [],
       doors: canvasData.doors || [],
       windows: canvasData.windows || [],
-      furniture: (design.furniture?.length ? design.furniture : canvasData.furniture) || [],
-      rooms: (design.rooms?.length ? design.rooms : canvasData.rooms) || [],
+      furniture: canvasData.furniture || [],
+      rooms: canvasData.rooms || [],
       gridSize: canvasData.gridSize || 20,
       zoom: canvasData.zoom || 1,
       panX: canvasData.panX || 0,
@@ -362,6 +426,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       currentWallStart: null,
       past: [],
       future: [],
+      batchDepth: 0,
+      pendingBatchSnapshot: null,
+      lastCoalesceKey: null,
+      lastCoalesceAt: 0,
     });
   },
 
@@ -382,8 +450,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   clearCanvas: () => {
     const state = get();
-    const snapshot = createSnapshot(state);
     set({
+      ...recordHistory(state),
       walls: [],
       doors: [],
       windows: [],
@@ -392,8 +460,6 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       selectedElementId: null,
       isDrawing: false,
       currentWallStart: null,
-      past: [...state.past.slice(-MAX_HISTORY + 1), snapshot],
-      future: [],
     });
   },
 

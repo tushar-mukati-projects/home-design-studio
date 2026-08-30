@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../types";
+import type { AuthenticatedRequest } from "../lib/types";
 import { validated } from "../middleware/validate";
 import {
   createVersionSchema,
@@ -11,8 +11,8 @@ import * as versionService from "../services/version.service";
 
 export const create = async (req: Request, res: Response) => {
   const { params, body } = validated(req, createVersionSchema);
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const version = await versionService.createVersion(params.designId, userId, body.name);
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
+  const version = await versionService.createVersion(params.designId, userId, body.name, email);
 
   if (!version) {
     res.status(404).json({ error: "Design not found" });
@@ -24,8 +24,8 @@ export const create = async (req: Request, res: Response) => {
 
 export const list = async (req: Request, res: Response) => {
   const { params } = validated(req, listVersionsSchema);
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const versions = await versionService.listVersions(params.designId, userId);
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
+  const versions = await versionService.listVersions(params.designId, userId, email);
 
   if (!versions) {
     res.status(404).json({ error: "Design not found" });
@@ -37,8 +37,13 @@ export const list = async (req: Request, res: Response) => {
 
 export const restore = async (req: Request, res: Response) => {
   const { params } = validated(req, restoreVersionSchema);
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const design = await versionService.restoreVersion(params.designId, params.versionId, userId);
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
+  const design = await versionService.restoreVersion(
+    params.designId,
+    params.versionId,
+    userId,
+    email,
+  );
 
   if (!design) {
     res.status(404).json({ error: "Design or version not found" });

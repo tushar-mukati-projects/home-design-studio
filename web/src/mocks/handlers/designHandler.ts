@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from "msw";
-import { _designs } from "../store";
+import { _designs, serializeMockDesign } from "../store";
 import { mockUrl } from "../config";
 import type { Design, CanvasData, Room, PlacedFurniture } from "@/types";
 
@@ -18,7 +18,7 @@ export const designHandlers = [
       );
     }
 
-    return HttpResponse.json(results);
+    return HttpResponse.json({ designs: results.map(serializeMockDesign) });
   }),
 
   http.get(mockUrl("/designs/:id"), async ({ params }) => {
@@ -27,7 +27,7 @@ export const designHandlers = [
     if (!design) {
       return HttpResponse.json({ error: "Design not found" }, { status: 404 });
     }
-    return HttpResponse.json(design);
+    return HttpResponse.json(serializeMockDesign(design));
   }),
 
   http.post(mockUrl("/designs"), async ({ request }) => {
@@ -47,7 +47,6 @@ export const designHandlers = [
       thumbnail: null,
       width: input.width ?? 800,
       height: input.height ?? 600,
-      isPublic: false,
       canvasData: {
         walls: [],
         doors: [],
@@ -79,7 +78,6 @@ export const designHandlers = [
       description: string;
       width: number;
       height: number;
-      isPublic: boolean;
       canvasData: CanvasData;
       rooms: Room[];
       furniture: PlacedFurniture[];
@@ -90,13 +88,12 @@ export const designHandlers = [
     if (updates.description !== undefined) design.description = updates.description;
     if (updates.width !== undefined) design.width = updates.width;
     if (updates.height !== undefined) design.height = updates.height;
-    if (updates.isPublic !== undefined) design.isPublic = updates.isPublic;
     if (updates.canvasData !== undefined) design.canvasData = updates.canvasData;
     if (updates.rooms !== undefined) design.rooms = updates.rooms;
     if (updates.furniture !== undefined) design.furniture = updates.furniture;
     design.updatedAt = new Date().toISOString();
 
-    return HttpResponse.json(design);
+    return HttpResponse.json(serializeMockDesign(design));
   }),
 
   http.delete(mockUrl("/designs/:id"), async ({ params }) => {

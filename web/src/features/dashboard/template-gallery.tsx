@@ -222,7 +222,6 @@ export const TemplateGallery = ({
       toast.success("Design created from template");
       router.push(`/editor/${design.id}`);
     } catch {
-      toast.error("Failed to create design from template");
       setCreating(false);
     }
   };

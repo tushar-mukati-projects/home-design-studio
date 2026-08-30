@@ -29,7 +29,7 @@ const EditorPage = ({ params }: EditorPageProps) => {
 
   return (
     <AuthGuard>
-      <EditorView designId={id} />
+      <EditorView key={id} designId={id} />
     </AuthGuard>
   );
 };

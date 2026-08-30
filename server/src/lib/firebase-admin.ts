@@ -1,6 +1,6 @@
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { config } from "../config";
+import { config } from "./config";
 
 if (getApps().length === 0) {
   initializeApp({

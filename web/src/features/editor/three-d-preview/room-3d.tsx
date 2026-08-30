@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Shape, ShapeGeometry, MeshStandardMaterial, DoubleSide } from "three";
 import { Text } from "@react-three/drei";
 import type { Room } from "@/types";
@@ -45,7 +45,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
     return new ShapeGeometry(shape);
   }, [room.points, offsetX, offsetZ]);
 
-  const roomColor = ROOM_3D_COLORS[room.type] || ROOM_3D_COLORS.generic;
+  const roomColor = room.color?.slice(0, 7) || ROOM_3D_COLORS[room.type] || ROOM_3D_COLORS.generic;
 
   const material = useMemo(
     () =>
@@ -63,6 +63,9 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
       }),
     [roomColor, showColor],
   );
+
+  useEffect(() => () => geometry?.dispose(), [geometry]);
+  useEffect(() => () => material.dispose(), [material]);
 
   const center = useMemo(() => {
     if (!room.points || room.points.length === 0) return { x: 0, z: 0 };

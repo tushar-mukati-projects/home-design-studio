@@ -8,11 +8,13 @@
     "start": "bun next start",
     "lint": "bun eslint",
     "typecheck": "bun tsc --noEmit",
-    "format:check": "bun prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "format:fix": "bun prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
-    "check": "bun run typecheck && bun run lint && bun run format:check",
+    "format:check": "bun prettier --check \"{src,tests}/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:fix": "bun prettier --write \"{src,tests}/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "check": "bun run typecheck && bun run lint && bun run format:check && bun run test",
     "check:fix": "bun run lint -- --fix && bun run format:fix && bun run typecheck",
-    "test": "bun playwright test"
+    "test": "bun test tests",
+    "test:watch": "bun test tests --watch",
+    "test:e2e": "bun playwright test"
   },
   "dependencies": {
     "@hocuspocus/provider": "^2.15.0",
@@ -49,6 +51,7 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/bun": "^1.4.0",
     "@types/node": "^22.10.0",
     "@types/nprogress": "^0.2.3",
     "@types/react": "^19.0.0",

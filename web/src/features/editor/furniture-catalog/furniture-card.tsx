@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { FurnitureItem } from "@/types";
+import { pxToFeet } from "@/lib/constants";
 
 const CATEGORY_ICONS: Record<string, Record<string, LucideIcon>> = {
   "living-room": {
@@ -80,9 +81,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const getItemIcon = (item: FurnitureItem): LucideIcon => {
+  const slug = item.icon ?? item.id;
   const categoryIcons = CATEGORY_ICONS[item.category];
-  if (categoryIcons && categoryIcons[item.id]) {
-    return categoryIcons[item.id];
+  if (categoryIcons && categoryIcons[slug]) {
+    return categoryIcons[slug];
   }
   return PackageOpen;
 };
@@ -162,7 +164,7 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
               {item.name}
             </span>
             <span className="text-xs text-[var(--muted-foreground)]">
-              {item.width} &times; {item.height} cm
+              {pxToFeet(item.width).toFixed(1)} &times; {pxToFeet(item.height).toFixed(1)} ft
             </span>
             <Badge variant="secondary" className="mt-0.5 px-1.5 py-0 text-[10px] font-normal">
               {CATEGORY_LABELS[item.category] ?? item.category}

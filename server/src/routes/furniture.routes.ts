@@ -1,29 +1,19 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
-import { validate } from "../middleware/validate";
-import {
-  listFurnitureSchema,
-  placeFurnitureSchema,
-  updatePlacementSchema,
-  removePlacementSchema,
-} from "../schemas/furniture.schema";
+import { validate, responds } from "../middleware/validate";
+import { asyncHandler } from "../middleware/async-handler";
+import { furnitureListResponse } from "../schemas/response.schema";
+import { listFurnitureSchema } from "../schemas/furniture.schema";
 import * as furnitureController from "../controllers/furniture.controller";
 
 const router = Router();
 
-router.get("/", requireAuth, validate(listFurnitureSchema), furnitureController.listItems);
-router.post("/place", requireAuth, validate(placeFurnitureSchema), furnitureController.place);
-router.patch(
-  "/place/:id",
+router.get(
+  "/",
   requireAuth,
-  validate(updatePlacementSchema),
-  furnitureController.updatePlacement,
-);
-router.delete(
-  "/place/:id",
-  requireAuth,
-  validate(removePlacementSchema),
-  furnitureController.removePlacement,
+  validate(listFurnitureSchema),
+  responds(furnitureListResponse),
+  asyncHandler(furnitureController.listItems),
 );
 
 export { router as furnitureRouter };

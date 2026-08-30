@@ -8,30 +8,15 @@ const axiosInstance = axios.create({
   },
 });
 
-let cachedToken: string | null = null;
-let tokenExpiresAt = 0;
-
-const getToken = async (): Promise<string | null> => {
-  const now = Date.now();
-  if (cachedToken && now < tokenExpiresAt) return cachedToken;
-
+const getToken = async (forceRefresh = false): Promise<string | null> => {
   const user = auth.currentUser;
   if (!user) return null;
 
   try {
-    cachedToken = await user.getIdToken();
-    tokenExpiresAt = now + 55 * 60 * 1000;
-    return cachedToken;
+    return await user.getIdToken(forceRefresh);
   } catch {
-    cachedToken = null;
-    tokenExpiresAt = 0;
     return null;
   }
-};
-
-export const clearJwtCache = () => {
-  cachedToken = null;
-  tokenExpiresAt = 0;
 };
 
 axiosInstance.interceptors.request.use(async (config) => {
@@ -44,11 +29,20 @@ axiosInstance.interceptors.request.use(async (config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isAxiosError(error)) {
-      if (error.response?.status === 401) {
-        clearJwtCache();
+      const config = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+
+      if (error.response?.status === 401 && config && !config._retry && auth.currentUser) {
+        config._retry = true;
+        const fresh = await getToken(true);
+        if (fresh) {
+          config.headers = config.headers ?? {};
+          config.headers.Authorization = `Bearer ${fresh}`;
+          return axiosInstance(config);
+        }
       }
+
       const message = error.response?.data?.error || error.message;
       console.error(
         `[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}: ${message}`,

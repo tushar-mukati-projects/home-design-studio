@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import * as Y from "yjs";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { createCollaborationProvider, destroyProvider } from "@/lib/yjs-provider";
@@ -59,13 +59,29 @@ interface AwarenessUserState {
   };
 }
 
-export const useCollaboration = (designId: string, enabled: boolean, permission?: string) => {
+export interface DesignMeta {
+  name: string;
+  isOwner: boolean;
+  canEdit: boolean;
+}
+
+export const useCollaboration = (designId: string, enabled: boolean) => {
   const providerRef = useRef<HocuspocusProvider | null>(null);
   const docRef = useRef<Y.Doc | null>(null);
   const isRemoteUpdateRef = useRef(false);
   const unsubEditorRef = useRef<(() => void) | null>(null);
   const yMapsRef = useRef<Map<CollectionKey, Y.Map<unknown>>>(new Map());
   const initialSyncDoneRef = useRef(false);
+
+  const [designMeta, setDesignMeta] = useState<DesignMeta>({
+    name: "Untitled Design",
+    isOwner: true,
+    canEdit: true,
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [hasSyncedOnce, setHasSyncedOnce] = useState(false);
+  const canEditRef = useRef(true);
+  const cursorsRef = useRef<Map<number, CollaboratorCursor>>(new Map());
 
   const { isConnected, isSynced, collaborators } = useCollaborationStore();
   const setConnected = useCollaborationStore((s) => s.setConnected);
@@ -77,8 +93,11 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
 
     let cancelled = false;
     let cleanupFn: (() => void) | undefined;
+    canEditRef.current = true;
+    cursorsRef.current.clear();
 
     const init = async () => {
+      setError(null);
       const currentUser = auth.currentUser;
       if (!currentUser) return;
 
@@ -89,24 +108,24 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
 
       if (cancelled) return;
 
-      const { doc, provider, awareness } = createCollaborationProvider(
-        designId,
-        userName,
-        userColor,
-        currentUser.uid,
+      const { doc, provider, awareness } = createCollaborationProvider(designId, () =>
+        auth.currentUser ? auth.currentUser.getIdToken() : Promise.resolve(""),
       );
-
-      if (awareness) {
-        awareness.setLocalStateField("user", {
-          name: userName,
-          color: userColor,
-          permission: permission ?? "readonly",
-        });
-      }
 
       providerRef.current = provider;
       docRef.current = doc;
       initialSyncDoneRef.current = false;
+
+      useEditorStore.setState({
+        walls: [],
+        doors: [],
+        windows: [],
+        furniture: [],
+        rooms: [],
+        past: [],
+        future: [],
+        selectedElementId: null,
+      });
 
       const maps = new Map<CollectionKey, Y.Map<unknown>>();
       for (const key of COLLECTION_KEYS) {
@@ -114,7 +133,18 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
       }
       yMapsRef.current = maps;
 
-      const observerHandlers: Array<() => void> = [];
+      const metaMap = doc.getMap("metadata");
+      const readMeta = () => {
+        const name = (metaMap.get("name") as string) || "Untitled Design";
+        const ownerUid = metaMap.get("ownerUid") as string;
+        const isOwner = ownerUid === currentUser.uid;
+        setDesignMeta({ name, isOwner, canEdit: canEditRef.current });
+      };
+
+      const metaHandler = () => readMeta();
+      metaMap.observe(metaHandler);
+
+      const observerHandlers: Array<() => void> = [() => metaMap.unobserve(metaHandler)];
 
       for (const key of COLLECTION_KEYS) {
         const yMap = maps.get(key)!;
@@ -169,11 +199,24 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
         setConnected(status === "connected");
       });
 
+      provider.on("authenticated", () => {
+        canEditRef.current = provider.authorizedScope !== "readonly";
+        setError(null);
+        readMeta();
+      });
+
+      provider.on("authenticationFailed", ({ reason }: { reason: string }) => {
+        setError(reason || "Access denied");
+      });
+
       provider.on("synced", ({ state }: { state: boolean }) => {
         setSynced(state);
+        if (state) setHasSyncedOnce(true);
 
         if (state && !initialSyncDoneRef.current) {
           initialSyncDoneRef.current = true;
+
+          readMeta();
 
           let hasRemoteData = false;
           for (const key of COLLECTION_KEYS) {
@@ -205,28 +248,44 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
       });
 
       if (awareness) {
+        awareness.setLocalStateField("user", {
+          name: userName,
+          color: userColor,
+        });
+
         const awarenessHandler = () => {
           const states = awareness.getStates();
           const localId = awareness.clientID;
-          const cursors: CollaboratorCursor[] = [];
+          const seen = cursorsRef.current;
+          const now = Date.now();
+          const activeIds = new Set<number>();
 
           states.forEach((state: unknown, clientId: number) => {
             if (clientId === localId) return;
             const typed = state as AwarenessUserState;
             if (!typed.user) return;
-            if (typed.user.permission === "readonly") return;
 
-            cursors.push({
+            activeIds.add(clientId);
+            const x = typed.cursor?.x ?? 0;
+            const y = typed.cursor?.y ?? 0;
+            const prev = seen.get(clientId);
+            const moved = !prev || prev.x !== x || prev.y !== y;
+
+            seen.set(clientId, {
               id: String(clientId),
               name: typed.user.name,
               color: typed.user.color,
-              x: typed.cursor?.x ?? 0,
-              y: typed.cursor?.y ?? 0,
-              lastSeen: Date.now(),
+              x,
+              y,
+              lastSeen: moved ? now : (prev?.lastSeen ?? now),
             });
           });
 
-          setCollaborators(cursors);
+          for (const clientId of seen.keys()) {
+            if (!activeIds.has(clientId)) seen.delete(clientId);
+          }
+
+          setCollaborators(Array.from(seen.values()));
         };
 
         awareness.on("change", awarenessHandler);
@@ -256,19 +315,42 @@ export const useCollaboration = (designId: string, enabled: boolean, permission?
       cancelled = true;
       cleanupFn?.();
     };
-  }, [designId, enabled, permission, setConnected, setSynced, setCollaborators]);
+  }, [designId, enabled, setConnected, setSynced, setCollaborators]);
 
+  const lastCursorBroadcastRef = useRef(0);
+  const cursorFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const broadcastCursor = useCallback((x: number, y: number) => {
     const provider = providerRef.current;
     if (!provider?.awareness) return;
 
+    const now = Date.now();
+    const elapsed = now - lastCursorBroadcastRef.current;
+    if (elapsed < 40) {
+      if (cursorFlushRef.current) clearTimeout(cursorFlushRef.current);
+      cursorFlushRef.current = setTimeout(() => {
+        lastCursorBroadcastRef.current = Date.now();
+        providerRef.current?.awareness?.setLocalStateField("cursor", { x, y });
+      }, 40 - elapsed);
+      return;
+    }
+    lastCursorBroadcastRef.current = now;
     provider.awareness.setLocalStateField("cursor", { x, y });
+  }, []);
+
+  const updateDesignName = useCallback((name: string) => {
+    const doc = docRef.current;
+    if (!doc) return;
+    doc.getMap("metadata").set("name", name);
   }, []);
 
   return {
     isConnected,
     isSynced,
+    hasSyncedOnce,
     collaborators,
     broadcastCursor,
+    designMeta,
+    updateDesignName,
+    error,
   };
 };

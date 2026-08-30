@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   ZoomIn,
   ZoomOut,
@@ -19,8 +18,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import type Konva from "konva";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useFetchDesign } from "@/hooks/designs/useFetchDesign";
-import { useUpdateDesign } from "@/hooks/designs/useUpdateDesign";
 import { useEditorStore } from "@/stores/editor-store";
 import { EditorToolbar } from "./toolbar/editor-toolbar";
 import { EditorCanvas } from "./canvas/editor-canvas";
@@ -34,6 +31,7 @@ import { VersionHistoryPanel } from "./version-history/version-history-panel";
 import { ImportDesignModal } from "./import/import-design-modal";
 import { DesignChat } from "./ai-chat/design-chat";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
+import { resolveShortcut, shouldPreventDefault, shortcutForTool } from "./keyboard-shortcuts";
 interface EditorViewProps {
   designId: string;
   preloadedDesign?: import("@/types").Design | null;
@@ -47,14 +45,19 @@ interface SidebarTool {
   shortcut?: string;
 }
 
-const SIDEBAR_TOOLS: SidebarTool[] = [
-  { tool: "select", icon: <MousePointer2 className="h-5 w-5" />, label: "Select", shortcut: "V" },
-  { tool: "wall", icon: <PenLine className="h-5 w-5" />, label: "Draw Wall", shortcut: "W" },
-  { tool: "door", icon: <DoorOpen className="h-5 w-5" />, label: "Door", shortcut: "D" },
+const BASE_TOOLS: Omit<SidebarTool, "shortcut">[] = [
+  { tool: "select", icon: <MousePointer2 className="h-5 w-5" />, label: "Select" },
+  { tool: "wall", icon: <PenLine className="h-5 w-5" />, label: "Draw Wall" },
+  { tool: "door", icon: <DoorOpen className="h-5 w-5" />, label: "Door" },
   { tool: "window", icon: <Columns2 className="h-5 w-5" />, label: "Window" },
-  { tool: "eraser", icon: <Eraser className="h-5 w-5" />, label: "Eraser", shortcut: "E" },
-  { tool: "pan", icon: <Hand className="h-5 w-5" />, label: "Pan", shortcut: "H" },
+  { tool: "eraser", icon: <Eraser className="h-5 w-5" />, label: "Eraser" },
+  { tool: "pan", icon: <Hand className="h-5 w-5" />, label: "Pan" },
 ];
+
+const SIDEBAR_TOOLS: SidebarTool[] = BASE_TOOLS.map((t) => ({
+  ...t,
+  shortcut: shortcutForTool(t.tool),
+}));
 
 const fitToScreen = (
   container: HTMLDivElement,
@@ -117,7 +120,6 @@ const fitToScreen = (
 };
 
 export const EditorView = ({ designId, preloadedDesign, permissionOverride }: EditorViewProps) => {
-  const router = useRouter();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const designLoadedRef = useRef<string | null>(null);
@@ -128,22 +130,23 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [localDesignName, setLocalDesignName] = useState<string | null>(null);
 
-  const fetchEnabled = !preloadedDesign;
-  const { data: fetchedDesign, isLoading, error } = useFetchDesign(fetchEnabled ? designId : "");
-  const { mutate: updateDesign } = useUpdateDesign();
-  const design = preloadedDesign ?? fetchedDesign;
-  const effectivePermission = permissionOverride ?? design?.permission ?? "readonly";
-  const canEdit = effectivePermission === "owner" || effectivePermission === "readwrite";
-  const isOwner = effectivePermission === "owner";
-  const collaborationEnabled = !permissionOverride && !!design;
+  const collaborationEnabled = !permissionOverride;
+  const {
+    isConnected,
+    isSynced,
+    hasSyncedOnce,
+    collaborators,
+    broadcastCursor,
+    designMeta,
+    updateDesignName,
+    error,
+  } = useCollaboration(designId, collaborationEnabled);
 
-  const { isConnected, isSynced, collaborators, broadcastCursor } = useCollaboration(
-    designId,
-    collaborationEnabled,
-    effectivePermission,
-  );
+  const canEdit = permissionOverride
+    ? permissionOverride === "owner" || permissionOverride === "readwrite"
+    : designMeta.canEdit;
+  const isOwner = permissionOverride ? permissionOverride === "owner" : designMeta.isOwner;
 
   const activeTool = useEditorStore((s) => s.activeTool);
   const setTool = useEditorStore((s) => s.setTool);
@@ -164,7 +167,10 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const doors = useEditorStore((s) => s.doors);
   const windows = useEditorStore((s) => s.windows);
   const furniture = useEditorStore((s) => s.furniture);
-  const loadDesign = useEditorStore((s) => s.loadDesign);
+
+  useEffect(() => {
+    useEditorStore.getState().setCanEdit(canEdit);
+  }, [canEdit]);
 
   useEffect(() => {
     const unsub = useEditorStore.subscribe((state, prevState) => {
@@ -175,95 +181,83 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
     return unsub;
   }, []);
 
-  const designName = localDesignName ?? design?.name ?? "Untitled Design";
+  const designName = collaborationEnabled
+    ? designMeta.name
+    : (preloadedDesign?.name ?? designMeta.name);
 
   useEffect(() => {
-    if (!design) return;
-    if (designLoadedRef.current === design.id) return;
-    designLoadedRef.current = design.id;
+    if (!preloadedDesign) return;
+    if (designLoadedRef.current === preloadedDesign.id) return;
+    designLoadedRef.current = preloadedDesign.id;
 
-    loadDesign(design);
+    useEditorStore.getState().loadDesign(preloadedDesign);
 
     requestAnimationFrame(() => {
       const container = canvasContainerRef.current;
       if (container) fitToScreen(container, setZoom, setPan);
     });
-  }, [design, loadDesign, setZoom, setPan, permissionOverride]);
+  }, [preloadedDesign, setZoom, setPan]);
+
+  const fittedRef = useRef(false);
+  useEffect(() => {
+    fittedRef.current = false;
+    designLoadedRef.current = null;
+  }, [designId]);
+
+  useEffect(() => {
+    if (!isSynced || fittedRef.current) return;
+    fittedRef.current = true;
+    requestAnimationFrame(() => {
+      const container = canvasContainerRef.current;
+      if (container) fitToScreen(container, setZoom, setPan);
+    });
+  }, [isSynced, setZoom, setPan]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
-        return;
-      }
+      const shortcut = resolveShortcut(
+        {
+          key: e.key,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          target: e.target as HTMLElement | null,
+        },
+        { canEdit },
+      );
+      if (!shortcut) return;
 
-      if (e.key === "Escape") {
-        clearSelection();
-        return;
-      }
+      if (shortcut.action === "deleteSelected" && !selectedElementId) return;
+      if (shouldPreventDefault(shortcut)) e.preventDefault();
 
-      if (!canEdit) return;
-
-      if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) {
-        e.preventDefault();
-        redo();
-        return;
-      }
-
-      if (e.key === "z" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        undo();
-        return;
-      }
-
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedElementId) {
-          e.preventDefault();
-          const isWall = walls.some((w) => w.id === selectedElementId);
-          const isDoor = doors.some((d) => d.id === selectedElementId);
-          const isWindow = windows.some((w) => w.id === selectedElementId);
-          const isFurniture = furniture.some((f) => f.id === selectedElementId);
-          if (isWall) removeWall(selectedElementId);
-          if (isDoor) removeDoor(selectedElementId);
-          if (isWindow) removeWindow(selectedElementId);
-          if (isFurniture) removeFurniture(selectedElementId);
+      switch (shortcut.action) {
+        case "clearSelection":
+          clearSelection();
+          return;
+        case "undo":
+          undo();
+          return;
+        case "redo":
+          redo();
+          return;
+        case "deleteSelected": {
+          const id = selectedElementId!;
+          if (walls.some((w) => w.id === id)) removeWall(id);
+          if (doors.some((d) => d.id === id)) removeDoor(id);
+          if (windows.some((w) => w.id === id)) removeWindow(id);
+          if (furniture.some((f) => f.id === id)) removeFurniture(id);
+          return;
         }
-        return;
-      }
-
-      if (e.key === "g" || e.key === "G") {
-        toggleGrid();
-        return;
-      }
-
-      if (e.key === "s" && !e.ctrlKey && !e.metaKey) {
-        toggleSnap();
-        return;
-      }
-
-      if (e.key === "v" || e.key === "V") {
-        setTool("select");
-        return;
-      }
-
-      if (e.key === "w" || e.key === "W") {
-        setTool("wall");
-        return;
-      }
-
-      if (e.key === "d" || e.key === "D") {
-        setTool("door");
-        return;
-      }
-
-      if (e.key === "e" || e.key === "E") {
-        setTool("eraser");
-        return;
-      }
-
-      if (e.key === "h" || e.key === "H") {
-        setTool("pan");
-        return;
+        case "toggleGrid":
+          toggleGrid();
+          return;
+        case "toggleSnap":
+          toggleSnap();
+          return;
+        case "setTool":
+          setTool(shortcut.tool);
+          return;
       }
     };
 
@@ -290,10 +284,9 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
 
   const handleNameChange = useCallback(
     (name: string) => {
-      setLocalDesignName(name);
-      updateDesign({ id: designId, name });
+      updateDesignName(name);
     },
-    [designId, updateDesign],
+    [updateDesignName],
   );
 
   const handleZoomIn = useCallback(() => {
@@ -314,25 +307,27 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
     fitToScreen(container, setZoom, setPan);
   }, [setZoom, setPan]);
 
-  if (isLoading) {
+  if (error && !preloadedDesign) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
-          <p className="text-sm text-[var(--muted-foreground)]">Loading design...</p>
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Unable to open this design. You may not have access, or it no longer exists.
+          </p>
+          <Button variant="secondary" onClick={() => (window.location.href = "/dashboard")}>
+            Back to dashboard
+          </Button>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (!hasSyncedOnce && !preloadedDesign) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--background)]">
         <div className="flex flex-col items-center gap-4">
-          <p className="text-sm text-[var(--destructive)]">Failed to load design</p>
-          <Button variant="outline" onClick={() => router.push("/dashboard")}>
-            Back to Dashboard
-          </Button>
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
+          <p className="text-sm text-[var(--muted-foreground)]">Loading design...</p>
         </div>
       </div>
     );
@@ -656,7 +651,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       )}
       <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
       <ImportDesignModal open={showImportModal} onClose={() => setShowImportModal(false)} />
-      <DesignChat designId={designId} />
+      <DesignChat designId={designId} onUpgradeRequired={() => setShowUpgradeModal(true)} />
     </div>
   );
 };
