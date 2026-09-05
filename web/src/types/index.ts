@@ -112,12 +112,3 @@ export interface Point {
   x: number;
   y: number;
 }
-
-export type CanvasElement = Wall | PlacedFurniture;
-
-export interface HistoryCommand {
-  type: string;
-  before: unknown;
-  after: unknown;
-  timestamp: number;
-}

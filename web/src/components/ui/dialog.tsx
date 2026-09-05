@@ -45,32 +45,6 @@ const Dialog = ({
   return <DialogContext.Provider value={{ open, setOpen }}>{children}</DialogContext.Provider>;
 };
 
-interface DialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
-  asChild?: boolean;
-}
-
-const DialogTrigger = ({ children, asChild, ...props }: DialogTriggerProps) => {
-  const { setOpen } = React.useContext(DialogContext);
-
-  if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-      onClick: (e: React.MouseEvent) => {
-        (
-          children as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>
-        ).props.onClick?.(e);
-        setOpen(true);
-      },
-    });
-  }
-
-  return (
-    <button type="button" onClick={() => setOpen(true)} {...props}>
-      {children}
-    </button>
-  );
-};
-
 const DialogContent = ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { open, setOpen } = React.useContext(DialogContext);
   const [mounted, setMounted] = React.useState(false);
@@ -161,12 +135,4 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   );
 };
 
-export {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-};
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter };

@@ -1,4 +1,4 @@
-export interface TemplateCanvasData {
+interface TemplateCanvasData {
   walls: Array<{
     id: string;
     x1: number;
@@ -53,7 +53,7 @@ export interface TemplateCanvasData {
   panY: number;
 }
 
-export interface TemplateData {
+interface TemplateData {
   name: string;
   description: string;
   category: string;

@@ -231,10 +231,12 @@ retried delivery is ignored instead of applied twice.
 React Three Fiber (3D), Zustand (state), TanStack Query (data), Framer Motion, jsPDF.
 
 **Backend:** Bun, Express, Prisma 7 + PostgreSQL, Yjs + Hocuspocus (collaboration),
-Firebase Admin (auth), Supabase (file storage), Stripe (billing), OpenAI (AI), Winston (logs).
+Firebase Admin (auth), Stripe (billing), OpenAI (AI), Winston (logs).
 
-**Testing:** `bun test` for unit tests. Playwright is installed for end-to-end tests but
-none are written yet (`bun run test:e2e`).
+PostgreSQL is hosted on Supabase, but nothing talks to Supabase directly — Prisma
+connects to it as an ordinary Postgres database.
+
+**Testing:** `bun test` for unit tests. There is no end-to-end suite.
 
 ---
 

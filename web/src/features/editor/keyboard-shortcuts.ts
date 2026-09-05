@@ -1,6 +1,6 @@
 import type { EditorTool } from "@/types";
 
-export type EditorShortcut =
+type EditorShortcut =
   | { action: "clearSelection" }
   | { action: "undo" }
   | { action: "redo" }
@@ -25,7 +25,7 @@ export const shortcutForTool = (tool: EditorTool): string | undefined => {
 
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
-export interface ShortcutTarget {
+interface ShortcutTarget {
   tagName?: string;
   isContentEditable?: boolean;
 }
