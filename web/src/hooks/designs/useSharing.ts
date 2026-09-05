@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
-import type { DesignSummary } from "@/types";
+import type { DesignListItem } from "@/types";
+import { API_ROUTES, QUERY_KEYS } from "./constants";
 
 const SHARE_KEYS = {
   access: (designId: string) => ["design-access", designId] as const,
-  sharedWithMe: ["shared-with-me"] as const,
 };
 
 export interface DesignMember {
@@ -27,20 +27,15 @@ interface AccessResponse {
   links: DesignLink[];
 }
 
-interface SharedWithMeItem {
-  id: string;
-  permission: "readonly" | "readwrite";
-  createdAt: string;
-  design: DesignSummary;
-  ownerName: string | null;
-  ownerEmail: string | null;
+interface DesignsResponse {
+  designs: DesignListItem[];
 }
 
 export const useDesignAccess = (designId: string) =>
   useQuery({
     queryKey: SHARE_KEYS.access(designId),
     queryFn: async () => {
-      const res = await axiosInstance.get<AccessResponse>(`/sharing/${designId}/access`);
+      const res = await axiosInstance.get<AccessResponse>(API_ROUTES.access(designId));
       return res.data;
     },
     enabled: !!designId,
@@ -53,7 +48,7 @@ export const useAddMember = (designId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { email: string; permission: string }) => {
-      const res = await axiosInstance.post<DesignMember>(`/sharing/${designId}/members`, params);
+      const res = await axiosInstance.post<DesignMember>(API_ROUTES.members(designId), params);
       return res.data;
     },
     onSuccess: invalidateAccess(qc, designId),
@@ -64,7 +59,7 @@ export const useRemoveMember = (designId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (memberId: string) => {
-      await axiosInstance.delete(`/sharing/${designId}/members/${memberId}`);
+      await axiosInstance.delete(API_ROUTES.member(designId, memberId));
     },
     onSuccess: invalidateAccess(qc, designId),
   });
@@ -74,7 +69,7 @@ export const useCreateLink = (designId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { permission?: string; expiresAt?: string }) => {
-      const res = await axiosInstance.post<DesignLink>(`/sharing/${designId}/links`, params);
+      const res = await axiosInstance.post<DesignLink>(API_ROUTES.links(designId), params);
       return res.data;
     },
     onSuccess: invalidateAccess(qc, designId),
@@ -85,7 +80,7 @@ export const useRevokeLink = (designId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (linkId: string) => {
-      await axiosInstance.delete(`/sharing/${designId}/links/${linkId}`);
+      await axiosInstance.delete(API_ROUTES.link(designId, linkId));
     },
     onSuccess: invalidateAccess(qc, designId),
   });
@@ -93,9 +88,11 @@ export const useRevokeLink = (designId: string) => {
 
 export const useSharedWithMe = () =>
   useQuery({
-    queryKey: SHARE_KEYS.sharedWithMe,
+    queryKey: QUERY_KEYS.list({ scope: "shared" }),
     queryFn: async () => {
-      const res = await axiosInstance.get<SharedWithMeItem[]>("/sharing/shared-with-me");
-      return res.data;
+      const res = await axiosInstance.get<DesignsResponse>(API_ROUTES.designs, {
+        params: { scope: "shared" },
+      });
+      return res.data.designs;
     },
   });

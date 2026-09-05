@@ -7,5 +7,5 @@ export interface AuthInfo {
 }
 
 export interface AuthenticatedRequest extends Request {
-  auth: AuthInfo;
+  auth?: AuthInfo;
 }

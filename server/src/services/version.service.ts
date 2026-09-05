@@ -75,16 +75,10 @@ export const restoreVersion = async (
   return updated ? serializeDesign(updated) : null;
 };
 
-export const deleteVersion = async (versionId: string, userId: string) => {
-  const version = await prisma.designVersion.findUnique({
-    where: { id: versionId },
-    include: { design: true },
-  });
+export const deleteVersion = async (designId: string, versionId: string, userId: string) => {
+  const design = await prisma.design.findFirst({ where: { id: designId, userId } });
+  if (!design) return false;
 
-  if (!version) return false;
-
-  if (version.design.userId !== userId) return false;
-
-  await prisma.designVersion.delete({ where: { id: versionId } });
-  return true;
+  const { count } = await prisma.designVersion.deleteMany({ where: { id: versionId, designId } });
+  return count > 0;
 };

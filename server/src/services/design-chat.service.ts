@@ -121,7 +121,7 @@ export const designChatStream = async (
       inputSchema: z.object({}),
       execute: async (): Promise<ToolResult> => {
         const [design, dbFurnitureItems] = await Promise.all([
-          getDesignById(designId, userId, email),
+          getDesignById(designId, { userId, email }),
           prisma.furnitureItem.findMany({ orderBy: [{ category: "asc" }, { name: "asc" }] }),
         ]);
 

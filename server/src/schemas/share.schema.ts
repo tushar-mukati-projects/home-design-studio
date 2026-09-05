@@ -22,7 +22,3 @@ export const createLinkSchema = z.object({
 export const revokeLinkSchema = z.object({
   params: z.object({ id: z.string().uuid(), linkId: z.string().uuid() }),
 });
-
-export const getByCodeSchema = z.object({
-  params: z.object({ code: z.string().min(1) }),
-});

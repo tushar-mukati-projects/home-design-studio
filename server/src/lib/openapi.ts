@@ -11,6 +11,7 @@ interface RouteInfo {
   responseSchema?: ZodSchema;
   eventStream?: string;
   requiresAuth: boolean;
+  optionalAuth: boolean;
 }
 
 // Express stores the mount prefix as a regex; recover "/designs" from it.
@@ -37,6 +38,7 @@ const walk = (layers: RouterLayer[], prefix: string, out: RouteInfo[]): void => 
         responseSchema: handlers.map((h) => h?.responseSchema).find(Boolean),
         eventStream: handlers.map((h) => h?.eventStream).find(Boolean),
         requiresAuth: handlers.some((h) => h?.name === "requireAuth"),
+        optionalAuth: handlers.some((h) => h?.name === "optionalAuth"),
       });
       continue;
     }
@@ -138,6 +140,7 @@ export const buildOpenApiDocument = (app: Express, baseUrl: string) => {
         "404": errorRef("Not found"),
       },
       ...(route.requiresAuth ? { security: [{ bearerAuth: [] }] } : {}),
+      ...(route.optionalAuth ? { security: [{ bearerAuth: [] }, {}] } : {}),
     };
 
     if (body) {

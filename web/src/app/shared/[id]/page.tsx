@@ -1,9 +1,9 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
-import { useFetchSharedDesign } from "@/hooks/designs/useFetchSharedDesign";
+import { useFetchDesign } from "@/hooks/designs/useFetchDesign";
 
 const EditorView = dynamic(
   () =>
@@ -21,9 +21,10 @@ const EditorView = dynamic(
 );
 
 const SharedDesignPage = () => {
-  const { token } = useParams<{ token: string }>();
+  const { id } = useParams<{ id: string }>();
+  const code = useSearchParams().get("code") ?? "";
   const router = useRouter();
-  const { data: design, isLoading, error } = useFetchSharedDesign(token ?? "");
+  const { data: design, isLoading, error } = useFetchDesign(code ? (id ?? "") : "", code);
 
   if (isLoading) {
     return (

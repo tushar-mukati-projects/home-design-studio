@@ -68,7 +68,7 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
   };
 
   const handleCopy = (code: string, id: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/shared/${code}`);
+    navigator.clipboard.writeText(`${window.location.origin}/shared/${designId}?code=${code}`);
     setCopiedId(id);
     toast.success("Link copied");
     setTimeout(() => setCopiedId(null), 2000);
@@ -208,7 +208,7 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
                   <div className="flex flex-1 items-center overflow-hidden rounded-md border border-[var(--border)] bg-[var(--secondary)] px-3">
                     <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
                     <span className="ml-2 truncate font-mono text-xs text-[var(--muted-foreground)]">
-                      /shared/{link.code}
+                      /shared/{designId}?code={link.code}
                     </span>
                   </div>
                   <Button
