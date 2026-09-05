@@ -1,4 +1,4 @@
-import { mockDesigns, mockFurnitureItems, mockUser } from "./data";
+import { mockDesigns, mockFurnitureItems } from "./data";
 import type { Design, FurnitureItem } from "@/types";
 
 const normalize = (design: Design): Design => ({
@@ -10,7 +10,6 @@ const normalize = (design: Design): Design => ({
   },
 });
 
-export const _user = structuredClone(mockUser);
 export const _designs: Design[] = structuredClone(mockDesigns).map(normalize);
 export const _furnitureItems: FurnitureItem[] = structuredClone(mockFurnitureItems);
 

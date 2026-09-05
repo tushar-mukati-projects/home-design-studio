@@ -108,10 +108,7 @@ const PricingPage = () => {
   const currentPlan = planData?.plan || "free";
 
   const handleUpgrade = () => {
-    const priceId = process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID;
-    if (priceId) {
-      createCheckout({ priceId });
-    }
+    createCheckout();
   };
 
   return (

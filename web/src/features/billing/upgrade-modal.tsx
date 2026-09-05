@@ -22,8 +22,6 @@ interface FeatureItemProps {
   label: string;
 }
 
-const PRO_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID ?? "";
-
 const PRO_FEATURES: FeatureItemProps[] = [
   { icon: <Infinity className="h-4 w-4" />, label: "Unlimited designs" },
   { icon: <Users className="h-4 w-4" />, label: "Real-time collaboration & sharing" },
@@ -48,8 +46,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
   const isPro = planData?.plan === "pro";
 
   const handleUpgrade = () => {
-    if (!PRO_PRICE_ID) return;
-    checkout.mutate({ priceId: PRO_PRICE_ID });
+    checkout.mutate();
   };
 
   const handleManageBilling = () => {
@@ -113,7 +110,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
               <Button
                 className="w-full gap-2"
                 onClick={handleUpgrade}
-                disabled={checkout.isPending || !PRO_PRICE_ID}
+                disabled={checkout.isPending}
               >
                 <Sparkles className="h-4 w-4" />
                 {checkout.isPending ? "Loading..." : "Upgrade to Pro"}
