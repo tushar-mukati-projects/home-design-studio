@@ -4,24 +4,20 @@ import * as stripeService from "../services/stripe.service";
 import { config } from "../lib/config";
 import { logger } from "../lib/logger";
 
+// There is one paid price, so the server names it. A client-supplied one could
+// only ever be accepted if it already matched this.
 export const createCheckout = async (req: Request, res: Response) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
-  const { priceId } = req.body;
 
-  if (!priceId || typeof priceId !== "string") {
-    res.status(400).json({ error: "priceId is required" });
-    return;
-  }
-
-  if (!config.stripeProPriceId || priceId !== config.stripeProPriceId) {
-    res.status(400).json({ error: "Unknown price" });
+  if (!config.stripeProPriceId) {
+    res.status(503).json({ error: "Billing is not configured" });
     return;
   }
 
   const origin = config.frontendUrl;
   const session = await stripeService.createCheckoutSession(
     userId,
-    priceId,
+    config.stripeProPriceId,
     `${origin}/dashboard?checkout=success`,
     `${origin}/dashboard?checkout=cancelled`,
   );
