@@ -59,7 +59,7 @@ interface AwarenessUserState {
   };
 }
 
-export interface DesignMeta {
+interface DesignMeta {
   name: string;
   isOwner: boolean;
   canEdit: boolean;

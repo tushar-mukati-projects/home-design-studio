@@ -98,4 +98,4 @@ const Select = ({
   );
 };
 
-export { Select, type SelectOption };
+export { Select };

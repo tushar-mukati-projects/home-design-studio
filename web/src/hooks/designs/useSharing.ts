@@ -7,14 +7,14 @@ const SHARE_KEYS = {
   access: (designId: string) => ["design-access", designId] as const,
 };
 
-export interface DesignMember {
+interface DesignMember {
   id: string;
   email: string;
   permission: "readonly" | "readwrite";
   createdAt: string;
 }
 
-export interface DesignLink {
+interface DesignLink {
   id: string;
   code: string;
   permission: "readonly" | "readwrite";

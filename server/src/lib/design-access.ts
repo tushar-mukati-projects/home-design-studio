@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 
-export type DesignPermission = "owner" | "readwrite" | "readonly";
+type DesignPermission = "owner" | "readwrite" | "readonly";
 
 // Membership is keyed on the invited email, and the auth context only carries an
 // email once the provider has verified it. An unverified address therefore

@@ -31,7 +31,7 @@ export const designWithPermissionResponse = designResponse.extend({
   ownerName: z.string().nullable(),
 });
 
-export const designListItemResponse = designSummaryResponse.extend({
+const designListItemResponse = designSummaryResponse.extend({
   permission: z.enum(["owner", "readwrite", "readonly"]),
   ownerName: z.string().nullable(),
   ownerEmail: z.string().nullable(),
@@ -59,7 +59,7 @@ export const furnitureItemResponse = z.object({
 
 export const furnitureListResponse = z.array(furnitureItemResponse);
 
-export const templateResponse = z.object({
+const templateResponse = z.object({
   id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),

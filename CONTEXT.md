@@ -30,9 +30,8 @@ A 2D floor plan editor with 3D preview — think Floorplanner/RoomSketcher lite.
 - **AI:** OpenAI (design chat, room furnishing, image-to-design)
 - **Backend:** Bun, Express, Prisma, PostgreSQL
 - **Auth:** Firebase Authentication (Firebase Admin verifies tokens server-side)
-- **Storage:** Supabase (image uploads)
 - **Billing:** Stripe
-- **Testing:** Bun test (unit). Playwright is installed for E2E but no specs exist yet.
+- **Testing:** Bun test (unit). No end-to-end suite.
 
 ## What This Project Shows
 
