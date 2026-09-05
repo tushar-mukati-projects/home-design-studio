@@ -6,6 +6,7 @@ export const createDesignSchema = z.object({
     description: z.string().max(2000).optional(),
     width: z.number().positive().optional(),
     height: z.number().positive().optional(),
+    templateId: z.string().uuid().optional(),
   }),
 });
 
@@ -27,10 +28,14 @@ export const getDesignSchema = z.object({
   params: z.object({
     id: z.string().uuid(),
   }),
+  query: z.object({
+    code: z.string().min(1).optional(),
+  }),
 });
 
 export const listDesignsSchema = z.object({
   query: z.object({
+    scope: z.enum(["owned", "shared", "all"]).optional(),
     search: z.string().optional(),
     sortBy: z.enum(["createdAt", "updatedAt", "name"]).optional(),
     order: z.enum(["asc", "desc"]).optional(),

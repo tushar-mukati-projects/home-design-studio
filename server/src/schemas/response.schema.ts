@@ -28,10 +28,17 @@ export const designResponse = designSummaryResponse.extend({
 
 export const designWithPermissionResponse = designResponse.extend({
   permission: z.enum(["owner", "readwrite", "readonly"]),
+  ownerName: z.string().nullable(),
+});
+
+export const designListItemResponse = designSummaryResponse.extend({
+  permission: z.enum(["owner", "readwrite", "readonly"]),
+  ownerName: z.string().nullable(),
+  ownerEmail: z.string().nullable(),
 });
 
 export const designListResponse = z.object({
-  designs: z.array(designSummaryResponse),
+  designs: z.array(designListItemResponse),
   total: z.number().int(),
   limit: z.number().int(),
   offset: z.number().int(),
@@ -98,22 +105,6 @@ export const accessResponse = z.object({
   members: z.array(memberResponse),
   links: z.array(linkResponse),
 });
-
-export const sharedDesignResponse = designResponse.extend({
-  ownerName: z.string().nullable(),
-  permission,
-});
-
-export const sharedWithMeResponse = z.array(
-  z.object({
-    id: z.string().uuid(),
-    permission,
-    createdAt: isoDate,
-    design: designSummaryResponse,
-    ownerName: z.string().nullable(),
-    ownerEmail: z.string().nullable(),
-  }),
-);
 
 export const planResponse = z.object({
   plan: z.enum(["free", "pro"]),

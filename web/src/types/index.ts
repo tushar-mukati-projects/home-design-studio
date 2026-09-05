@@ -88,6 +88,12 @@ export interface CanvasData {
 
 export type DesignSummary = Omit<Design, "canvasData">;
 
+export interface DesignListItem extends DesignSummary {
+  permission: DesignPermission;
+  ownerName: string | null;
+  ownerEmail: string | null;
+}
+
 export interface DesignTemplate {
   id: string;
   name: string;

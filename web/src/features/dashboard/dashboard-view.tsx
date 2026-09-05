@@ -54,7 +54,7 @@ import { BILLING_QUERY_KEYS } from "@/hooks/billing/constants";
 import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { PlanBadge } from "@/features/billing/plan-badge";
 import { cn } from "@/lib/utils";
-import type { Design, DesignTemplate, DesignSummary } from "@/types";
+import type { DesignTemplate, DesignSummary } from "@/types";
 import { TemplateGallery } from "./template-gallery";
 
 const DIMENSION_PRESETS = [
@@ -604,16 +604,14 @@ export const DashboardView = () => {
                   className="cursor-pointer overflow-hidden"
                   onClick={() => {
                     NProgress.start();
-                    router.push(`/editor/${item.design.id}`);
+                    router.push(`/editor/${item.id}`);
                   }}
                 >
                   <div className="h-32 overflow-hidden bg-[var(--secondary)]">
-                    <DesignThumbnail design={item.design} />
+                    <DesignThumbnail design={item} />
                   </div>
                   <CardContent className="p-4">
-                    <h3 className="truncate font-semibold text-[var(--foreground)]">
-                      {item.design.name}
-                    </h3>
+                    <h3 className="truncate font-semibold text-[var(--foreground)]">{item.name}</h3>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge variant="secondary" className="gap-1 text-xs font-normal">
                         {item.ownerName || item.ownerEmail}

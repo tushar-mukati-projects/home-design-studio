@@ -6,6 +6,6 @@ import type { AuthenticatedRequest } from "../lib/types";
 
 export const designChat = async (req: Request, res: Response) => {
   const { body } = validated(req, designChatSchema);
-  const { userId, email } = (req as AuthenticatedRequest).auth;
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
   await designChatStream(body.designId, userId, email, body.messages, res);
 };

@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { prisma } from "../lib/db";
-import { findDesignByLinkCode } from "../lib/design-access";
 import { sendShareInviteEmail } from "./email.service";
 
 type SharePermission = "readonly" | "readwrite";
@@ -72,16 +71,4 @@ export const revokeLink = async (designId: string, linkId: string, ownerUserId: 
   if (!(await ownedDesign(designId, ownerUserId))) return false;
   const { count } = await prisma.designLink.deleteMany({ where: { id: linkId, designId } });
   return count > 0;
-};
-
-export const getDesignByLinkCode = findDesignByLinkCode;
-
-export const listSharedWithMe = async (email?: string) => {
-  if (!email) return [];
-
-  return prisma.designMember.findMany({
-    where: { email },
-    include: { design: { include: { user: { select: { name: true, email: true } } } } },
-    orderBy: { createdAt: "desc" },
-  });
 };

@@ -1,14 +1,19 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 import { validate, responds } from "../middleware/validate";
 import { asyncHandler } from "../middleware/async-handler";
+import { checkDesignLimit } from "../middleware/plan-gate";
 import {
+  accessResponse,
   designListResponse,
   designResponse,
   designWithPermissionResponse,
+  linkResponse,
+  memberResponse,
   successResponse,
+  versionListResponse,
+  versionResponse,
 } from "../schemas/response.schema";
-import { checkDesignLimit } from "../middleware/plan-gate";
 import {
   createDesignSchema,
   getDesignSchema,
@@ -16,7 +21,22 @@ import {
   updateDesignSchema,
   deleteDesignSchema,
 } from "../schemas/design.schema";
+import {
+  addMemberSchema,
+  removeMemberSchema,
+  listAccessSchema,
+  createLinkSchema,
+  revokeLinkSchema,
+} from "../schemas/share.schema";
+import {
+  createVersionSchema,
+  listVersionsSchema,
+  restoreVersionSchema,
+  deleteVersionSchema,
+} from "../schemas/version.schema";
 import * as designController from "../controllers/design.controller";
+import * as shareController from "../controllers/share.controller";
+import * as versionController from "../controllers/version.controller";
 
 const router = Router();
 
@@ -35,9 +55,11 @@ router.post(
   responds(designResponse),
   asyncHandler(designController.create),
 );
+
+// Unauthenticated when a share link code is supplied, signed in otherwise.
 router.get(
   "/:id",
-  requireAuth,
+  optionalAuth,
   validate(getDesignSchema),
   responds(designWithPermissionResponse),
   asyncHandler(designController.get),
@@ -55,6 +77,71 @@ router.delete(
   validate(deleteDesignSchema),
   responds(successResponse),
   asyncHandler(designController.remove),
+);
+
+router.get(
+  "/:id/access",
+  requireAuth,
+  validate(listAccessSchema),
+  responds(accessResponse),
+  asyncHandler(shareController.listAccess),
+);
+router.post(
+  "/:id/members",
+  requireAuth,
+  validate(addMemberSchema),
+  responds(memberResponse),
+  asyncHandler(shareController.addMember),
+);
+router.delete(
+  "/:id/members/:memberId",
+  requireAuth,
+  validate(removeMemberSchema),
+  responds(successResponse),
+  asyncHandler(shareController.removeMember),
+);
+router.post(
+  "/:id/links",
+  requireAuth,
+  validate(createLinkSchema),
+  responds(linkResponse),
+  asyncHandler(shareController.createLink),
+);
+router.delete(
+  "/:id/links/:linkId",
+  requireAuth,
+  validate(revokeLinkSchema),
+  responds(successResponse),
+  asyncHandler(shareController.revokeLink),
+);
+
+router.get(
+  "/:id/versions",
+  requireAuth,
+  validate(listVersionsSchema),
+  responds(versionListResponse),
+  asyncHandler(versionController.list),
+);
+router.post(
+  "/:id/versions",
+  requireAuth,
+  validate(createVersionSchema),
+  responds(versionResponse),
+  asyncHandler(versionController.create),
+);
+router.post(
+  "/:id/versions/:versionId/restore",
+  requireAuth,
+  validate(restoreVersionSchema),
+  responds(designResponse),
+  asyncHandler(versionController.restore),
+);
+router.delete(
+  "/:id/versions/:versionId",
+  requireAuth,
+  validate(deleteVersionSchema),
+  responds(successResponse),
+  asyncHandler(versionController.remove),
 );
 
 export { router as designRouter };

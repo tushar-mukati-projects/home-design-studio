@@ -71,7 +71,7 @@ web/
 │   │                   /            landing page
 │   │                   /dashboard   your designs
 │   │                   /editor/[id] the editor
-│   │                   /shared/[token]  read-only shared link
+│   │                   /shared/[id] read-only shared link (?code=)
 │   │                   /pricing, /sign-in, /sign-up
 │   ├── features/     The actual product, grouped by feature.
 │   │   └── editor/     canvas/         the 2D drawing surface (Konva)
@@ -128,15 +128,22 @@ edit the route. To change *what it returns*, edit the serializer.
 All routes are prefixed with `/api` and need a Firebase ID token
 (`Authorization: Bearer <token>`), except the webhook and the public share link.
 
+Everything that belongs to a design lives under `/designs`, so there is one place
+to look and one id to pass.
+
 | Area           | Endpoints |
 | -------------- | --------- |
-| `/designs`     | `GET /` `POST /` `GET /:id` `PATCH /:id` `DELETE /:id` |
+| `/designs`     | `GET /?scope=owned\|shared\|all` `POST /` (`templateId` optional) `GET /:id?code=` `PATCH /:id` `DELETE /:id` |
+| └ sharing      | `GET /:id/access` `POST /:id/members` `DELETE /:id/members/:memberId` `POST /:id/links` `DELETE /:id/links/:linkId` |
+| └ versions     | `GET /:id/versions` `POST /:id/versions` `POST /:id/versions/:versionId/restore` `DELETE /:id/versions/:versionId` |
 | `/furniture`   | `GET /` — the shared catalog of placeable items |
-| `/versions`    | `GET /:designId` `POST /:designId` `POST /:designId/restore/:versionId` `DELETE /:versionId` |
-| `/sharing`     | `GET /shared-with-me` `GET /by-code/:code` `GET /:id/access` `POST /:id/members` `DELETE /:id/members/:memberId` `POST /:id/links` `DELETE /:id/links/:linkId` |
-| `/templates`   | `GET /` `POST /:id/use` |
+| `/templates`   | `GET /` — create from one with `POST /designs { templateId }` |
 | `/billing`     | `GET /plan` `POST /checkout` `POST /portal` `POST /webhook` |
 | `/ai` (Pro)    | `POST /design-chat` `POST /furnish` `POST /image-to-design` |
+
+`GET /designs/:id` is the only way to read a design. It answers three questions at
+once: the owner asking for their own, a member asking for one shared with them, and
+an anonymous visitor holding a share link, who passes `?code=` instead of a token.
 
 Plus a WebSocket at `/collaboration` for real-time editing, and `GET /health`.
 

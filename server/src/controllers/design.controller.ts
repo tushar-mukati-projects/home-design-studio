@@ -14,13 +14,23 @@ export const create = async (req: Request, res: Response) => {
   const { body } = validated(req, createDesignSchema);
   const { userId } = (req as AuthenticatedRequest).auth!;
   const design = await designService.createDesign(body, userId);
+
+  if (!design) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+
   res.status(201).json(design);
 };
 
 export const get = async (req: Request, res: Response) => {
-  const { params } = validated(req, getDesignSchema);
-  const { userId, email } = (req as AuthenticatedRequest).auth!;
-  const design = await designService.getDesignById(params.id, userId, email);
+  const { params, query } = validated(req, getDesignSchema);
+  const auth = (req as AuthenticatedRequest).auth;
+  const design = await designService.getDesignById(params.id, {
+    userId: auth?.userId,
+    email: auth?.email,
+    code: query.code,
+  });
 
   if (!design) {
     res.status(404).json({ error: "Design not found" });
@@ -32,8 +42,8 @@ export const get = async (req: Request, res: Response) => {
 
 export const list = async (req: Request, res: Response) => {
   const { query } = validated(req, listDesignsSchema);
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const result = await designService.listDesigns(userId, query);
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
+  const result = await designService.listDesigns(userId, email, query);
   res.json(result);
 };
 

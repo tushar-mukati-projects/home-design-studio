@@ -5,6 +5,7 @@ import { validate, responds } from "@/middleware/validate";
 import { buildOpenApiDocument, swaggerHtml } from "@/lib/openapi";
 
 const requireAuth = (_q: unknown, _s: unknown, next: () => void) => next();
+const optionalAuth = (_q: unknown, _s: unknown, next: () => void) => next();
 
 const buildApp = () => {
   const app = express();
@@ -26,6 +27,7 @@ const buildApp = () => {
   );
   designs.get(
     "/:id",
+    optionalAuth,
     validate(z.object({ params: z.object({ id: z.string().uuid() }) })),
     responds(z.object({ id: z.string().uuid(), name: z.string() })),
     (_q, _s) => {},
@@ -74,9 +76,13 @@ describe("buildOpenApiDocument", () => {
   });
 
   test("marks routes behind requireAuth as secured", () => {
-    const paths = doc().paths;
-    expect((paths["/api/designs"].post as { security?: unknown }).security).toBeDefined();
-    expect((paths["/api/designs/{id}"].get as { security?: unknown }).security).toBeUndefined();
+    const post = doc().paths["/api/designs"].post as { security?: unknown[] };
+    expect(post.security).toEqual([{ bearerAuth: [] }]);
+  });
+
+  test("optionalAuth documents the token as accepted but not required", () => {
+    const get = doc().paths["/api/designs/{id}"].get as { security?: unknown[] };
+    expect(get.security).toEqual([{ bearerAuth: [] }, {}]);
   });
 
   test("declares the bearer scheme", () => {

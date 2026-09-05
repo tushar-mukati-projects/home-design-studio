@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import type { AuthenticatedRequest } from "../lib/types";
 import * as shareService from "../services/share.service";
-import { serializeDesign, serializeDesignSummary } from "../lib/serializers";
 import { PLANS } from "../lib/constants";
 import { getSubscription } from "../services/stripe.service";
 
@@ -96,39 +95,4 @@ export const revokeLink = async (req: Request, res: Response) => {
     return;
   }
   res.json({ success: true });
-};
-
-export const getByCode = async (req: Request, res: Response) => {
-  const result = await shareService.getDesignByLinkCode(req.params.code as string);
-
-  if (!result) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  const { user, ...design } = result.design;
-  res.json({
-    ...serializeDesign(design),
-    ownerName: user.name,
-    permission: result.permission,
-  });
-};
-
-export const sharedWithMe = async (req: Request, res: Response) => {
-  const { email } = (req as AuthenticatedRequest).auth!;
-  const members = await shareService.listSharedWithMe(email);
-
-  res.json(
-    members.map((m) => {
-      const { user, ...design } = m.design;
-      return {
-        id: m.id,
-        permission: m.permission,
-        createdAt: m.createdAt,
-        design: serializeDesignSummary(design),
-        ownerName: user.name,
-        ownerEmail: user.email,
-      };
-    }),
-  );
 };
