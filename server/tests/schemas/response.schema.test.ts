@@ -5,6 +5,7 @@ import {
   designSummaryResponse,
   furnitureItemResponse,
   errorResponse,
+  meResponse,
   successResponse,
   planResponse,
 } from "@/schemas/response.schema";
@@ -72,6 +73,30 @@ describe("declared responses match what the serializers actually return", () => 
   test("a response schema rejects the wrong shape", () => {
     expect(designResponse.safeParse({ id: "not-a-uuid" }).success).toBe(false);
     expect(furnitureItemResponse.safeParse({ ...furnitureRow, size: "big" }).success).toBe(false);
+  });
+});
+
+describe("meResponse", () => {
+  test("accepts a fresh free user with no name or email yet", () => {
+    const me = {
+      id: "22222222-2222-4222-8222-222222222222",
+      email: null,
+      name: null,
+      plan: "free",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(meResponse.safeParse(me).success).toBe(true);
+  });
+
+  test("plan is the closed free/pro set", () => {
+    const me = {
+      id: "22222222-2222-4222-8222-222222222222",
+      email: "a@b.co",
+      name: "A",
+      plan: "enterprise",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(meResponse.safeParse(me).success).toBe(false);
   });
 });
 

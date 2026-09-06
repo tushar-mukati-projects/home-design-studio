@@ -1,6 +1,7 @@
+import { AxiosError } from "axios";
 import { describe, test, expect } from "bun:test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { getApiErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage, sessionErrorMessage } from "@/lib/api-error";
 
 const axiosError = (status: number, data: unknown): AxiosError => {
   const err = new AxiosError("Request failed");
@@ -56,5 +57,31 @@ describe("getApiErrorMessage", () => {
     expect(getApiErrorMessage(axiosError(500, { error: { nested: true } }))).not.toContain(
       "object",
     );
+  });
+});
+
+describe("sessionErrorMessage", () => {
+  const axiosError = (status?: number) => {
+    const err = new AxiosError("boom");
+    if (status) {
+      err.response = { status, data: {}, statusText: "", headers: {}, config: err.config! };
+    }
+    return err;
+  };
+
+  test("no response at all means the server is not reachable", () => {
+    expect(sessionErrorMessage(axiosError())).toContain("Cannot reach the server");
+  });
+
+  test("a 401 tells the user to sign in again", () => {
+    expect(sessionErrorMessage(axiosError(401))).toContain("sign in again");
+  });
+
+  test("a 503 is the database, not the user", () => {
+    expect(sessionErrorMessage(axiosError(503))).toContain("database");
+  });
+
+  test("anything else carries the generic message through", () => {
+    expect(sessionErrorMessage(new Error("weird"))).toBe("Could not load your account. weird");
   });
 });

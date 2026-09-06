@@ -22,3 +22,19 @@ export const getApiErrorMessage = (error: unknown, fallback = "Something went wr
   if (error instanceof Error && error.message) return error.message;
   return fallback;
 };
+
+// For the screen that gates the whole app: says what to do, not just what happened.
+export const sessionErrorMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    if (!error.response) {
+      return "Cannot reach the server. Make sure it is running on port 4000, then retry.";
+    }
+    if (error.response.status === 401) {
+      return "Your session is no longer valid. Sign out and sign in again.";
+    }
+    if (error.response.status === 503) {
+      return "The server is up but cannot reach its database right now. Retry in a moment.";
+    }
+  }
+  return `Could not load your account. ${getApiErrorMessage(error)}`;
+};

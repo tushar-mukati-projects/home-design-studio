@@ -129,10 +129,13 @@ All routes are prefixed with `/api` and need a Firebase ID token
 (`Authorization: Bearer <token>`), except the webhook and the public share link.
 
 Everything that belongs to a design lives under `/designs`, so there is one place
-to look and one id to pass.
+to look and one id to pass. `/me` comes first: the web app's `AuthGuard` renders nothing
+below it until that call succeeds, so a dead API or a rejected session is one screen with
+a Retry button rather than a page of failing requests.
 
 | Area           | Endpoints |
 | -------------- | --------- |
+| `/me`          | `GET /` — the signed-in user's profile and plan. The first call every page makes; nothing else loads until it succeeds. |
 | `/designs`     | `GET /?scope=owned\|shared\|all` `POST /` (`templateId` optional) `GET /:id?code=` `PATCH /:id` `DELETE /:id` |
 | └ sharing      | `GET /:id/access` `POST /:id/members` `DELETE /:id/members/:memberId` `POST /:id/links` `DELETE /:id/links/:linkId` |
 | └ versions     | `GET /:id/versions` `POST /:id/versions` `POST /:id/versions/:versionId/restore` `DELETE /:id/versions/:versionId` |
