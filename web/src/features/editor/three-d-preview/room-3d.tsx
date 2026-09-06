@@ -3,23 +3,12 @@
 import { useMemo, useEffect } from "react";
 import { Shape, ShapeGeometry, MeshStandardMaterial, DoubleSide } from "three";
 import { Text } from "@react-three/drei";
+import { ROOM_USAGE_COLORS, centroid, polygonArea } from "@/lib/canvas";
+import { formatArea } from "@/lib/constants";
 import type { Room } from "@/types";
 
-const SCALE = 0.01;
+const SCALE = 0.001;
 const FLOOR_ELEVATION = 0.02;
-
-const ROOM_3D_COLORS: Record<string, string> = {
-  "living-room": "#c8c8ce",
-  living_room: "#c8c8ce",
-  bedroom: "#c4c0cc",
-  kitchen: "#ccc8c4",
-  bathroom: "#c0c8d0",
-  office: "#c4ccc4",
-  dining: "#ccc8c0",
-  hallway: "#d0d0d4",
-  garage: "#b8b8bc",
-  generic: "#c8c8cc",
-};
 
 interface Room3DProps {
   room: Room;
@@ -30,22 +19,19 @@ interface Room3DProps {
 
 export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
   const geometry = useMemo(() => {
-    if (!room.points || room.points.length < 3) return null;
-
+    if (room.polygon.length < 3) return null;
     const shape = new Shape();
-    const first = room.points[0];
-    shape.moveTo(first.x * SCALE - offsetX, -(first.y * SCALE - offsetZ));
-
-    for (let i = 1; i < room.points.length; i++) {
-      const pt = room.points[i];
-      shape.lineTo(pt.x * SCALE - offsetX, -(pt.y * SCALE - offsetZ));
-    }
+    room.polygon.forEach(([x, y], i) => {
+      const px = x * SCALE - offsetX;
+      const pz = -(y * SCALE - offsetZ);
+      if (i === 0) shape.moveTo(px, pz);
+      else shape.lineTo(px, pz);
+    });
     shape.closePath();
-
     return new ShapeGeometry(shape);
-  }, [room.points, offsetX, offsetZ]);
+  }, [room.polygon, offsetX, offsetZ]);
 
-  const roomColor = room.color?.slice(0, 7) || ROOM_3D_COLORS[room.type] || ROOM_3D_COLORS.generic;
+  const roomColor = ROOM_USAGE_COLORS[room.usage] ?? ROOM_USAGE_COLORS.generic;
 
   const material = useMemo(
     () =>
@@ -67,15 +53,9 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
   useEffect(() => () => geometry?.dispose(), [geometry]);
   useEffect(() => () => material.dispose(), [material]);
 
-  const center = useMemo(() => {
-    if (!room.points || room.points.length === 0) return { x: 0, z: 0 };
-    const cx = room.points.reduce((sum, p) => sum + p.x, 0) / room.points.length;
-    const cz = room.points.reduce((sum, p) => sum + p.y, 0) / room.points.length;
-    return {
-      x: cx * SCALE - offsetX,
-      z: cz * SCALE - offsetZ,
-    };
-  }, [room.points, offsetX, offsetZ]);
+  const [cx, cy] = centroid(room.polygon);
+  const center = { x: cx * SCALE - offsetX, z: cy * SCALE - offsetZ };
+  const area = polygonArea(room.polygon);
 
   if (!geometry) return null;
 
@@ -100,7 +80,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
       >
         {room.name}
       </Text>
-      {room.area > 0 && (
+      {area > 0 && (
         <Text
           position={[center.x, 0.15, center.z + 0.15]}
           rotation={[-Math.PI / 4, 0, 0]}
@@ -110,7 +90,7 @@ export const Room3D = ({ room, offsetX, offsetZ, showColor }: Room3DProps) => {
           anchorY="middle"
           maxWidth={3}
         >
-          {(room.area * SCALE * SCALE).toFixed(1)} m2
+          {formatArea(area)}
         </Text>
       )}
     </group>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, PackageOpen, ChevronLeft, ChevronRight } from "lucide-react";
-
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -11,66 +10,59 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useEditorStore } from "@/stores/editor-store";
 import { useFetchFurniture } from "@/hooks/furniture";
-import type { FurnitureItem, PlacedFurniture } from "@/types";
+import { FURNITURE_CATEGORIES, type CatalogItem, type FurnitureCategory } from "@/types";
+import { ROOM_USAGE_LABELS, boundsOf, newId } from "@/lib/canvas";
 import { FurnitureCard } from "./furniture-card";
-import {
-  LOCAL_FURNITURE_ITEMS,
-  FURNITURE_CATEGORIES,
-  type FurnitureCategory,
-} from "./furniture-data";
 
-const generatePlacementId = (): string => {
-  return `furn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-};
+type CategoryFilter = FurnitureCategory | "all";
+
+const CATEGORY_TABS: { id: CategoryFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  ...FURNITURE_CATEGORIES.map((id) => ({ id, label: ROOM_USAGE_LABELS[id] })),
+];
 
 export const FurnitureCatalog = () => {
   const [search, setSearch] = useState("");
-  const [activeCategory, setActiveCategory] = useState<FurnitureCategory>("all");
-
-  const addFurniture = useEditorStore((s) => s.addFurniture);
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: remoteFurniture } = useFetchFurniture();
-  const furnitureItems = remoteFurniture?.length ? remoteFurniture : LOCAL_FURNITURE_ITEMS;
+  const addFurniture = useEditorStore((s) => s.addFurniture);
+  const setCatalog = useEditorStore((s) => s.setCatalog);
+  const { data: catalog = [] } = useFetchFurniture();
+
+  // The store resolves sizes and colours from the catalog, so it needs a copy.
+  useEffect(() => {
+    if (catalog.length) setCatalog(catalog);
+  }, [catalog, setCatalog]);
 
   const filteredItems = useMemo(() => {
-    let items = furnitureItems;
-
-    if (activeCategory !== "all") {
-      items = items.filter((item) => item.category === activeCategory);
-    }
-
+    let items = catalog;
+    if (activeCategory !== "all") items = items.filter((item) => item.category === activeCategory);
     if (search.trim()) {
       const query = search.trim().toLowerCase();
       items = items.filter((item) => item.name.toLowerCase().includes(query));
     }
-
     return items;
-  }, [furnitureItems, activeCategory, search]);
+  }, [catalog, activeCategory, search]);
 
   const handleQuickAdd = useCallback(
-    (item: FurnitureItem) => {
-      const placement: PlacedFurniture = {
-        id: generatePlacementId(),
-        furnitureItemId: item.id,
-        furnitureItem: item,
-        x: 400,
-        y: 300,
-        rotation: 0,
-        scaleX: 1,
-        scaleY: 1,
-      };
-
-      addFurniture(placement);
+    (item: CatalogItem) => {
+      const state = useEditorStore.getState();
+      const bounds = boundsOf(state);
+      const at: [number, number] = bounds
+        ? [Math.round((bounds.minX + bounds.maxX) / 2), Math.round((bounds.minY + bounds.maxY) / 2)]
+        : [3000, 2000];
+      addFurniture({ id: newId(), item: item.id, at, rotation: 0 });
       toast.success(`${item.name} added to canvas`);
     },
     [addFurniture],
   );
 
   const scrollCategories = (direction: "left" | "right") => {
-    if (!categoryScrollRef.current) return;
-    const offset = direction === "left" ? -120 : 120;
-    categoryScrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+    categoryScrollRef.current?.scrollBy({
+      left: direction === "left" ? -120 : 120,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -109,7 +101,7 @@ export const FurnitureCatalog = () => {
             ref={categoryScrollRef}
             className="scrollbar-none flex flex-1 gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden"
           >
-            {FURNITURE_CATEGORIES.map((cat) => (
+            {CATEGORY_TABS.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}

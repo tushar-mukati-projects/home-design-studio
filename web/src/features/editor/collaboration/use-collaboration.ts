@@ -7,9 +7,11 @@ import { createCollaborationProvider, destroyProvider } from "@/lib/yjs-provider
 import { auth } from "@/lib/firebase";
 import { useEditorStore } from "@/stores/editor-store";
 import { useCollaborationStore, type CollaboratorCursor } from "@/stores/collaboration-store";
-import type { Wall, Door, Window, Room, PlacedFurniture } from "@/types";
+import type { Canvas } from "@/types";
 
-type CollectionKey = "walls" | "doors" | "windows" | "furniture" | "rooms";
+type CollectionKey = "walls" | "openings" | "rooms" | "furniture";
+const COLLECTION_KEYS: CollectionKey[] = ["walls", "openings", "rooms", "furniture"];
+const META_KEY = "meta";
 
 interface HasId {
   id: string;
@@ -19,15 +21,8 @@ const LOCAL_ORIGIN = "local";
 
 const syncArrayToYMap = <T extends HasId>(doc: Y.Doc, yMap: Y.Map<unknown>, items: T[]): void => {
   doc.transact(() => {
-    const existingIds = new Set(yMap.keys());
     const newIds = new Set(items.map((i) => i.id));
-
-    for (const id of existingIds) {
-      if (!newIds.has(id)) {
-        yMap.delete(id);
-      }
-    }
-
+    for (const id of yMap.keys()) if (!newIds.has(id)) yMap.delete(id);
     for (const item of items) {
       const existing = yMap.get(item.id);
       if (!existing || JSON.stringify(existing) !== JSON.stringify(item)) {
@@ -37,26 +32,22 @@ const syncArrayToYMap = <T extends HasId>(doc: Y.Doc, yMap: Y.Map<unknown>, item
   }, LOCAL_ORIGIN);
 };
 
-const yMapToArray = <T extends HasId>(yMap: Y.Map<unknown>): T[] => {
+const yMapToArray = <T>(yMap: Y.Map<unknown>): T[] => {
   const result: T[] = [];
-  yMap.forEach((value) => {
-    result.push(value as T);
-  });
+  yMap.forEach((value) => result.push(value as T));
   return result;
 };
 
-const COLLECTION_KEYS: CollectionKey[] = ["walls", "doors", "windows", "furniture", "rooms"];
+const readAll = (maps: Map<CollectionKey, Y.Map<unknown>>) => ({
+  walls: yMapToArray<Canvas["walls"][number]>(maps.get("walls")!),
+  openings: yMapToArray<Canvas["openings"][number]>(maps.get("openings")!),
+  rooms: yMapToArray<Canvas["rooms"][number]>(maps.get("rooms")!),
+  furniture: yMapToArray<Canvas["furniture"][number]>(maps.get("furniture")!),
+});
 
 interface AwarenessUserState {
-  user?: {
-    name: string;
-    color: string;
-    permission?: string;
-  };
-  cursor?: {
-    x: number;
-    y: number;
-  };
+  user?: { name: string; color: string; permission?: string };
+  cursor?: { x: number; y: number };
 }
 
 interface DesignMeta {
@@ -69,8 +60,6 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   const providerRef = useRef<HocuspocusProvider | null>(null);
   const docRef = useRef<Y.Doc | null>(null);
   const isRemoteUpdateRef = useRef(false);
-  const unsubEditorRef = useRef<(() => void) | null>(null);
-  const yMapsRef = useRef<Map<CollectionKey, Y.Map<unknown>>>(new Map());
   const initialSyncDoneRef = useRef(false);
 
   const [designMeta, setDesignMeta] = useState<DesignMeta>({
@@ -118,32 +107,26 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
 
       useEditorStore.setState({
         walls: [],
-        doors: [],
-        windows: [],
-        furniture: [],
+        openings: [],
         rooms: [],
+        furniture: [],
         past: [],
         future: [],
         selectedElementId: null,
       });
 
       const maps = new Map<CollectionKey, Y.Map<unknown>>();
-      for (const key of COLLECTION_KEYS) {
-        maps.set(key, doc.getMap(key));
-      }
-      yMapsRef.current = maps;
+      for (const key of COLLECTION_KEYS) maps.set(key, doc.getMap(key));
 
-      const metaMap = doc.getMap("metadata");
+      const metaMap = doc.getMap(META_KEY);
       const readMeta = () => {
         const name = (metaMap.get("name") as string) || "Untitled Design";
         const ownerUid = metaMap.get("ownerUid") as string;
-        const isOwner = ownerUid === currentUser.uid;
-        setDesignMeta({ name, isOwner, canEdit: canEditRef.current });
+        setDesignMeta({ name, isOwner: ownerUid === currentUser.uid, canEdit: canEditRef.current });
       };
 
       const metaHandler = () => readMeta();
       metaMap.observe(metaHandler);
-
       const observerHandlers: Array<() => void> = [() => metaMap.unobserve(metaHandler)];
 
       for (const key of COLLECTION_KEYS) {
@@ -151,29 +134,10 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
         const handler = (_event: Y.YMapEvent<unknown>, transaction: Y.Transaction) => {
           if (!initialSyncDoneRef.current) return;
           if (transaction.origin === LOCAL_ORIGIN) return;
-
           isRemoteUpdateRef.current = true;
-          switch (key) {
-            case "walls":
-              useEditorStore.setState({ walls: yMapToArray<Wall>(yMap) });
-              break;
-            case "doors":
-              useEditorStore.setState({ doors: yMapToArray<Door>(yMap) });
-              break;
-            case "windows":
-              useEditorStore.setState({ windows: yMapToArray<Window>(yMap) });
-              break;
-            case "furniture":
-              useEditorStore.setState({ furniture: yMapToArray<PlacedFurniture>(yMap) });
-              break;
-            case "rooms":
-              useEditorStore.setState({ rooms: yMapToArray<Room>(yMap) });
-              break;
-          }
-
+          useEditorStore.setState({ [key]: yMapToArray(yMap) } as never);
           isRemoteUpdateRef.current = false;
         };
-
         yMap.observe(handler);
         observerHandlers.push(() => yMap.unobserve(handler));
       }
@@ -181,19 +145,12 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
       const unsubEditor = useEditorStore.subscribe((state, prevState) => {
         if (isRemoteUpdateRef.current) return;
         if (!initialSyncDoneRef.current) return;
-
         for (const key of COLLECTION_KEYS) {
-          const yMap = maps.get(key)!;
-          const current = state[key];
-          const prev = prevState[key];
-
-          if (current !== prev) {
-            syncArrayToYMap(doc, yMap, current as HasId[]);
+          if (state[key] !== prevState[key]) {
+            syncArrayToYMap(doc, maps.get(key)!, state[key] as HasId[]);
           }
         }
       });
-
-      unsubEditorRef.current = unsubEditor;
 
       provider.on("status", ({ status }: { status: string }) => {
         setConnected(status === "connected");
@@ -215,43 +172,24 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
 
         if (state && !initialSyncDoneRef.current) {
           initialSyncDoneRef.current = true;
-
           readMeta();
 
-          let hasRemoteData = false;
-          for (const key of COLLECTION_KEYS) {
-            const yMap = maps.get(key)!;
-            if (yMap.size > 0) {
-              hasRemoteData = true;
-              break;
-            }
-          }
-
+          const hasRemoteData = COLLECTION_KEYS.some((key) => maps.get(key)!.size > 0);
           if (hasRemoteData) {
             isRemoteUpdateRef.current = true;
-            useEditorStore.setState({
-              walls: yMapToArray<Wall>(maps.get("walls")!),
-              doors: yMapToArray<Door>(maps.get("doors")!),
-              windows: yMapToArray<Window>(maps.get("windows")!),
-              furniture: yMapToArray<PlacedFurniture>(maps.get("furniture")!),
-              rooms: yMapToArray<Room>(maps.get("rooms")!),
-            });
+            useEditorStore.setState(readAll(maps));
             isRemoteUpdateRef.current = false;
           } else {
             const store = useEditorStore.getState();
             for (const key of COLLECTION_KEYS) {
-              const yMap = maps.get(key)!;
-              syncArrayToYMap(doc, yMap, store[key] as HasId[]);
+              syncArrayToYMap(doc, maps.get(key)!, store[key] as HasId[]);
             }
           }
         }
       });
 
       if (awareness) {
-        awareness.setLocalStateField("user", {
-          name: userName,
-          color: userColor,
-        });
+        awareness.setLocalStateField("user", { name: userName, color: userColor });
 
         const awarenessHandler = () => {
           const states = awareness.getStates();
@@ -264,13 +202,11 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
             if (clientId === localId) return;
             const typed = state as AwarenessUserState;
             if (!typed.user) return;
-
             activeIds.add(clientId);
             const x = typed.cursor?.x ?? 0;
             const y = typed.cursor?.y ?? 0;
             const prev = seen.get(clientId);
             const moved = !prev || prev.x !== x || prev.y !== y;
-
             seen.set(clientId, {
               id: String(clientId),
               name: typed.user.name,
@@ -281,10 +217,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
             });
           });
 
-          for (const clientId of seen.keys()) {
-            if (!activeIds.has(clientId)) seen.delete(clientId);
-          }
-
+          for (const clientId of seen.keys()) if (!activeIds.has(clientId)) seen.delete(clientId);
           setCollaborators(Array.from(seen.values()));
         };
 
@@ -293,15 +226,11 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
       }
 
       cleanupFn = () => {
-        for (const cleanup of observerHandlers) {
-          cleanup();
-        }
+        for (const cleanup of observerHandlers) cleanup();
         unsubEditor();
-        unsubEditorRef.current = null;
         destroyProvider(provider);
         providerRef.current = null;
         docRef.current = null;
-        yMapsRef.current.clear();
         initialSyncDoneRef.current = false;
         setConnected(false);
         setSynced(false);
@@ -338,9 +267,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   }, []);
 
   const updateDesignName = useCallback((name: string) => {
-    const doc = docRef.current;
-    if (!doc) return;
-    doc.getMap("metadata").set("name", name);
+    docRef.current?.getMap(META_KEY).set("name", name);
   }, []);
 
   return {

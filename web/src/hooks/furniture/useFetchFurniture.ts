@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
-import type { FurnitureItem } from "@/types";
+import type { CatalogItem } from "@/types";
 import { API_ROUTES, QUERY_KEYS } from "./constants";
 
 interface FetchFurnitureFilters {
@@ -12,7 +12,7 @@ export const useFetchFurniture = (filters?: FetchFurnitureFilters) => {
   return useQuery({
     queryKey: QUERY_KEYS.list(filters),
     queryFn: async () => {
-      const response = await axiosInstance.get<FurnitureItem[]>(API_ROUTES.furniture, {
+      const response = await axiosInstance.get<CatalogItem[]>(API_ROUTES.furniture, {
         params: filters,
       });
       return response.data;

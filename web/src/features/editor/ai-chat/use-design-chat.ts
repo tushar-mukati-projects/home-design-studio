@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getToken } from "@/lib/axios";
 import { useEditorStore } from "@/stores/editor-store";
-import type { Wall, Room, PlacedFurniture, Door, Window } from "@/types";
+import type { Canvas, Furniture, Opening, Room, Wall } from "@/types";
 
 export interface ToolCall {
   name: string;
@@ -26,17 +26,34 @@ type SSEEvent =
   | { type: "done" };
 
 const readErrorMessage = async (res: Response): Promise<string> => {
-  if (res.status === 403) {
+  if (res.status === 403)
     return "The AI design assistant is a Pro feature. Upgrade your plan to use it.";
-  }
-  if (res.status === 401) {
-    return "Your session expired. Please refresh the page and sign in again.";
-  }
+  if (res.status === 401) return "Your session expired. Please refresh the page and sign in again.";
   try {
     const body = (await res.json()) as { error?: string };
     if (body?.error) return body.error;
   } catch {}
   return "Sorry, something went wrong. Please try again.";
+};
+
+const applyAction = (actionType: string, payload: Record<string, unknown>) => {
+  const store = useEditorStore.getState();
+  switch (actionType) {
+    case "add_wall":
+      return store.addWall(payload as unknown as Wall);
+    case "add_room":
+      return store.setRooms([...store.rooms, payload as unknown as Room], { recordHistory: true });
+    case "place_furniture":
+      return store.addFurniture(payload as unknown as Furniture);
+    case "add_opening":
+      return store.addOpening(payload as unknown as Opening);
+    case "remove_element":
+      return store.removeElement((payload as { elementId: string }).elementId);
+    case "clear_design":
+      return store.clearCanvas();
+    case "set_canvas":
+      return store.setCanvas(payload as unknown as Canvas);
+  }
 };
 
 export const useDesignChat = (designId: string) => {
@@ -45,79 +62,17 @@ export const useDesignChat = (designId: string) => {
   const [activeTools, setActiveTools] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const applyAction = useCallback((actionType: string, payload: Record<string, unknown>) => {
-    const store = useEditorStore.getState();
-    switch (actionType) {
-      case "add_wall":
-        store.addWall(payload as unknown as Wall);
-        break;
-      case "add_room":
-        store.setRooms([...store.rooms, payload as unknown as Room], { recordHistory: true });
-        break;
-      case "place_furniture":
-        store.addFurniture(payload as unknown as PlacedFurniture);
-        break;
-      case "add_door":
-        store.addDoor(payload as unknown as Door);
-        break;
-      case "add_window":
-        store.addWindow(payload as unknown as Window);
-        break;
-      case "remove_element": {
-        const { elementType, elementId } = payload as { elementType: string; elementId: string };
-        switch (elementType) {
-          case "wall":
-            store.removeWall(elementId);
-            break;
-          case "room":
-            store.setRooms(
-              store.rooms.filter((r) => r.id !== elementId),
-              { recordHistory: true },
-            );
-            break;
-          case "furniture":
-            store.removeFurniture(elementId);
-            break;
-          case "door":
-            store.removeDoor(elementId);
-            break;
-          case "window":
-            store.removeWindow(elementId);
-            break;
-        }
-        break;
-      }
-      case "clear_design":
-        store.clearCanvas();
-        break;
-      case "set_canvas":
-        store.setCanvas(
-          payload as {
-            walls: Wall[];
-            rooms: Room[];
-            furniture: PlacedFurniture[];
-            doors: Door[];
-            windows: Window[];
-          },
-        );
-        break;
-    }
-  }, []);
-
   const sendMessage = useCallback(
     async (content: string) => {
       if (isLoading || !content.trim()) return;
 
       const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
       const assistantMsgId = crypto.randomUUID();
-      const assistantMsg: ChatMessage = {
-        id: assistantMsgId,
-        role: "assistant",
-        content: "",
-        toolCalls: [],
-      };
-
-      setMessages((prev) => [...prev, userMsg, assistantMsg]);
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        { id: assistantMsgId, role: "assistant", content: "", toolCalls: [] },
+      ]);
       setIsLoading(true);
       setActiveTools([]);
 
@@ -128,6 +83,9 @@ export const useDesignChat = (designId: string) => {
 
       const controller = new AbortController();
       abortRef.current = controller;
+
+      const patchAssistant = (fn: (m: ChatMessage) => ChatMessage) =>
+        setMessages((prev) => prev.map((m) => (m.id === assistantMsgId ? fn(m) : m)));
 
       try {
         const res = await fetch(
@@ -168,38 +126,24 @@ export const useDesignChat = (designId: string) => {
             }
 
             if (event.type === "tool_call") {
-              setActiveTools((prev) => [...prev, event.name]);
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        toolCalls: [
-                          ...(m.toolCalls ?? []),
-                          { name: event.name, status: "running" as const },
-                        ],
-                      }
-                    : m,
-                ),
-              );
+              const name = event.name;
+              setActiveTools((prev) => [...prev, name]);
+              patchAssistant((m) => ({
+                ...m,
+                toolCalls: [...(m.toolCalls ?? []), { name, status: "running" }],
+              }));
             } else if (event.type === "tool_done") {
-              const doneName = event.name;
+              const name = event.name;
               setActiveTools((prev) => {
-                const idx = prev.indexOf(doneName);
-                if (idx === -1) return prev;
-                return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+                const idx = prev.indexOf(name);
+                return idx === -1 ? prev : [...prev.slice(0, idx), ...prev.slice(idx + 1)];
               });
-              setMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id !== assistantMsgId) return m;
-                  const calls = [...(m.toolCalls ?? [])];
-                  const idx = calls.findIndex(
-                    (tc) => tc.name === doneName && tc.status === "running",
-                  );
-                  if (idx !== -1) calls[idx] = { ...calls[idx], status: "done" as const };
-                  return { ...m, toolCalls: calls };
-                }),
-              );
+              patchAssistant((m) => {
+                const calls = [...(m.toolCalls ?? [])];
+                const idx = calls.findIndex((tc) => tc.name === name && tc.status === "running");
+                if (idx !== -1) calls[idx] = { ...calls[idx], status: "done" };
+                return { ...m, toolCalls: calls };
+              });
             } else if (event.type === "action") {
               const store = useEditorStore.getState();
               store.beginBatch();
@@ -209,26 +153,17 @@ export const useDesignChat = (designId: string) => {
                 store.endBatch();
               }
             } else if (event.type === "text") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, content: m.content + event.content } : m,
-                ),
-              );
+              const text = event.content;
+              patchAssistant((m) => ({ ...m, content: m.content + text }));
             } else if (event.type === "error") {
               const message = event.message;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        content: m.content || `Error: ${message}`,
-                        toolCalls: (m.toolCalls ?? []).map((tc) =>
-                          tc.status === "running" ? { ...tc, status: "done" as const } : tc,
-                        ),
-                      }
-                    : m,
+              patchAssistant((m) => ({
+                ...m,
+                content: m.content || `Error: ${message}`,
+                toolCalls: (m.toolCalls ?? []).map((tc) =>
+                  tc.status === "running" ? { ...tc, status: "done" } : tc,
                 ),
-              );
+              }));
             }
           }
         }
@@ -238,26 +173,20 @@ export const useDesignChat = (designId: string) => {
           err instanceof Error && err.message
             ? err.message
             : "Sorry, something went wrong. Please try again.";
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId
-              ? {
-                  ...m,
-                  content: message,
-                  toolCalls: (m.toolCalls ?? []).map((tc) =>
-                    tc.status === "running" ? { ...tc, status: "done" as const } : tc,
-                  ),
-                }
-              : m,
+        patchAssistant((m) => ({
+          ...m,
+          content: message,
+          toolCalls: (m.toolCalls ?? []).map((tc) =>
+            tc.status === "running" ? { ...tc, status: "done" } : tc,
           ),
-        );
+        }));
       } finally {
         setIsLoading(false);
         setActiveTools([]);
         abortRef.current = null;
       }
     },
-    [isLoading, messages, designId, applyAction],
+    [isLoading, messages, designId],
   );
 
   const abort = useCallback(() => abortRef.current?.abort(), []);

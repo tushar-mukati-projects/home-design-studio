@@ -31,89 +31,56 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import type { FurnitureItem } from "@/types";
-import { pxToFeet } from "@/lib/constants";
+import type { CatalogItem } from "@/types";
+import { ROOM_USAGE_LABELS } from "@/lib/canvas";
 
-const CATEGORY_ICONS: Record<string, Record<string, LucideIcon>> = {
-  "living-room": {
-    sofa: Sofa,
-    armchair: Armchair,
-    "coffee-table": Table,
-    "tv-stand": Tv,
-    bookshelf: BookOpen,
-    "floor-lamp": Lamp,
-  },
-  bedroom: {
-    "double-bed": BedDouble,
-    "single-bed": BedSingle,
-    nightstand: LampDesk,
-    wardrobe: DoorOpen,
-    dresser: Archive,
-    desk: Table2,
-  },
-  kitchen: {
-    "dining-table": UtensilsCrossed,
-    "dining-chair": ChefHat,
-    "kitchen-island": Microwave,
-    refrigerator: Refrigerator,
-    stove: Flame,
-  },
-  bathroom: {
-    bathtub: Bath,
-    toilet: Droplets,
-    sink: Waves,
-    shower: Droplet,
-  },
-  office: {
-    "office-desk": Monitor,
-    "office-chair": Armchair,
-    "filing-cabinet": Archive,
-    bookcase: BookOpen,
-  },
+const ICONS: Record<string, LucideIcon> = {
+  sofa: Sofa,
+  armchair: Armchair,
+  "coffee-table": Table,
+  "tv-stand": Tv,
+  bookshelf: BookOpen,
+  "floor-lamp": Lamp,
+  "double-bed": BedDouble,
+  "single-bed": BedSingle,
+  nightstand: LampDesk,
+  wardrobe: DoorOpen,
+  dresser: Archive,
+  desk: Table2,
+  "dining-table": UtensilsCrossed,
+  "dining-chair": ChefHat,
+  "kitchen-island": Microwave,
+  refrigerator: Refrigerator,
+  stove: Flame,
+  bathtub: Bath,
+  toilet: Droplets,
+  sink: Waves,
+  shower: Droplet,
+  "office-desk": Monitor,
+  "office-chair": Armchair,
+  "filing-cabinet": Archive,
+  bookcase: BookOpen,
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  "living-room": "Living Room",
-  bedroom: "Bedroom",
-  kitchen: "Kitchen",
-  bathroom: "Bathroom",
-  office: "Office",
-};
-
-const getItemIcon = (item: FurnitureItem): LucideIcon => {
-  const slug = item.icon ?? item.id;
-  const categoryIcons = CATEGORY_ICONS[item.category];
-  if (categoryIcons && categoryIcons[slug]) {
-    return categoryIcons[slug];
-  }
-  return PackageOpen;
-};
+const metres = (mm: number) => (mm / 1000).toFixed(1);
 
 interface FurnitureCardProps {
-  item: FurnitureItem;
-  onQuickAdd: (item: FurnitureItem) => void;
+  item: CatalogItem;
+  onQuickAdd: (item: CatalogItem) => void;
 }
 
 export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
-
-  const icon = getItemIcon(item);
+  const icon = ICONS[item.id] ?? PackageOpen;
+  const [width, depth] = item.size;
 
   const maxPreviewDim = 80;
-  const aspectRatio = item.width / item.height;
-  let previewWidth: number;
-  let previewHeight: number;
-
-  if (aspectRatio >= 1) {
-    previewWidth = maxPreviewDim;
-    previewHeight = maxPreviewDim / aspectRatio;
-  } else {
-    previewHeight = maxPreviewDim;
-    previewWidth = maxPreviewDim * aspectRatio;
-  }
-
-  previewWidth = Math.max(previewWidth, 32);
-  previewHeight = Math.max(previewHeight, 32);
+  const aspectRatio = width / depth;
+  const previewWidth = Math.max(aspectRatio >= 1 ? maxPreviewDim : maxPreviewDim * aspectRatio, 32);
+  const previewHeight = Math.max(
+    aspectRatio >= 1 ? maxPreviewDim / aspectRatio : maxPreviewDim,
+    32,
+  );
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
     setIsDragging(true);
@@ -121,16 +88,12 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
     e.dataTransfer.effectAllowed = "copy";
   };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-  };
-
   return (
     <Tooltip content={`${item.name} - Click to quick-add`} side="top">
       <div
         draggable
         onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        onDragEnd={() => setIsDragging(false)}
         onClick={() => onQuickAdd(item)}
       >
         <motion.div
@@ -164,10 +127,10 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
               {item.name}
             </span>
             <span className="text-xs text-[var(--muted-foreground)]">
-              {pxToFeet(item.width).toFixed(1)} &times; {pxToFeet(item.height).toFixed(1)} ft
+              {metres(width)} &times; {metres(depth)} m
             </span>
             <Badge variant="secondary" className="mt-0.5 px-1.5 py-0 text-[10px] font-normal">
-              {CATEGORY_LABELS[item.category] ?? item.category}
+              {ROOM_USAGE_LABELS[item.category]}
             </Badge>
           </div>
         </motion.div>

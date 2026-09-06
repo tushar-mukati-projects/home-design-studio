@@ -32,6 +32,8 @@ import { ImportDesignModal } from "./import/import-design-modal";
 import { DesignChat } from "./ai-chat/design-chat";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
 import { resolveShortcut, shouldPreventDefault, shortcutForTool } from "./keyboard-shortcuts";
+import { PX_PER_MM } from "@/lib/constants";
+import { boundsOf } from "@/lib/canvas";
 interface EditorViewProps {
   designId: string;
   preloadedDesign?: import("@/types").Design | null;
@@ -67,53 +69,23 @@ const fitToScreen = (
   const rect = container.getBoundingClientRect();
   if (rect.width <= 1 || rect.height <= 1) return;
 
-  const state = useEditorStore.getState();
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-
-  for (const w of state.walls) {
-    const pad = w.thickness / 2;
-    minX = Math.min(minX, w.x1 - pad, w.x2 - pad);
-    minY = Math.min(minY, w.y1 - pad, w.y2 - pad);
-    maxX = Math.max(maxX, w.x1 + pad, w.x2 + pad);
-    maxY = Math.max(maxY, w.y1 + pad, w.y2 + pad);
-  }
-  for (const f of state.furniture) {
-    const hw = (f.furnitureItem.width * f.scaleX) / 2;
-    const hh = (f.furnitureItem.height * f.scaleY) / 2;
-    minX = Math.min(minX, f.x - hw);
-    minY = Math.min(minY, f.y - hh);
-    maxX = Math.max(maxX, f.x + hw);
-    maxY = Math.max(maxY, f.y + hh);
-  }
-  for (const r of state.rooms) {
-    for (const p of r.points) {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    }
-  }
-
-  if (!isFinite(minX)) {
+  const bounds = boundsOf(useEditorStore.getState());
+  if (!bounds) {
     setPanFn(rect.width / 2, rect.height / 2);
     return;
   }
 
-  const contentW = maxX - minX;
-  const contentH = maxY - minY;
+  // Content is in millimetres; a 1 m margin keeps walls off the edge.
+  const margin = 1000;
+  const contentW = (bounds.maxX - bounds.minX + margin * 2) * PX_PER_MM;
+  const contentH = (bounds.maxY - bounds.minY + margin * 2) * PX_PER_MM;
   const padding = 80;
   const fitZoom = Math.max(
     0.1,
-    Math.min(
-      1.5,
-      Math.min((rect.width - padding * 2) / contentW, (rect.height - padding * 2) / contentH),
-    ),
+    Math.min(1.5, (rect.width - padding * 2) / contentW, (rect.height - padding * 2) / contentH),
   );
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
+  const cx = ((bounds.minX + bounds.maxX) / 2) * PX_PER_MM;
+  const cy = ((bounds.minY + bounds.maxY) / 2) * PX_PER_MM;
 
   setZoomFn(fitZoom);
   setPanFn(rect.width / 2 - cx * fitZoom, rect.height / 2 - cy * fitZoom);
@@ -159,14 +131,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const toggleSnap = useEditorStore((s) => s.toggleSnap);
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
-  const removeWall = useEditorStore((s) => s.removeWall);
-  const removeFurniture = useEditorStore((s) => s.removeFurniture);
-  const removeDoor = useEditorStore((s) => s.removeDoor);
-  const removeWindow = useEditorStore((s) => s.removeWindow);
-  const walls = useEditorStore((s) => s.walls);
-  const doors = useEditorStore((s) => s.doors);
-  const windows = useEditorStore((s) => s.windows);
-  const furniture = useEditorStore((s) => s.furniture);
+  const removeElement = useEditorStore((s) => s.removeElement);
 
   useEffect(() => {
     useEditorStore.getState().setCanEdit(canEdit);
@@ -241,14 +206,9 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         case "redo":
           redo();
           return;
-        case "deleteSelected": {
-          const id = selectedElementId!;
-          if (walls.some((w) => w.id === id)) removeWall(id);
-          if (doors.some((d) => d.id === id)) removeDoor(id);
-          if (windows.some((w) => w.id === id)) removeWindow(id);
-          if (furniture.some((f) => f.id === id)) removeFurniture(id);
+        case "deleteSelected":
+          removeElement(selectedElementId!);
           return;
-        }
         case "toggleGrid":
           toggleGrid();
           return;
@@ -266,20 +226,13 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   }, [
     canEdit,
     selectedElementId,
-    walls,
-    doors,
-    windows,
-    furniture,
     undo,
     redo,
     clearSelection,
     toggleGrid,
     toggleSnap,
     setTool,
-    removeWall,
-    removeDoor,
-    removeWindow,
-    removeFurniture,
+    removeElement,
   ]);
 
   const handleNameChange = useCallback(

@@ -1,40 +1,31 @@
 import { create } from "zustand";
 import type {
-  Wall,
-  Door,
-  Window,
-  Room,
-  PlacedFurniture,
-  EditorTool,
-  Point,
-  CanvasData,
+  Canvas,
+  CatalogItem,
   Design,
+  EditorTool,
+  Furniture,
+  Opening,
+  Point,
+  Room,
+  Wall,
 } from "@/types";
+import { GRID_MM } from "@/lib/constants";
+import { emptyCanvas } from "@/lib/canvas";
 
-interface HistorySnapshot {
-  walls: Wall[];
-  doors: Door[];
-  windows: Window[];
-  furniture: PlacedFurniture[];
-  rooms: Room[];
-}
+type Collections = Pick<Canvas, "walls" | "openings" | "rooms" | "furniture">;
 
 // Edits sharing a coalesce key inside this window collapse into one undo step.
 const HISTORY_COALESCE_MS = 700;
 
 const MAX_HISTORY = 50;
 
-interface EditorState {
-  walls: Wall[];
-  doors: Door[];
-  windows: Window[];
-  furniture: PlacedFurniture[];
-  rooms: Room[];
+interface EditorState extends Collections {
+  catalog: CatalogItem[];
 
   activeTool: EditorTool;
   selectedElementId: string | null;
   isDrawing: boolean;
-
   canEdit: boolean;
 
   zoom: number;
@@ -46,11 +37,10 @@ interface EditorState {
 
   currentWallStart: Point | null;
 
-  past: HistorySnapshot[];
-  future: HistorySnapshot[];
-
+  past: Collections[];
+  future: Collections[];
   batchDepth: number;
-  pendingBatchSnapshot: HistorySnapshot | null;
+  pendingBatchSnapshot: Collections | null;
   lastCoalesceKey: string | null;
   lastCoalesceAt: number;
 
@@ -58,31 +48,23 @@ interface EditorState {
   setSelectedElement: (id: string | null) => void;
   clearSelection: () => void;
   setCanEdit: (canEdit: boolean) => void;
+  setCatalog: (catalog: CatalogItem[]) => void;
 
   addWall: (wall: Wall) => void;
   removeWall: (id: string) => void;
   updateWall: (id: string, updates: Partial<Wall>, coalesceKey?: string) => void;
 
-  addDoor: (door: Door) => void;
-  removeDoor: (id: string) => void;
-  updateDoor: (id: string, updates: Partial<Door>, coalesceKey?: string) => void;
+  addOpening: (opening: Opening) => void;
+  removeOpening: (id: string) => void;
+  updateOpening: (id: string, updates: Partial<Opening>, coalesceKey?: string) => void;
 
-  addWindow: (window: Window) => void;
-  removeWindow: (id: string) => void;
-  updateWindow: (id: string, updates: Partial<Window>, coalesceKey?: string) => void;
-
-  addFurniture: (item: PlacedFurniture) => void;
+  addFurniture: (piece: Furniture) => void;
   removeFurniture: (id: string) => void;
-  updateFurniture: (id: string, updates: Partial<PlacedFurniture>, coalesceKey?: string) => void;
+  updateFurniture: (id: string, updates: Partial<Furniture>, coalesceKey?: string) => void;
 
   setRooms: (rooms: Room[], options?: { recordHistory?: boolean }) => void;
-  setCanvas: (state: {
-    walls: Wall[];
-    rooms: Room[];
-    furniture: PlacedFurniture[];
-    doors: Door[];
-    windows: Window[];
-  }) => void;
+  removeElement: (id: string) => void;
+  setCanvas: (canvas: Collections) => void;
 
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
@@ -100,21 +82,18 @@ interface EditorState {
   endBatch: () => void;
 
   loadDesign: (design: Design) => void;
-  getCanvasData: () => CanvasData;
+  getCanvas: () => Canvas;
   clearCanvas: () => void;
 
   snapPoint: (point: Point) => Point;
 }
 
-const createSnapshot = (state: EditorState): HistorySnapshot => {
-  return {
-    walls: structuredClone(state.walls),
-    doors: structuredClone(state.doors),
-    windows: structuredClone(state.windows),
-    furniture: structuredClone(state.furniture),
-    rooms: structuredClone(state.rooms),
-  };
-};
+const snapshot = (state: Collections): Collections => ({
+  walls: structuredClone(state.walls),
+  openings: structuredClone(state.openings),
+  rooms: structuredClone(state.rooms),
+  furniture: structuredClone(state.furniture),
+});
 
 type HistoryPatch = Partial<
   Pick<
@@ -123,9 +102,9 @@ type HistoryPatch = Partial<
   >
 >;
 
-const appendSnapshot = (past: HistorySnapshot[], snapshot: HistorySnapshot): HistorySnapshot[] => [
+const appendSnapshot = (past: Collections[], entry: Collections): Collections[] => [
   ...past.slice(-MAX_HISTORY + 1),
-  snapshot,
+  entry,
 ];
 
 const recordHistory = (state: EditorState, coalesceKey?: string): HistoryPatch => {
@@ -148,24 +127,22 @@ const recordHistory = (state: EditorState, coalesceKey?: string): HistoryPatch =
     state.lastCoalesceKey === coalesceKey &&
     now - state.lastCoalesceAt < HISTORY_COALESCE_MS;
 
-  if (isContinuation) {
-    return { future: [], lastCoalesceAt: now };
-  }
+  if (isContinuation) return { future: [], lastCoalesceAt: now };
 
   return {
-    past: appendSnapshot(state.past, createSnapshot(state)),
+    past: appendSnapshot(state.past, snapshot(state)),
     future: [],
     lastCoalesceKey: coalesceKey ?? null,
     lastCoalesceAt: coalesceKey ? now : 0,
   };
 };
 
+const withoutSelection = (state: EditorState, id: string) =>
+  state.selectedElementId === id ? null : state.selectedElementId;
+
 export const useEditorStore = create<EditorState>()((set, get) => ({
-  walls: [],
-  doors: [],
-  windows: [],
-  furniture: [],
-  rooms: [],
+  ...emptyCanvas(),
+  catalog: [],
 
   activeTool: "select",
   selectedElementId: null,
@@ -175,7 +152,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   zoom: 1,
   panX: 0,
   panY: 0,
-  gridSize: 20,
+  gridSize: GRID_MM,
   showGrid: true,
   snapToGrid: true,
 
@@ -183,32 +160,21 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   past: [],
   future: [],
-
   batchDepth: 0,
   pendingBatchSnapshot: null,
   lastCoalesceKey: null,
   lastCoalesceAt: 0,
 
   setTool: (tool) =>
-    set({
-      activeTool: tool,
-      selectedElementId: null,
-      isDrawing: false,
-      currentWallStart: null,
-    }),
-
+    set({ activeTool: tool, selectedElementId: null, isDrawing: false, currentWallStart: null }),
   setSelectedElement: (id) => set({ selectedElementId: id }),
-
   clearSelection: () => set({ selectedElementId: null }),
-
   setCanEdit: (canEdit) => set({ canEdit }),
+  setCatalog: (catalog) => set({ catalog }),
 
   addWall: (wall) => {
     const state = get();
-    set({
-      ...recordHistory(state),
-      walls: [...state.walls, wall],
-    });
+    set({ ...recordHistory(state), walls: [...state.walls, wall] });
   },
 
   removeWall: (id) => {
@@ -216,9 +182,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     set({
       ...recordHistory(state),
       walls: state.walls.filter((w) => w.id !== id),
-      doors: state.doors.filter((d) => d.wallId !== id),
-      windows: state.windows.filter((w) => w.wallId !== id),
-      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
+      openings: state.openings.filter((o) => o.wall !== id),
+      selectedElementId: withoutSelection(state, id),
     });
   },
 
@@ -230,62 +195,31 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     });
   },
 
-  addDoor: (door) => {
+  addOpening: (opening) => {
+    const state = get();
+    set({ ...recordHistory(state), openings: [...state.openings, opening] });
+  },
+
+  removeOpening: (id) => {
     const state = get();
     set({
       ...recordHistory(state),
-      doors: [...state.doors, door],
+      openings: state.openings.filter((o) => o.id !== id),
+      selectedElementId: withoutSelection(state, id),
     });
   },
 
-  removeDoor: (id) => {
-    const state = get();
-    set({
-      ...recordHistory(state),
-      doors: state.doors.filter((d) => d.id !== id),
-      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
-    });
-  },
-
-  updateDoor: (id, updates, coalesceKey) => {
+  updateOpening: (id, updates, coalesceKey) => {
     const state = get();
     set({
       ...recordHistory(state, coalesceKey),
-      doors: state.doors.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+      openings: state.openings.map((o) => (o.id === id ? { ...o, ...updates } : o)),
     });
   },
 
-  addWindow: (window) => {
+  addFurniture: (piece) => {
     const state = get();
-    set({
-      ...recordHistory(state),
-      windows: [...state.windows, window],
-    });
-  },
-
-  removeWindow: (id) => {
-    const state = get();
-    set({
-      ...recordHistory(state),
-      windows: state.windows.filter((w) => w.id !== id),
-      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
-    });
-  },
-
-  updateWindow: (id, updates, coalesceKey) => {
-    const state = get();
-    set({
-      ...recordHistory(state, coalesceKey),
-      windows: state.windows.map((w) => (w.id === id ? { ...w, ...updates } : w)),
-    });
-  },
-
-  addFurniture: (item) => {
-    const state = get();
-    set({
-      ...recordHistory(state),
-      furniture: [...state.furniture, item],
-    });
+    set({ ...recordHistory(state), furniture: [...state.furniture, piece] });
   },
 
   removeFurniture: (id) => {
@@ -293,7 +227,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     set({
       ...recordHistory(state),
       furniture: state.furniture.filter((f) => f.id !== id),
-      selectedElementId: state.selectedElementId === id ? null : state.selectedElementId,
+      selectedElementId: withoutSelection(state, id),
     });
   },
 
@@ -310,19 +244,31 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
       set({ rooms });
       return;
     }
-    const state = get();
-    set({ ...recordHistory(state), rooms });
+    set({ ...recordHistory(get()), rooms });
   },
 
-  setCanvas: (newState) => {
+  removeElement: (id) => {
+    const state = get();
+    if (state.walls.some((w) => w.id === id)) return state.removeWall(id);
+    if (state.openings.some((o) => o.id === id)) return state.removeOpening(id);
+    if (state.furniture.some((f) => f.id === id)) return state.removeFurniture(id);
+    if (state.rooms.some((r) => r.id === id)) {
+      set({
+        ...recordHistory(state),
+        rooms: state.rooms.filter((r) => r.id !== id),
+        selectedElementId: withoutSelection(state, id),
+      });
+    }
+  },
+
+  setCanvas: (canvas) => {
     const state = get();
     set({
       ...recordHistory(state),
-      walls: newState.walls,
-      rooms: newState.rooms,
-      furniture: newState.furniture,
-      doors: newState.doors,
-      windows: newState.windows,
+      walls: canvas.walls,
+      openings: canvas.openings,
+      rooms: canvas.rooms,
+      furniture: canvas.furniture,
       selectedElementId: null,
       isDrawing: false,
       currentWallStart: null,
@@ -330,34 +276,22 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   },
 
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
-
   setPan: (x, y) => set({ panX: x, panY: y }),
-
-  setGridSize: (size) => set({ gridSize: Math.max(5, Math.min(100, size)) }),
-
+  setGridSize: (size) => set({ gridSize: Math.max(50, Math.min(1000, size)) }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
-
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
 
   setIsDrawing: (drawing) => set({ isDrawing: drawing }),
-
   setCurrentWallStart: (point) => set({ currentWallStart: point }),
 
   undo: () => {
     const state = get();
     if (state.past.length === 0) return;
-
-    const currentSnapshot = createSnapshot(state);
-    const previousSnapshot = state.past[state.past.length - 1];
-
+    const previous = state.past[state.past.length - 1];
     set({
-      walls: previousSnapshot.walls,
-      doors: previousSnapshot.doors,
-      windows: previousSnapshot.windows,
-      furniture: previousSnapshot.furniture,
-      rooms: previousSnapshot.rooms,
+      ...previous,
       past: state.past.slice(0, -1),
-      future: [currentSnapshot, ...state.future.slice(0, MAX_HISTORY - 1)],
+      future: [snapshot(state), ...state.future.slice(0, MAX_HISTORY - 1)],
       selectedElementId: null,
       lastCoalesceKey: null,
       lastCoalesceAt: 0,
@@ -367,17 +301,10 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
   redo: () => {
     const state = get();
     if (state.future.length === 0) return;
-
-    const currentSnapshot = createSnapshot(state);
-    const nextSnapshot = state.future[0];
-
+    const next = state.future[0];
     set({
-      walls: nextSnapshot.walls,
-      doors: nextSnapshot.doors,
-      windows: nextSnapshot.windows,
-      furniture: nextSnapshot.furniture,
-      rooms: nextSnapshot.rooms,
-      past: appendSnapshot(state.past, currentSnapshot),
+      ...next,
+      past: appendSnapshot(state.past, snapshot(state)),
       future: state.future.slice(1),
       selectedElementId: null,
       lastCoalesceKey: null,
@@ -385,41 +312,29 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     });
   },
 
-  pushHistory: () => {
-    const state = get();
-    set(recordHistory(state));
-  },
+  pushHistory: () => set(recordHistory(get())),
 
   beginBatch: () => {
     const state = get();
     set({
       batchDepth: state.batchDepth + 1,
-      pendingBatchSnapshot:
-        state.batchDepth === 0 ? createSnapshot(state) : state.pendingBatchSnapshot,
+      pendingBatchSnapshot: state.batchDepth === 0 ? snapshot(state) : state.pendingBatchSnapshot,
     });
   },
 
   endBatch: () => {
     const state = get();
     const batchDepth = Math.max(0, state.batchDepth - 1);
-    set({
-      batchDepth,
-      pendingBatchSnapshot: batchDepth === 0 ? null : state.pendingBatchSnapshot,
-    });
+    set({ batchDepth, pendingBatchSnapshot: batchDepth === 0 ? null : state.pendingBatchSnapshot });
   },
 
   loadDesign: (design) => {
-    const canvasData = design.canvasData;
+    const canvas = { ...emptyCanvas(), ...(design.canvasData ?? {}) };
     set({
-      walls: canvasData.walls || [],
-      doors: canvasData.doors || [],
-      windows: canvasData.windows || [],
-      furniture: canvasData.furniture || [],
-      rooms: canvasData.rooms || [],
-      gridSize: canvasData.gridSize || 20,
-      zoom: canvasData.zoom || 1,
-      panX: canvasData.panX || 0,
-      panY: canvasData.panY || 0,
+      walls: canvas.walls ?? [],
+      openings: canvas.openings ?? [],
+      rooms: canvas.rooms ?? [],
+      furniture: canvas.furniture ?? [],
       activeTool: "select",
       selectedElementId: null,
       isDrawing: false,
@@ -433,30 +348,16 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     });
   },
 
-  getCanvasData: () => {
-    const state = get();
-    return {
-      walls: state.walls,
-      doors: state.doors,
-      windows: state.windows,
-      rooms: state.rooms,
-      furniture: state.furniture,
-      gridSize: state.gridSize,
-      zoom: state.zoom,
-      panX: state.panX,
-      panY: state.panY,
-    };
+  getCanvas: () => {
+    const { walls, openings, rooms, furniture } = get();
+    return { ...emptyCanvas(), walls, openings, rooms, furniture };
   },
 
   clearCanvas: () => {
     const state = get();
     set({
       ...recordHistory(state),
-      walls: [],
-      doors: [],
-      windows: [],
-      furniture: [],
-      rooms: [],
+      ...emptyCanvas(),
       selectedElementId: null,
       isDrawing: false,
       currentWallStart: null,
@@ -465,11 +366,8 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   snapPoint: (point) => {
     const state = get();
-    if (!state.snapToGrid) return point;
-    const gs = state.gridSize;
-    return {
-      x: Math.round(point.x / gs) * gs,
-      y: Math.round(point.y / gs) * gs,
-    };
+    if (!state.snapToGrid) return { x: Math.round(point.x), y: Math.round(point.y) };
+    const g = state.gridSize;
+    return { x: Math.round(point.x / g) * g, y: Math.round(point.y / g) * g };
   },
 }));

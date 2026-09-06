@@ -14,137 +14,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/stores/editor-store";
 import { auth } from "@/lib/firebase";
-import type { Wall, Door, Window, Room, PlacedFurniture } from "@/types";
-import { LOCAL_FURNITURE_ITEMS } from "../furniture-catalog/furniture-data";
+import type { Canvas } from "@/types";
 
 interface ImportDesignModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-interface AIDesignResult {
-  walls: { x1: number; y1: number; x2: number; y2: number; thickness: number }[];
-  doors: {
-    wallIndex: number;
-    position: number;
-    width: number;
-    type: "single" | "double" | "sliding";
-  }[];
-  windows: { wallIndex: number; position: number; width: number }[];
-  rooms: { name: string; type: string; points: { x: number; y: number }[] }[];
-  furniture: {
-    name: string;
-    x: number;
-    y: number;
-    rotation: number;
-    width: number;
-    height: number;
-  }[];
-  canvasWidth: number;
-  canvasHeight: number;
-}
-
 type ImportPhase = "upload" | "analyzing" | "success" | "error";
-
-const genId = () => crypto.randomUUID();
-
-const computeRoomArea = (points: { x: number; y: number }[]): number => {
-  let area = 0;
-  for (let i = 0; i < points.length; i++) {
-    const j = (i + 1) % points.length;
-    area += points[i].x * points[j].y;
-    area -= points[j].x * points[i].y;
-  }
-  return Math.abs(area) / 2;
-};
-
-const ROOM_COLORS: Record<string, string> = {
-  living_room: "#d4d4d8",
-  bedroom: "#c8c8d0",
-  kitchen: "#d8d8dc",
-  bathroom: "#c0c8d0",
-  office: "#ccc8c4",
-  dining: "#d0d0d4",
-  hallway: "#e0e0e4",
-  garage: "#b8b8bc",
-  generic: "#d4d4d8",
-};
-
-const matchFurnitureItem = (name: string) => {
-  const lower = name.toLowerCase();
-  return LOCAL_FURNITURE_ITEMS.find((item) => {
-    const itemLower = item.name.toLowerCase();
-    return lower.includes(itemLower) || itemLower.includes(lower);
-  });
-};
-
-const convertToEditorData = (result: AIDesignResult) => {
-  const walls: Wall[] = result.walls.map((w) => ({
-    id: genId(),
-    x1: w.x1,
-    y1: w.y1,
-    x2: w.x2,
-    y2: w.y2,
-    thickness: w.thickness || 12,
-    color: "#52525b",
-  }));
-
-  const doors: Door[] = result.doors
-    .filter((d) => d.wallIndex >= 0 && d.wallIndex < walls.length)
-    .map((d) => ({
-      id: genId(),
-      wallId: walls[d.wallIndex].id,
-      position: d.position,
-      width: d.width || 80,
-      type: d.type || "single",
-    }));
-
-  const windows: Window[] = result.windows
-    .filter((w) => w.wallIndex >= 0 && w.wallIndex < walls.length)
-    .map((w) => ({
-      id: genId(),
-      wallId: walls[w.wallIndex].id,
-      position: w.position,
-      width: w.width || 100,
-    }));
-
-  const rooms: Room[] = result.rooms
-    .filter((r) => r.points && r.points.length >= 3)
-    .map((r) => ({
-      id: genId(),
-      name: r.name,
-      type: r.type,
-      color: ROOM_COLORS[r.type] || ROOM_COLORS.generic,
-      points: r.points,
-      area: computeRoomArea(r.points),
-    }));
-
-  const furniture: PlacedFurniture[] = result.furniture.map((f) => {
-    const matched = matchFurnitureItem(f.name);
-    const furnitureItem = matched || {
-      id: `custom-${genId()}`,
-      name: f.name,
-      category: "living-room",
-      width: f.width,
-      height: f.height,
-      depth: 50,
-      color: "#d4d4d8",
-    };
-
-    return {
-      id: genId(),
-      furnitureItemId: furnitureItem.id,
-      furnitureItem,
-      x: f.x,
-      y: f.y,
-      rotation: f.rotation || 0,
-      scaleX: matched ? f.width / matched.width || 1 : 1,
-      scaleY: matched ? f.height / matched.height || 1 : 1,
-    };
-  });
-
-  return { walls, doors, windows, rooms, furniture };
-};
 
 export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => {
   const [phase, setPhase] = useState<ImportPhase>("upload");
@@ -156,14 +33,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const beginBatch = useEditorStore((s) => s.beginBatch);
-  const endBatch = useEditorStore((s) => s.endBatch);
-  const clearCanvas = useEditorStore((s) => s.clearCanvas);
-  const addWall = useEditorStore((s) => s.addWall);
-  const addDoor = useEditorStore((s) => s.addDoor);
-  const addWindow = useEditorStore((s) => s.addWindow);
-  const setRooms = useEditorStore((s) => s.setRooms);
-  const addFurniture = useEditorStore((s) => s.addFurniture);
+  const setCanvas = useEditorStore((s) => s.setCanvas);
 
   const handleClose = useCallback(() => {
     if (phase === "analyzing") {
@@ -282,23 +152,10 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
               setErrorMessage(event.message);
               return;
             } else if (event.type === "result") {
-              const design = event.design as AIDesignResult;
-              const editorData = convertToEditorData(design);
-
-              beginBatch();
-              try {
-                clearCanvas();
-                for (const wall of editorData.walls) addWall(wall);
-                for (const door of editorData.doors) addDoor(door);
-                for (const win of editorData.windows) addWindow(win);
-                setRooms(editorData.rooms, { recordHistory: true });
-                for (const f of editorData.furniture) addFurniture(f);
-              } finally {
-                endBatch();
-              }
-
+              const canvas = event.canvas as Canvas;
+              setCanvas(canvas);
               setResultSummary(
-                `${editorData.walls.length} walls, ${editorData.rooms.length} rooms, ${editorData.doors.length} doors, ${editorData.windows.length} windows, ${editorData.furniture.length} furniture items`,
+                `${canvas.walls.length} walls, ${canvas.rooms.length} rooms, ${canvas.openings.length} openings, ${canvas.furniture.length} furniture items`,
               );
               setPhase("success");
             }
@@ -310,17 +167,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
       setPhase("error");
       setErrorMessage((err as Error).message || "Analysis failed. Please try again.");
     }
-  }, [
-    selectedFile,
-    beginBatch,
-    endBatch,
-    clearCanvas,
-    addWall,
-    addDoor,
-    addWindow,
-    setRooms,
-    addFurniture,
-  ]);
+  }, [selectedFile, setCanvas]);
 
   if (!open) return null;
 

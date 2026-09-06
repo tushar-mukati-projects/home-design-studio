@@ -1,60 +1,29 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db";
 import { logger } from "../lib/logger";
 import { DEFAULT_TEMPLATES } from "../lib/seed-data/templates";
 import { serializeDesign } from "../lib/serializers";
 import { buildYjsState } from "../collaboration/yjs-doc";
-import type { Prisma } from "@prisma/client";
+import type { Canvas } from "../schemas/canvas.schema";
 
-export const listTemplates = async () => {
-  const templates = await prisma.designTemplate.findMany({
-    orderBy: { sortOrder: "asc" },
-  });
-  return templates;
-};
+export const listTemplates = () =>
+  prisma.designTemplate.findMany({ orderBy: { sortOrder: "asc" } });
 
 export const createDesignFromTemplate = async (
   templateId: string,
   userId: string,
   name: string,
 ) => {
-  const template = await prisma.designTemplate.findUnique({
-    where: { id: templateId },
-  });
-
+  const template = await prisma.designTemplate.findUnique({ where: { id: templateId } });
   if (!template) return null;
 
-  const items = await prisma.furnitureItem.findMany({
-    where: { isDefault: true },
-    select: { id: true, icon: true },
-  });
-  const idBySlug = new Map(items.filter((i) => i.icon).map((i) => [i.icon as string, i.id]));
-
-  const canvasData = template.canvasData as Record<string, unknown>;
-  const furniture = Array.isArray(canvasData.furniture)
-    ? (canvasData.furniture as Array<Record<string, unknown>>)
-        .map((f) => {
-          const realId = idBySlug.get(f.furnitureItemId as string);
-          if (!realId) return null;
-          const item = f.furnitureItem as Record<string, unknown> | undefined;
-          return {
-            ...f,
-            furnitureItemId: realId,
-            furnitureItem: item ? { ...item, id: realId } : item,
-          };
-        })
-        .filter(Boolean)
-    : [];
-
-  const resolvedCanvasData = { ...canvasData, furniture };
-
+  const canvas = template.canvasData as Canvas;
   const design = await prisma.design.create({
     data: {
       name,
       description: template.description,
-      canvasData: resolvedCanvasData as Prisma.InputJsonValue,
-      yjsState: buildYjsState(resolvedCanvasData),
-      width: template.width,
-      height: template.height,
+      canvasData: canvas as unknown as Prisma.InputJsonValue,
+      yjsState: buildYjsState(canvas),
       userId,
     },
   });
@@ -63,8 +32,7 @@ export const createDesignFromTemplate = async (
 };
 
 export const seedTemplates = async () => {
-  const count = await prisma.designTemplate.count();
-  if (count > 0) return;
+  if ((await prisma.designTemplate.count()) > 0) return;
 
   await prisma.designTemplate.createMany({
     data: DEFAULT_TEMPLATES.map((t) => ({
@@ -72,8 +40,6 @@ export const seedTemplates = async () => {
       description: t.description,
       category: t.category,
       canvasData: t.canvasData as unknown as Prisma.InputJsonValue,
-      width: t.width,
-      height: t.height,
       sortOrder: t.sortOrder,
     })),
   });

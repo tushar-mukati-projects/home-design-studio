@@ -11,7 +11,9 @@
     "test": "bun test tests",
     "check": "bun tsc --noEmit && bun eslint && bun prettier --check \"{src,tests}/**/*.ts\" && bun run test",
     "check:fix": "bun eslint --fix && bun prettier --write \"{src,tests}/**/*.ts\" && bun tsc --noEmit",
-    "test:watch": "bun test tests --watch"
+    "test:watch": "bun test tests --watch",
+    "db:seed": "bun scripts/seed.ts",
+    "db:reset": "bun prisma db push --force-reset --accept-data-loss && bun scripts/seed.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.49",

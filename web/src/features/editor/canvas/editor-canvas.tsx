@@ -3,77 +3,53 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Stage, Layer, Rect } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { PX_PER_MM } from "@/lib/constants";
+import {
+  DEFAULTS,
+  clampOpeningOffset,
+  distanceToWall,
+  furnitureSize,
+  newId,
+  offsetAlongWall,
+  pointOnWall,
+  toVec,
+} from "@/lib/canvas";
 import { GridLayer } from "./grid-layer";
 import { RoomLayer } from "./room-layer";
 import { WallLayer } from "./wall-layer";
-import { DoorWindowLayer } from "./door-window-layer";
+import { OpeningLayer } from "./opening-layer";
 import { FurnitureLayer } from "./furniture-layer";
 import { CollaboratorCursors } from "../collaboration/collaborator-cursors";
 import type { CollaboratorCursor } from "@/stores/collaboration-store";
-import type { Wall } from "@/types";
+import type { Opening, Wall } from "@/types";
 import type Konva from "konva";
 
-const findNearestWall = (
-  x: number,
-  y: number,
-  wallList: Wall[],
-  threshold: number,
-): { wall: Wall; position: number } | null => {
-  let closest: { wall: Wall; position: number; dist: number } | null = null;
-
-  for (const wall of wallList) {
-    const dx = wall.x2 - wall.x1;
-    const dy = wall.y2 - wall.y1;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) continue;
-
-    const t = Math.max(0, Math.min(1, ((x - wall.x1) * dx + (y - wall.y1) * dy) / lenSq));
-    const projX = wall.x1 + t * dx;
-    const projY = wall.y1 + t * dy;
-    const dist = Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
-
-    if (dist < threshold && (!closest || dist < closest.dist)) {
-      closest = { wall, position: t, dist };
-    }
+const nearestWall = (x: number, y: number, walls: Wall[], threshold: number) => {
+  let best: { wall: Wall; dist: number } | null = null;
+  for (const wall of walls) {
+    const dist = distanceToWall(wall, x, y);
+    if (dist < threshold && (!best || dist < best.dist)) best = { wall, dist };
   }
-
-  return closest ? { wall: closest.wall, position: closest.position } : null;
+  return best?.wall ?? null;
 };
 
-const findNearestDoorOrWindow = (
+const nearestOpening = (
   x: number,
   y: number,
-  doorList: { id: string; wallId: string; position: number; width: number }[],
-  windowList: { id: string; wallId: string; position: number; width: number }[],
-  wallList: Wall[],
+  openings: Opening[],
+  walls: Wall[],
   threshold: number,
-): { id: string; kind: "door" | "window" } | null => {
-  const wallMap = new Map(wallList.map((w) => [w.id, w]));
-  let best: { id: string; kind: "door" | "window"; dist: number } | null = null;
-
-  for (const door of doorList) {
-    const wall = wallMap.get(door.wallId);
+) => {
+  const wallMap = new Map(walls.map((w) => [w.id, w]));
+  let best: { id: string; dist: number } | null = null;
+  for (const opening of openings) {
+    const wall = wallMap.get(opening.wall);
     if (!wall) continue;
-    const px = wall.x1 + (wall.x2 - wall.x1) * door.position;
-    const py = wall.y1 + (wall.y2 - wall.y1) * door.position;
-    const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
-    if (dist < threshold && (!best || dist < best.dist)) {
-      best = { id: door.id, kind: "door", dist };
-    }
+    const [px, py] = pointOnWall(wall, opening.offset);
+    const dist = Math.hypot(x - px, y - py);
+    if (dist < threshold && (!best || dist < best.dist)) best = { id: opening.id, dist };
   }
-
-  for (const win of windowList) {
-    const wall = wallMap.get(win.wallId);
-    if (!wall) continue;
-    const px = wall.x1 + (wall.x2 - wall.x1) * win.position;
-    const py = wall.y1 + (wall.y2 - wall.y1) * win.position;
-    const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
-    if (dist < threshold && (!best || dist < best.dist)) {
-      best = { id: win.id, kind: "window", dist };
-    }
-  }
-
-  return best ? { id: best.id, kind: best.kind } : null;
+  return best?.id ?? null;
 };
 
 interface EditorCanvasProps {
@@ -94,7 +70,7 @@ export const EditorCanvas = ({
   const isPanningRef = useRef(false);
   const lastPanPosRef = useRef({ x: 0, y: 0 });
   const wallLayerRedrawRef = useRef<() => void>(null);
-  const doorWindowPriorityRef = useRef(false);
+  const openingPriorityRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const lastTouchDistRef = useRef(0);
   const lastTouchCenterRef = useRef({ x: 0, y: 0 });
@@ -103,6 +79,7 @@ export const EditorCanvas = ({
   const zoom = useEditorStore((s) => s.zoom);
   const panX = useEditorStore((s) => s.panX);
   const panY = useEditorStore((s) => s.panY);
+  const scale = zoom * PX_PER_MM;
 
   useEffect(() => {
     const updateSize = () => {
@@ -111,54 +88,43 @@ export const EditorCanvas = ({
         setStageSize({ width: rect.width, height: rect.height });
       }
     };
-
     updateSize();
     const observer = new ResizeObserver(updateSize);
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
+    if (containerRef.current) observer.observe(containerRef.current);
     return () => {
       observer.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [containerRef]);
 
+  // Pointer position in millimetres.
   const getCanvasPoint = useCallback((stage: Konva.Stage) => {
     const pointer = stage.getPointerPosition();
     if (!pointer) return null;
     const s = useEditorStore.getState();
-    return {
-      x: (pointer.x - s.panX) / s.zoom,
-      y: (pointer.y - s.panY) / s.zoom,
-    };
+    const k = s.zoom * PX_PER_MM;
+    return { x: (pointer.x - s.panX) / k, y: (pointer.y - s.panY) / k };
   }, []);
 
   const handleWheel = useCallback(
     (e: Konva.KonvaEventObject<WheelEvent>) => {
       e.evt.preventDefault();
       const stage = stageRef.current;
-      if (!stage) return;
-
-      const pointer = stage.getPointerPosition();
-      if (!pointer) return;
+      const pointer = stage?.getPointerPosition();
+      if (!stage || !pointer) return;
 
       const s = useEditorStore.getState();
-      const scaleBy = 1.08;
       const oldZoom = s.zoom;
-      const direction = e.evt.deltaY > 0 ? -1 : 1;
-      const newZoom = direction > 0 ? oldZoom * scaleBy : oldZoom / scaleBy;
-      const clampedZoom = Math.max(0.1, Math.min(5, newZoom));
+      const newZoom = Math.max(
+        0.1,
+        Math.min(5, e.evt.deltaY > 0 ? oldZoom / 1.08 : oldZoom * 1.08),
+      );
+      const oldK = oldZoom * PX_PER_MM;
+      const newK = newZoom * PX_PER_MM;
+      const anchor = { x: (pointer.x - s.panX) / oldK, y: (pointer.y - s.panY) / oldK };
 
-      const mousePointTo = {
-        x: (pointer.x - s.panX) / oldZoom,
-        y: (pointer.y - s.panY) / oldZoom,
-      };
-
-      const newPanX = pointer.x - mousePointTo.x * clampedZoom;
-      const newPanY = pointer.y - mousePointTo.y * clampedZoom;
-
-      s.setZoom(clampedZoom);
-      s.setPan(newPanX, newPanY);
+      s.setZoom(newZoom);
+      s.setPan(pointer.x - anchor.x * newK, pointer.y - anchor.y * newK);
     },
     [stageRef],
   );
@@ -168,6 +134,7 @@ export const EditorCanvas = ({
       const stage = stageRef.current;
       if (!stage) return;
       const s = useEditorStore.getState();
+      const threshold = 20 / (s.zoom * PX_PER_MM);
 
       if (e.evt.button === 1 || s.activeTool === "pan") {
         isPanningRef.current = true;
@@ -178,27 +145,26 @@ export const EditorCanvas = ({
 
       if (!s.canEdit && s.activeTool !== "select") return;
 
-      if (s.activeTool === "wall") {
-        const point = getCanvasPoint(stage);
-        if (!point) return;
-        const snapped = s.snapPoint(point);
+      const point = getCanvasPoint(stage);
+      if (!point) return;
 
+      if (s.activeTool === "wall") {
+        const snapped = s.snapPoint(point);
         if (!s.isDrawing) {
           s.setIsDrawing(true);
           s.setCurrentWallStart(snapped);
         } else if (s.currentWallStart) {
-          const wallLength = Math.sqrt(
-            (snapped.x - s.currentWallStart.x) ** 2 + (snapped.y - s.currentWallStart.y) ** 2,
+          const length = Math.hypot(
+            snapped.x - s.currentWallStart.x,
+            snapped.y - s.currentWallStart.y,
           );
-          if (wallLength > 5) {
+          if (length > 50) {
             s.addWall({
-              id: crypto.randomUUID(),
-              x1: s.currentWallStart.x,
-              y1: s.currentWallStart.y,
-              x2: snapped.x,
-              y2: snapped.y,
-              thickness: 8,
-              color: "#3a3a4a",
+              id: newId(),
+              from: toVec(s.currentWallStart),
+              to: toVec(snapped),
+              thickness: DEFAULTS.wallThickness,
+              height: DEFAULTS.wallHeight,
             });
           }
           s.setCurrentWallStart(snapped);
@@ -206,123 +172,59 @@ export const EditorCanvas = ({
         return;
       }
 
-      if (s.activeTool === "door") {
-        const point = getCanvasPoint(stage);
-        if (!point) return;
-        const result = findNearestWall(point.x, point.y, s.walls, 20 / s.zoom);
-        if (result) {
-          const id = crypto.randomUUID();
-          s.addDoor({
-            id,
-            wallId: result.wall.id,
-            position: result.position,
-            width: 80,
-            type: "single",
-          });
-          s.setTool("select");
-          s.setSelectedElement(id);
-        }
-        return;
-      }
-
-      if (s.activeTool === "window") {
-        const point = getCanvasPoint(stage);
-        if (!point) return;
-        const result = findNearestWall(point.x, point.y, s.walls, 20 / s.zoom);
-        if (result) {
-          const id = crypto.randomUUID();
-          s.addWindow({
-            id,
-            wallId: result.wall.id,
-            position: result.position,
-            width: 60,
-          });
-          s.setTool("select");
-          s.setSelectedElement(id);
-        }
+      if (s.activeTool === "door" || s.activeTool === "window") {
+        const wall = nearestWall(point.x, point.y, s.walls, threshold);
+        if (!wall) return;
+        const kind = s.activeTool;
+        const spec = kind === "door" ? DEFAULTS.door : DEFAULTS.window;
+        const id = newId();
+        s.addOpening({
+          id,
+          kind,
+          wall: wall.id,
+          offset: clampOpeningOffset(spec, wall, offsetAlongWall(wall, point.x, point.y)),
+          width: spec.width,
+          height: spec.height,
+          ...(kind === "door"
+            ? { variant: "single", hinge: "left", swing: "in" }
+            : { sill: DEFAULTS.window.sill }),
+        });
+        s.setTool("select");
+        s.setSelectedElement(id);
         return;
       }
 
       if (s.activeTool === "eraser") {
-        if (!s.canEdit) return;
-        const point = getCanvasPoint(stage);
-        if (!point) return;
+        const openingId = nearestOpening(point.x, point.y, s.openings, s.walls, threshold);
+        if (openingId) return s.removeOpening(openingId);
 
-        const hitDoorOrWindow = findNearestDoorOrWindow(
-          point.x,
-          point.y,
-          s.doors,
-          s.windows,
-          s.walls,
-          20 / s.zoom,
+        const wall = s.walls.find(
+          (w) => distanceToWall(w, point.x, point.y) < w.thickness / 2 + threshold / 2,
         );
-        if (hitDoorOrWindow) {
-          if (hitDoorOrWindow.kind === "door") s.removeDoor(hitDoorOrWindow.id);
-          else s.removeWindow(hitDoorOrWindow.id);
-          return;
-        }
+        if (wall) return s.removeWall(wall.id);
 
-        const hitWall = s.walls.find((wall) => {
-          const dx = wall.x2 - wall.x1;
-          const dy = wall.y2 - wall.y1;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len === 0) return false;
-          const t = Math.max(
-            0,
-            Math.min(1, ((point.x - wall.x1) * dx + (point.y - wall.y1) * dy) / (len * len)),
-          );
-          const projX = wall.x1 + t * dx;
-          const projY = wall.y1 + t * dy;
-          const dist = Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
-          return dist < wall.thickness / 2 + 10 / s.zoom;
-        });
-
-        if (hitWall) {
-          s.removeWall(hitWall.id);
-          return;
-        }
-
-        const hitFurniture = s.furniture.find((f) => {
-          const hw = Math.abs(f.furnitureItem.width * f.scaleX) / 2;
-          const hh = Math.abs(f.furnitureItem.height * f.scaleY) / 2;
-          const rad = ((f.rotation || 0) * Math.PI) / 180;
-          const dx = point.x - f.x;
-          const dy = point.y - f.y;
+        const piece = s.furniture.find((f) => {
+          const [w, d] = furnitureSize(f, s.catalog);
+          const rad = (f.rotation * Math.PI) / 180;
+          const dx = point.x - f.at[0];
+          const dy = point.y - f.at[1];
           const localX = dx * Math.cos(rad) + dy * Math.sin(rad);
           const localY = -dx * Math.sin(rad) + dy * Math.cos(rad);
-          return Math.abs(localX) <= hw && Math.abs(localY) <= hh;
+          return Math.abs(localX) <= w / 2 && Math.abs(localY) <= d / 2;
         });
-
-        if (hitFurniture) {
-          s.removeFurniture(hitFurniture.id);
-          return;
-        }
+        if (piece) s.removeFurniture(piece.id);
         return;
       }
 
       if (s.activeTool === "select") {
-        const point = getCanvasPoint(stage);
-        if (point) {
-          const hitDoorOrWindow = findNearestDoorOrWindow(
-            point.x,
-            point.y,
-            s.doors,
-            s.windows,
-            s.walls,
-            20 / s.zoom,
-          );
-          if (hitDoorOrWindow) {
-            doorWindowPriorityRef.current = true;
-            s.setSelectedElement(hitDoorOrWindow.id);
-            return;
-          }
+        const openingId = nearestOpening(point.x, point.y, s.openings, s.walls, threshold);
+        if (openingId) {
+          openingPriorityRef.current = true;
+          s.setSelectedElement(openingId);
+          return;
         }
-        doorWindowPriorityRef.current = false;
-
-        const clickedOnEmpty = e.target === stage || e.target.getParent() === stage;
-        if (clickedOnEmpty) {
-          s.clearSelection();
-        }
+        openingPriorityRef.current = false;
+        if (e.target === stage || e.target.getParent() === stage) s.clearSelection();
       }
     },
     [getCanvasPoint, stageRef],
@@ -346,36 +248,34 @@ export const EditorCanvas = ({
       if (point) {
         mousePosRef.current = point;
         onCursorMove?.(point.x, point.y);
-
         if (s.activeTool === "wall" && s.isDrawing) {
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          rafRef.current = requestAnimationFrame(() => {
-            wallLayerRedrawRef.current?.();
-          });
+          rafRef.current = requestAnimationFrame(() => wallLayerRedrawRef.current?.());
         }
       }
 
-      if (s.activeTool === "wall" || s.activeTool === "door" || s.activeTool === "window") {
-        stage.container().style.cursor = "crosshair";
-      } else if (s.activeTool === "pan") {
-        stage.container().style.cursor = isPanningRef.current ? "grabbing" : "grab";
-      } else if (s.activeTool === "eraser") {
-        stage.container().style.cursor = "not-allowed";
-      } else {
-        stage.container().style.cursor = "default";
-      }
+      const cursor =
+        s.activeTool === "pan"
+          ? isPanningRef.current
+            ? "grabbing"
+            : "grab"
+          : s.activeTool === "eraser"
+            ? "not-allowed"
+            : s.activeTool === "select"
+              ? "default"
+              : "crosshair";
+      stage.container().style.cursor = cursor;
     },
     [getCanvasPoint, stageRef, onCursorMove],
   );
 
   const handleMouseUp = useCallback(() => {
-    if (isPanningRef.current) {
-      isPanningRef.current = false;
-      const stage = stageRef.current;
-      if (stage) {
-        const s = useEditorStore.getState();
-        stage.container().style.cursor = s.activeTool === "pan" ? "grab" : "default";
-      }
+    if (!isPanningRef.current) return;
+    isPanningRef.current = false;
+    const stage = stageRef.current;
+    if (stage) {
+      stage.container().style.cursor =
+        useEditorStore.getState().activeTool === "pan" ? "grab" : "default";
     }
   }, [stageRef]);
 
@@ -384,7 +284,7 @@ export const EditorCanvas = ({
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, [handleMouseUp]);
 
-  const handleDblClick = useCallback(() => {
+  const stopDrawing = useCallback(() => {
     const s = useEditorStore.getState();
     if (s.activeTool === "wall" && s.isDrawing) {
       s.setIsDrawing(false);
@@ -394,17 +294,15 @@ export const EditorCanvas = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        const s = useEditorStore.getState();
-        if (s.isDrawing) {
-          s.setIsDrawing(false);
-          s.setCurrentWallStart(null);
-        } else {
-          s.clearSelection();
-        }
+      if (e.key !== "Escape") return;
+      const s = useEditorStore.getState();
+      if (s.isDrawing) {
+        s.setIsDrawing(false);
+        s.setCurrentWallStart(null);
+      } else {
+        s.clearSelection();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
@@ -413,57 +311,45 @@ export const EditorCanvas = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const getTouchDistance = (t1: Touch, t2: Touch) => {
-      const dx = t1.clientX - t2.clientX;
-      const dy = t1.clientY - t2.clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    };
-
-    const getTouchCenter = (t1: Touch, t2: Touch) => ({
+    const dist = (t1: Touch, t2: Touch) =>
+      Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    const center = (t1: Touch, t2: Touch) => ({
       x: (t1.clientX + t2.clientX) / 2,
       y: (t1.clientY + t2.clientY) / 2,
     });
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        isTouchPanningRef.current = true;
-        lastTouchDistRef.current = getTouchDistance(e.touches[0], e.touches[1]);
-        lastTouchCenterRef.current = getTouchCenter(e.touches[0], e.touches[1]);
-      }
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      isTouchPanningRef.current = true;
+      lastTouchDistRef.current = dist(e.touches[0], e.touches[1]);
+      lastTouchCenterRef.current = center(e.touches[0], e.touches[1]);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && isTouchPanningRef.current) {
-        e.preventDefault();
-        const s = useEditorStore.getState();
+      if (e.touches.length !== 2 || !isTouchPanningRef.current) return;
+      e.preventDefault();
+      const s = useEditorStore.getState();
+      const newDist = dist(e.touches[0], e.touches[1]);
+      const newCenter = center(e.touches[0], e.touches[1]);
+      const newZoom = Math.max(
+        0.1,
+        Math.min(5, s.zoom * (newDist / (lastTouchDistRef.current || 1))),
+      );
 
-        const newDist = getTouchDistance(e.touches[0], e.touches[1]);
-        const newCenter = getTouchCenter(e.touches[0], e.touches[1]);
+      const rect = container.getBoundingClientRect();
+      const cx = newCenter.x - rect.left;
+      const cy = newCenter.y - rect.top;
+      const oldK = s.zoom * PX_PER_MM;
+      const newK = newZoom * PX_PER_MM;
+      const anchor = { x: (cx - s.panX) / oldK, y: (cy - s.panY) / oldK };
+      const dx = newCenter.x - lastTouchCenterRef.current.x;
+      const dy = newCenter.y - lastTouchCenterRef.current.y;
 
-        const scale = newDist / (lastTouchDistRef.current || 1);
-        const newZoom = Math.max(0.1, Math.min(5, s.zoom * scale));
-
-        const rect = container.getBoundingClientRect();
-        const centerX = newCenter.x - rect.left;
-        const centerY = newCenter.y - rect.top;
-        const mousePointTo = {
-          x: (centerX - s.panX) / s.zoom,
-          y: (centerY - s.panY) / s.zoom,
-        };
-
-        const dx = newCenter.x - lastTouchCenterRef.current.x;
-        const dy = newCenter.y - lastTouchCenterRef.current.y;
-
-        const newPanX = centerX - mousePointTo.x * newZoom + dx;
-        const newPanY = centerY - mousePointTo.y * newZoom + dy;
-
-        s.setZoom(newZoom);
-        s.setPan(newPanX, newPanY);
-
-        lastTouchDistRef.current = newDist;
-        lastTouchCenterRef.current = newCenter;
-      }
+      s.setZoom(newZoom);
+      s.setPan(cx - anchor.x * newK + dx, cy - anchor.y * newK + dy);
+      lastTouchDistRef.current = newDist;
+      lastTouchCenterRef.current = newCenter;
     };
 
     const handleTouchEnd = () => {
@@ -473,7 +359,6 @@ export const EditorCanvas = ({
     container.addEventListener("touchstart", handleTouchStart, { passive: false });
     container.addEventListener("touchmove", handleTouchMove, { passive: false });
     container.addEventListener("touchend", handleTouchEnd);
-
     return () => {
       container.removeEventListener("touchstart", handleTouchStart);
       container.removeEventListener("touchmove", handleTouchMove);
@@ -486,15 +371,15 @@ export const EditorCanvas = ({
       ref={stageRef}
       width={stageSize.width}
       height={stageSize.height}
-      scaleX={zoom}
-      scaleY={zoom}
+      scaleX={scale}
+      scaleY={scale}
       x={panX}
       y={panY}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onDblClick={handleDblClick}
+      onDblClick={stopDrawing}
       onContextMenu={(e) => e.evt.preventDefault()}
     >
       <GridLayer width={stageSize.width} height={stageSize.height} />
@@ -502,9 +387,9 @@ export const EditorCanvas = ({
       <WallLayer
         mousePosRef={mousePosRef}
         redrawRef={wallLayerRedrawRef}
-        doorWindowPriorityRef={doorWindowPriorityRef}
+        openingPriorityRef={openingPriorityRef}
       />
-      <DoorWindowLayer />
+      <OpeningLayer />
       <FurnitureLayer />
       {collaborators && collaborators.length > 0 && (
         <CollaboratorCursors collaborators={collaborators} />

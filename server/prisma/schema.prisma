@@ -80,11 +80,8 @@ model Design {
   description     String?
   thumbnail       String?
 
-  canvasData      Json             @default("{}") @map("canvas_data")
+  canvasData      Json             @map("canvas_data")
   yjsState        Bytes?           @map("yjs_state")
-
-  width           Float            @default(800)
-  height          Float            @default(600)
 
   userId          String           @map("user_id")
   createdAt       DateTime         @default(now()) @map("created_at")
@@ -144,20 +141,16 @@ model DesignLink {
   @@map("design_links")
 }
 
+// The catalog of placeable items. id is a slug ("sofa") so templates and the AI can
+// name items without knowing this database. size is [width, depth, height] in mm.
 model FurnitureItem {
-  id          String  @id @default(uuid())
-  name        String
-  category    String
-  width       Float
-  height      Float
-  depth       Float
-  color       String  @default("#8B7355")
-  icon        String?
-  description String?
-  isDefault   Boolean @default(false) @map("is_default")
+  id       String @id
+  name     String
+  category String
+  size     Json
+  color    String
 
   @@index([category])
-  @@index([isDefault, name])
   @@map("furniture_items")
 }
 
@@ -168,8 +161,6 @@ model DesignTemplate {
   category    String
   thumbnail   String?
   canvasData  Json    @map("canvas_data")
-  width       Float   @default(800)
-  height      Float   @default(600)
   sortOrder   Int     @default(0) @map("sort_order")
 
   @@index([category])

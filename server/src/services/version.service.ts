@@ -3,6 +3,7 @@ import { prisma } from "../lib/db";
 import { applyToCollabDoc, readCollabCanvas } from "../collaboration/hocuspocus";
 import { serializeDesign } from "../lib/serializers";
 import { editableDesignWhere, readableDesignWhere } from "../lib/design-access";
+import type { Canvas } from "../schemas/canvas.schema";
 
 export const createVersion = async (
   designId: string,
@@ -67,9 +68,7 @@ export const restoreVersion = async (
 
   if (!version) return null;
 
-  const canvasData = (version.canvasData ?? {}) as Record<string, unknown>;
-
-  await applyToCollabDoc(designId, { canvas: canvasData });
+  await applyToCollabDoc(designId, { canvas: version.canvasData as Canvas });
 
   const updated = await prisma.design.findUnique({ where: { id: designId } });
   return updated ? serializeDesign(updated) : null;

@@ -3,7 +3,7 @@ import { _furnitureItems } from "../store";
 import { mockUrl } from "../config";
 
 const ROOM_SUGGESTIONS: Record<string, string[]> = {
-  "living-room": ["Sofa", "Coffee Table", "Armchair", "TV Stand", "Floor Lamp", "Bookshelf"],
+  living_room: ["Sofa", "Coffee Table", "Armchair", "TV Stand", "Floor Lamp", "Bookshelf"],
   bedroom: ["Double Bed", "Nightstand", "Wardrobe", "Dresser", "Desk"],
   kitchen: ["Dining Table", "Dining Chair", "Dining Chair", "Refrigerator", "Stove"],
   bathroom: ["Bathtub", "Toilet", "Sink"],
@@ -19,12 +19,13 @@ export const aiHandlers = [
       roomId: string;
       roomType: string;
       style?: string;
-      dimensions?: { width: number; height: number };
+      width?: number;
+      height?: number;
     };
 
     const suggestedNames = ROOM_SUGGESTIONS[input.roomType] ?? ROOM_SUGGESTIONS["generic"];
-    const width = input.dimensions?.width ?? 400;
-    const height = input.dimensions?.height ?? 300;
+    const width = input.width ?? 4000;
+    const height = input.height ?? 3000;
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -38,13 +39,13 @@ export const aiHandlers = [
 
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: "status", message: `Selecting furniture for ${input.roomType.replace("-", " ")}...` })}\n\n`,
+            `data: ${JSON.stringify({ type: "status", message: `Selecting furniture for ${input.roomType.replace("_", " ")}...` })}\n\n`,
           ),
         );
         await new Promise((r) => setTimeout(r, 500));
 
         const placements = [];
-        const padding = 30;
+        const padding = 300;
         let currentX = padding;
         let currentY = padding;
 
@@ -52,32 +53,26 @@ export const aiHandlers = [
           const item = _furnitureItems.find((f) => f.name === name);
           if (!item) continue;
 
-          const scaledWidth = item.width * 0.5;
-          const scaledHeight = item.height * 0.5;
-
-          if (currentX + scaledWidth > width - padding) {
+          const [w, d] = item.size;
+          if (currentX + w > width - padding) {
             currentX = padding;
-            currentY += 120;
+            currentY += 1200;
           }
+          if (currentY + d > height - padding) break;
 
-          if (currentY + scaledHeight > height - padding) break;
-
-          const placement = {
-            furnitureItemId: item.id,
-            furnitureItem: item,
-            x: currentX + Math.random() * 20,
-            y: currentY + Math.random() * 20,
+          placements.push({
+            item: item.id,
+            at: [Math.round(currentX + w / 2), Math.round(currentY + d / 2)],
             rotation: 0,
-          };
-
-          placements.push(placement);
-          currentX += scaledWidth + 20;
-
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "placement", data: placement })}\n\n`),
-          );
-          await new Promise((r) => setTimeout(r, 300));
+          });
+          currentX += w + 200;
         }
+
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ type: "suggestions", placements })}
+
+`),
+        );
 
         controller.enqueue(
           encoder.encode(

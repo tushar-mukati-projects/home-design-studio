@@ -8,6 +8,7 @@ import {
   getDesignPermission,
 } from "../lib/design-access";
 import { createDesignFromTemplate } from "./template.service";
+import { emptyCanvas, type Canvas } from "../schemas/canvas.schema";
 
 const withOwner = (email?: string) => ({
   user: { select: { name: true, email: true } },
@@ -18,8 +19,6 @@ export const createDesign = async (
   data: {
     name: string;
     description?: string;
-    width?: number;
-    height?: number;
     templateId?: string;
   },
   userId: string,
@@ -30,8 +29,7 @@ export const createDesign = async (
     data: {
       name: data.name,
       description: data.description,
-      width: data.width ?? 800,
-      height: data.height ?? 600,
+      canvasData: emptyCanvas(),
       userId,
     },
   });
@@ -134,9 +132,7 @@ export const updateDesign = async (
     name?: string;
     description?: string | null;
     thumbnail?: string | null;
-    canvasData?: Record<string, unknown>;
-    width?: number;
-    height?: number;
+    canvasData?: Canvas;
   },
   userId: string,
   email?: string,
@@ -148,8 +144,6 @@ export const updateDesign = async (
   if (data.name !== undefined) updateData.name = data.name;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.thumbnail !== undefined) updateData.thumbnail = data.thumbnail;
-  if (data.width !== undefined) updateData.width = data.width;
-  if (data.height !== undefined) updateData.height = data.height;
 
   await prisma.design.update({ where: { id }, data: updateData });
 
