@@ -5,6 +5,14 @@ const permission = z.enum(["readonly", "readwrite"]);
 const isoDate = z.string().datetime();
 
 export const errorResponse = z.object({ error: z.string() });
+
+export const meResponse = z.object({
+  id: z.string().uuid(),
+  email: z.string().email().nullable(),
+  name: z.string().nullable(),
+  plan: z.enum(["free", "pro"]),
+  createdAt: isoDate,
+});
 export const successResponse = z.object({ success: z.literal(true) });
 
 export const designSummaryResponse = z.object({
