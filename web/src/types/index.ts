@@ -1,60 +1,89 @@
+// Mirrors server/src/schemas/canvas.schema.ts. Every length is an integer millimetre,
+// every coordinate an [x, y] pair, every reference the bare id of what it points at.
+
+export type Vec2 = [number, number];
+export type Size3 = [number, number, number];
+
 export interface Wall {
   id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  from: Vec2;
+  to: Vec2;
   thickness: number;
-  color: string;
+  height: number;
+  color?: string;
 }
 
-export interface Door {
+export type OpeningKind = "door" | "window";
+export type DoorVariant = "single" | "double" | "sliding";
+
+export interface Opening {
   id: string;
-  wallId: string;
-  position: number;
+  kind: OpeningKind;
+  wall: string;
+  offset: number;
   width: number;
-  type: "single" | "double" | "sliding";
-  flipHinge?: boolean;
-  flipSwing?: boolean;
+  height: number;
+  sill?: number;
+  variant?: DoorVariant;
+  hinge?: "left" | "right";
+  swing?: "in" | "out";
 }
 
-export interface Window {
-  id: string;
-  wallId: string;
-  position: number;
-  width: number;
-}
+export const ROOM_USAGES = [
+  "living_room",
+  "bedroom",
+  "kitchen",
+  "bathroom",
+  "dining",
+  "office",
+  "hallway",
+  "closet",
+  "garage",
+  "laundry",
+  "generic",
+] as const;
+export type RoomUsage = (typeof ROOM_USAGES)[number];
 
 export interface Room {
   id: string;
   name: string;
-  type: string;
-  color: string;
-  points: Point[];
-  area: number;
+  usage: RoomUsage;
+  polygon: Vec2[];
 }
 
-export interface FurnitureItem {
+export interface Furniture {
+  id: string;
+  item: string;
+  at: Vec2;
+  rotation: number;
+  size?: Size3;
+  color?: string;
+}
+
+export interface Canvas {
+  version: 1;
+  units: "mm";
+  walls: Wall[];
+  openings: Opening[];
+  rooms: Room[];
+  furniture: Furniture[];
+}
+
+export const FURNITURE_CATEGORIES = [
+  "living_room",
+  "bedroom",
+  "kitchen",
+  "bathroom",
+  "office",
+] as const;
+export type FurnitureCategory = (typeof FURNITURE_CATEGORIES)[number];
+
+export interface CatalogItem {
   id: string;
   name: string;
-  category: string;
-  width: number;
-  height: number;
-  depth: number;
+  category: FurnitureCategory;
+  size: Size3;
   color: string;
-  icon?: string;
-  description?: string;
-}
-
-export interface PlacedFurniture {
-  id: string;
-  furnitureItemId: string;
-  furnitureItem: FurnitureItem;
-  x: number;
-  y: number;
-  rotation: number;
-  scaleX: number;
-  scaleY: number;
 }
 
 export type DesignPermission = "owner" | "readwrite" | "readonly";
@@ -64,26 +93,12 @@ export interface Design {
   name: string;
   description?: string | null;
   thumbnail?: string | null;
-  width: number;
-  height: number;
-  canvasData: CanvasData;
+  canvasData: Canvas;
   rooms: Room[];
-  furniture: PlacedFurniture[];
+  furniture: Furniture[];
   permission?: DesignPermission;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CanvasData {
-  walls: Wall[];
-  doors: Door[];
-  windows: Window[];
-  rooms?: Room[];
-  furniture?: PlacedFurniture[];
-  gridSize: number;
-  zoom: number;
-  panX: number;
-  panY: number;
 }
 
 export type DesignSummary = Omit<Design, "canvasData">;
@@ -100,9 +115,7 @@ export interface DesignTemplate {
   description: string | null;
   category: string;
   thumbnail: string | null;
-  canvasData: CanvasData;
-  width: number;
-  height: number;
+  canvasData: Canvas;
   sortOrder: number;
 }
 

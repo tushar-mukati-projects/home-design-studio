@@ -1,0 +1,142 @@
+import type { CatalogItem } from "../../schemas/canvas.schema";
+
+// size is [width, depth, height] in millimetres.
+export const FURNITURE_CATALOG: CatalogItem[] = [
+  { id: "sofa", name: "Sofa", category: "living_room", size: [2000, 900, 850], color: "#9ca3af" },
+  {
+    id: "armchair",
+    name: "Armchair",
+    category: "living_room",
+    size: [850, 850, 800],
+    color: "#9ca3af",
+  },
+  {
+    id: "coffee-table",
+    name: "Coffee Table",
+    category: "living_room",
+    size: [1200, 600, 450],
+    color: "#a1a1aa",
+  },
+  {
+    id: "tv-stand",
+    name: "TV Stand",
+    category: "living_room",
+    size: [1500, 400, 500],
+    color: "#52525b",
+  },
+  {
+    id: "bookshelf",
+    name: "Bookshelf",
+    category: "living_room",
+    size: [800, 300, 2000],
+    color: "#71717a",
+  },
+  {
+    id: "floor-lamp",
+    name: "Floor Lamp",
+    category: "living_room",
+    size: [300, 300, 1500],
+    color: "#d4d4d8",
+  },
+
+  {
+    id: "double-bed",
+    name: "Double Bed",
+    category: "bedroom",
+    size: [2000, 1600, 450],
+    color: "#b4b4bc",
+  },
+  {
+    id: "single-bed",
+    name: "Single Bed",
+    category: "bedroom",
+    size: [2000, 900, 450],
+    color: "#b4b4bc",
+  },
+  {
+    id: "nightstand",
+    name: "Nightstand",
+    category: "bedroom",
+    size: [500, 400, 550],
+    color: "#a1a1aa",
+  },
+  {
+    id: "wardrobe",
+    name: "Wardrobe",
+    category: "bedroom",
+    size: [1200, 600, 2000],
+    color: "#71717a",
+  },
+  { id: "dresser", name: "Dresser", category: "bedroom", size: [1000, 450, 800], color: "#a1a1aa" },
+  { id: "desk", name: "Desk", category: "bedroom", size: [1200, 600, 750], color: "#a1a1aa" },
+
+  {
+    id: "dining-table",
+    name: "Dining Table",
+    category: "kitchen",
+    size: [1600, 900, 750],
+    color: "#a1a1aa",
+  },
+  {
+    id: "dining-chair",
+    name: "Dining Chair",
+    category: "kitchen",
+    size: [450, 450, 900],
+    color: "#9ca3af",
+  },
+  {
+    id: "kitchen-island",
+    name: "Kitchen Island",
+    category: "kitchen",
+    size: [1200, 800, 900],
+    color: "#d4d4d8",
+  },
+  {
+    id: "refrigerator",
+    name: "Refrigerator",
+    category: "kitchen",
+    size: [700, 700, 1800],
+    color: "#e4e4e7",
+  },
+  { id: "stove", name: "Stove", category: "kitchen", size: [600, 600, 850], color: "#52525b" },
+
+  {
+    id: "bathtub",
+    name: "Bathtub",
+    category: "bathroom",
+    size: [1700, 750, 600],
+    color: "#f4f4f5",
+  },
+  { id: "toilet", name: "Toilet", category: "bathroom", size: [400, 650, 400], color: "#f4f4f5" },
+  { id: "sink", name: "Sink", category: "bathroom", size: [600, 450, 850], color: "#f4f4f5" },
+  { id: "shower", name: "Shower", category: "bathroom", size: [900, 900, 2000], color: "#e4e4e7" },
+
+  {
+    id: "office-desk",
+    name: "Office Desk",
+    category: "office",
+    size: [1400, 700, 750],
+    color: "#a1a1aa",
+  },
+  {
+    id: "office-chair",
+    name: "Office Chair",
+    category: "office",
+    size: [600, 600, 1100],
+    color: "#52525b",
+  },
+  {
+    id: "filing-cabinet",
+    name: "Filing Cabinet",
+    category: "office",
+    size: [400, 500, 700],
+    color: "#71717a",
+  },
+  {
+    id: "bookcase",
+    name: "Bookcase",
+    category: "office",
+    size: [900, 350, 1800],
+    color: "#a1a1aa",
+  },
+];

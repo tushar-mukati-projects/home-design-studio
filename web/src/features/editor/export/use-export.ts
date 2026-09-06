@@ -5,7 +5,8 @@ import type Konva from "konva";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { useEditorStore } from "@/stores/editor-store";
-import { EXPORT_HIDDEN_LAYER_NAME, PIXELS_PER_FOOT, pxToSquareFeet } from "@/lib/constants";
+import { EXPORT_HIDDEN_LAYER_NAME, formatArea, formatLength } from "@/lib/constants";
+import { ROOM_USAGE_COLORS, furnitureName, polygonArea, wallLength } from "@/lib/canvas";
 
 type PaperSize = "a4" | "letter" | "a3";
 type Orientation = "landscape" | "portrait";
@@ -37,18 +38,14 @@ const captureContent = (
   pixelRatio: number,
 ): Capture => {
   const stage = stageRef.current;
-  if (!stage) {
-    throw new Error("Canvas is not available");
-  }
+  if (!stage) throw new Error("Canvas is not available");
 
   const prevScale = { x: stage.scaleX(), y: stage.scaleY() };
   const prevPos = { x: stage.x(), y: stage.y() };
-
   const hiddenLayers = stage.find(`.${EXPORT_HIDDEN_LAYER_NAME}`).filter((node) => node.visible());
 
   try {
     hiddenLayers.forEach((node) => node.visible(false));
-    stage.scale({ x: 1, y: 1 });
     stage.position({ x: 0, y: 0 });
 
     const rect = stage.getClientRect({ skipTransform: false });
@@ -87,25 +84,25 @@ const triggerDownload = (dataUrl: string, filename: string) => {
   document.body.removeChild(link);
 };
 
-const formatDate = (): string => {
-  return new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-};
+const formatDate = (): string =>
+  new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" }).format(
+    new Date(),
+  );
+
+const safeName = (designName: string) =>
+  designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
 
 export const useExport = () => {
   const rooms = useEditorStore((s) => s.rooms);
   const furniture = useEditorStore((s) => s.furniture);
   const walls = useEditorStore((s) => s.walls);
+  const catalog = useEditorStore((s) => s.catalog);
 
   const exportAsPng = useCallback(
     (stageRef: React.RefObject<Konva.Stage | null>, designName: string) => {
       try {
         const { dataUrl } = captureContent(stageRef, 2);
-        const safeName = designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
-        triggerDownload(dataUrl, `${safeName}-floorplan.png`);
+        triggerDownload(dataUrl, `${safeName(designName)}-floorplan.png`);
         toast.success("Floor plan exported as PNG");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to export as PNG");
@@ -148,45 +145,30 @@ export const useExport = () => {
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(120, 120, 120);
-        doc.text(formatDate(), pageWidth - margin, margin + 5, {
-          align: "right",
-        });
+        doc.text(formatDate(), pageWidth - margin, margin + 5, { align: "right" });
         doc.setTextColor(0, 0, 0);
 
         const headerHeight = 15;
         let footerReserve = 12;
-
-        if (options.includeRoomLabels && rooms.length > 0) {
+        if (options.includeRoomLabels && rooms.length > 0)
           footerReserve += 8 + Math.ceil(rooms.length / 3) * 7;
-        }
-        if (options.includeFurnitureList && furniture.length > 0) {
+        if (options.includeFurnitureList && furniture.length > 0)
           footerReserve += 8 + Math.ceil(furniture.length / 2) * 6;
-        }
-        if (options.includeDimensions && walls.length > 0) {
-          footerReserve += 14;
-        }
+        if (options.includeDimensions && walls.length > 0) footerReserve += 14;
 
         const maxImageHeight = pageHeight - margin * 2 - headerHeight;
-
         const availableHeight = Math.max(maxImageHeight * 0.4, maxImageHeight - footerReserve);
-        const availableWidth = contentWidth;
-
-        const scaleX = availableWidth / imgWidth;
-        const scaleY = availableHeight / imgHeight;
-        const scale = Math.min(scaleX, scaleY, 1);
-
+        const scale = Math.min(contentWidth / imgWidth, availableHeight / imgHeight, 1);
         const renderedWidth = imgWidth * scale;
         const renderedHeight = imgHeight * scale;
-        const imgX = margin + (availableWidth - renderedWidth) / 2;
+        const imgX = margin + (contentWidth - renderedWidth) / 2;
         const imgY = margin + headerHeight;
 
         doc.addImage(dataUrl, "PNG", imgX, imgY, renderedWidth, renderedHeight);
-
         doc.setDrawColor(200, 200, 200);
         doc.rect(imgX, imgY, renderedWidth, renderedHeight);
 
         let cursorY = imgY + renderedHeight + 8;
-
         const bottomLimit = pageHeight - margin - 6;
 
         const ensureSpace = (needed: number) => {
@@ -215,9 +197,9 @@ export const useExport = () => {
           const colWidth = contentWidth / columns;
           for (let i = 0; i < items.length; i += columns) {
             ensureSpace(rowHeight);
-            items.slice(i, i + columns).forEach((item, col) => {
-              draw(item, margin + col * colWidth, cursorY);
-            });
+            items
+              .slice(i, i + columns)
+              .forEach((item, col) => draw(item, margin + col * colWidth, cursorY));
             cursorY += rowHeight;
           }
           cursorY += 3;
@@ -225,15 +207,9 @@ export const useExport = () => {
 
         if (options.includeDimensions && walls.length > 0) {
           sectionHeading("Dimensions");
-
-          const totalLength = walls.reduce((sum, wall) => {
-            const dx = wall.x2 - wall.x1;
-            const dy = wall.y2 - wall.y1;
-            return sum + Math.sqrt(dx * dx + dy * dy);
-          }, 0);
-
+          const total = walls.reduce((sum, wall) => sum + wallLength(wall), 0);
           doc.text(
-            `${walls.length} walls | Total length: ${(totalLength / PIXELS_PER_FOOT).toFixed(1)} ft | ${rooms.length} rooms`,
+            `${walls.length} walls | Total length: ${formatLength(total)} | ${rooms.length} rooms`,
             margin,
             cursorY,
           );
@@ -243,21 +219,21 @@ export const useExport = () => {
         if (options.includeRoomLabels && rooms.length > 0) {
           sectionHeading("Rooms");
           gridList(rooms, 3, 7, (room, x, y) => {
-            const hex = (room.color || "#cccccc").replace("#", "").slice(0, 6).padEnd(6, "0");
-            const r = parseInt(hex.substring(0, 2), 16);
-            const g = parseInt(hex.substring(2, 4), 16);
-            const b = parseInt(hex.substring(4, 6), 16);
-
-            doc.setFillColor(r, g, b);
+            const hex = ROOM_USAGE_COLORS[room.usage].replace("#", "");
+            doc.setFillColor(
+              parseInt(hex.slice(0, 2), 16),
+              parseInt(hex.slice(2, 4), 16),
+              parseInt(hex.slice(4, 6), 16),
+            );
             doc.rect(x, y - 3, 4, 4, "F");
-            doc.text(`${room.name} (${pxToSquareFeet(room.area).toFixed(1)} sq ft)`, x + 6, y);
+            doc.text(`${room.name} (${formatArea(polygonArea(room.polygon))})`, x + 6, y);
           });
         }
 
         if (options.includeFurnitureList && furniture.length > 0) {
           sectionHeading("Furniture");
-          gridList(furniture, 2, 6, (item, x, y) => {
-            doc.text(`\u2022 ${item.furnitureItem.name} (${item.furnitureItem.category})`, x, y);
+          gridList(furniture, 2, 6, (piece, x, y) => {
+            doc.text(`• ${furnitureName(piece, catalog)}`, x, y);
           });
         }
 
@@ -276,21 +252,20 @@ export const useExport = () => {
           );
         }
 
-        const safeName = designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
-        doc.save(`${safeName}-floorplan.pdf`);
-
+        doc.save(`${safeName(designName)}-floorplan.pdf`);
         toast.success("Floor plan exported as PDF");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to export as PDF");
       }
     },
-    [rooms, furniture, walls],
+    [rooms, furniture, walls, catalog],
   );
 
   const copyShareLink = useCallback(async (designId: string) => {
     try {
-      const url = `${window.location.origin}/editor/${designId}?view=shared`;
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/editor/${designId}?view=shared`,
+      );
       toast.success("Share link copied to clipboard!");
     } catch {
       toast.error("Failed to copy share link");
@@ -306,50 +281,29 @@ export const useExport = () => {
         return;
       }
 
-      printWindow.document.write(`
-<!DOCTYPE html>
+      printWindow.document.write(`<!DOCTYPE html>
 <html>
 <head>
 <title>Print Floor Plan</title>
 <style>
-  @media print {
-    body { margin: 0; }
-    img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-  }
-  body {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: #fff;
-  }
+  body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #fff; }
   img { max-width: 100%; max-height: 100vh; object-fit: contain; }
 </style>
 </head>
-<body>
-<img src="${dataUrl}" />
-</body>
+<body><img src="${dataUrl}" /></body>
 </html>`);
-
       printWindow.document.close();
       printWindow.onload = () => {
         printWindow.focus();
         printWindow.print();
       };
-
       toast.success("Print dialog opened");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to print floor plan");
     }
   }, []);
 
-  return {
-    exportAsPng,
-    exportAsPdf,
-    copyShareLink,
-    printFloorPlan,
-  };
+  return { exportAsPng, exportAsPdf, copyShareLink, printFloorPlan };
 };
 
 export type { PdfExportOptions, PaperSize, Orientation, Quality };

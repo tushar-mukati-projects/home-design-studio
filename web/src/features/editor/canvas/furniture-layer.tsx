@@ -3,6 +3,8 @@
 import { memo, useRef, useEffect, useCallback } from "react";
 import { Layer, Rect, Text, Group, Transformer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { PX_PER_MM } from "@/lib/constants";
+import { furnitureColor, furnitureName, furnitureSize, toVec } from "@/lib/canvas";
 import { FurnitureShape } from "./furniture-shape";
 import type Konva from "konva";
 
@@ -17,6 +19,7 @@ function textColorFor(hex: string): string {
 
 export const FurnitureLayer = memo(function FurnitureLayer() {
   const furniture = useEditorStore((s) => s.furniture);
+  const catalog = useEditorStore((s) => s.catalog);
   const activeTool = useEditorStore((s) => s.activeTool);
   const canEdit = useEditorStore((s) => s.canEdit);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
@@ -26,31 +29,20 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
   const snapPoint = useEditorStore((s) => s.snapPoint);
   const snapToGrid = useEditorStore((s) => s.snapToGrid);
 
+  const px = 1 / (zoom * PX_PER_MM);
   const transformerRef = useRef<Konva.Transformer>(null);
   const shapeRefs = useRef<Map<string, Konva.Group>>(new Map());
 
   const setShapeRef = useCallback((id: string, node: Konva.Group | null) => {
-    if (node) {
-      shapeRefs.current.set(id, node);
-    } else {
-      shapeRefs.current.delete(id);
-    }
+    if (node) shapeRefs.current.set(id, node);
+    else shapeRefs.current.delete(id);
   }, []);
 
   useEffect(() => {
     const transformer = transformerRef.current;
     if (!transformer) return;
-
-    if (selectedElementId) {
-      const node = shapeRefs.current.get(selectedElementId);
-      if (node) {
-        transformer.nodes([node]);
-        transformer.getLayer()?.batchDraw();
-        return;
-      }
-    }
-
-    transformer.nodes([]);
+    const node = selectedElementId ? shapeRefs.current.get(selectedElementId) : undefined;
+    transformer.nodes(node ? [node] : []);
     transformer.getLayer()?.batchDraw();
   }, [selectedElementId, furniture]);
 
@@ -58,108 +50,84 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
     <Layer>
       {furniture.map((piece) => {
         const isSelected = selectedElementId === piece.id;
-        const fw = piece.furnitureItem.width;
-        const fh = piece.furnitureItem.height;
+        const [w, d, h] = furnitureSize(piece, catalog);
+        const color = furnitureColor(piece, catalog);
+        const name = furnitureName(piece, catalog);
+        const textColor = textColorFor(color);
 
         return (
           <Group
             key={piece.id}
             ref={(node) => setShapeRef(piece.id, node)}
-            x={piece.x}
-            y={piece.y}
+            x={piece.at[0]}
+            y={piece.at[1]}
             rotation={piece.rotation}
-            scaleX={piece.scaleX}
-            scaleY={piece.scaleY}
             draggable={canEdit && activeTool === "select"}
-            onClick={() => {
-              if (activeTool === "select") {
-                setSelectedElement(piece.id);
-              }
-            }}
-            onTap={() => {
-              if (activeTool === "select") {
-                setSelectedElement(piece.id);
-              }
-            }}
+            onClick={() => activeTool === "select" && setSelectedElement(piece.id)}
+            onTap={() => activeTool === "select" && setSelectedElement(piece.id)}
             onDragEnd={(e) => {
-              const pos = snapToGrid
-                ? snapPoint({ x: e.target.x(), y: e.target.y() })
-                : { x: e.target.x(), y: e.target.y() };
-              updateFurniture(piece.id, { x: pos.x, y: pos.y });
+              const raw = { x: e.target.x(), y: e.target.y() };
+              const pos = snapToGrid ? snapPoint(raw) : raw;
+              updateFurniture(piece.id, { at: toVec(pos) });
               e.target.position(pos);
             }}
             onTransformEnd={(e) => {
               const node = e.target;
-              const scX = node.scaleX();
-              const scY = node.scaleY();
-              const rot = node.rotation();
-              const pos = snapToGrid
-                ? snapPoint({ x: node.x(), y: node.y() })
-                : { x: node.x(), y: node.y() };
-
+              const raw = { x: node.x(), y: node.y() };
+              const pos = snapToGrid ? snapPoint(raw) : raw;
               updateFurniture(piece.id, {
-                x: pos.x,
-                y: pos.y,
-                rotation: rot,
-                scaleX: scX,
-                scaleY: scY,
+                at: toVec(pos),
+                rotation: node.rotation(),
+                size: [Math.round(w * node.scaleX()), Math.round(d * node.scaleY()), h],
               });
+              node.scaleX(1);
+              node.scaleY(1);
               node.position(pos);
             }}
           >
-            <FurnitureShape
-              furnitureId={piece.furnitureItem.icon ?? piece.furnitureItem.id}
-              width={fw}
-              height={fh}
-              color={piece.furnitureItem.color || "#d4d4d8"}
-            />
+            <FurnitureShape furnitureId={piece.item} width={w} height={d} color={color} />
             <Rect
-              width={fw}
-              height={fh}
-              offsetX={fw / 2}
-              offsetY={fh / 2}
+              width={w}
+              height={d}
+              offsetX={w / 2}
+              offsetY={d / 2}
               stroke={isSelected ? "#3a3a4a" : "#8a8a9480"}
-              strokeWidth={isSelected ? 2 / zoom : 1 / zoom}
+              strokeWidth={isSelected ? 2 * px : px}
               shadowColor={isSelected ? "#52525b" : undefined}
-              shadowBlur={isSelected ? 10 : 0}
+              shadowBlur={isSelected ? 10 * px : 0}
               shadowOpacity={isSelected ? 0.4 : 0}
-              cornerRadius={4}
+              cornerRadius={40}
               listening={false}
             />
             <Rect
-              width={fw * 0.35}
-              height={Math.max(3, 4 / zoom)}
-              offsetX={(fw * 0.35) / 2}
-              offsetY={fh / 2}
+              width={w * 0.35}
+              height={Math.max(30, 4 * px)}
+              offsetX={(w * 0.35) / 2}
+              offsetY={d / 2}
               fill="#52525b"
-              cornerRadius={1}
+              cornerRadius={10}
               opacity={0.7}
               listening={false}
             />
-            {fw > 60 && fh > 40 && (
+            {w > 600 && d > 400 && (
               <Text
-                width={fw}
-                height={fh}
-                offsetX={fw / 2}
-                offsetY={fh / 2}
-                text={piece.furnitureItem.name}
-                fontSize={Math.min(11, fw / 7, fh / 4.5) / Math.max(piece.scaleX, 0.5)}
+                width={w}
+                height={d}
+                offsetX={w / 2}
+                offsetY={d / 2}
+                text={name}
+                fontSize={Math.min(110, w / 7, d / 4.5)}
                 fontFamily="Inter, sans-serif"
                 fontStyle="600"
-                fill={textColorFor(piece.furnitureItem.color || "#d4d4d8")}
-                shadowColor={
-                  textColorFor(piece.furnitureItem.color || "#d4d4d8") === "#f0f0f4"
-                    ? "#00000080"
-                    : "#ffffff60"
-                }
-                shadowBlur={2}
-                shadowOffsetX={0}
-                shadowOffsetY={0.5}
+                fill={textColor}
+                shadowColor={textColor === "#f0f0f4" ? "#00000080" : "#ffffff60"}
+                shadowBlur={20}
+                shadowOffsetY={5}
                 align="center"
                 verticalAlign="middle"
                 listening={false}
                 wrap="word"
-                padding={4}
+                padding={40}
               />
             )}
           </Group>
@@ -179,12 +147,9 @@ export const FurnitureLayer = memo(function FurnitureLayer() {
         rotateAnchorOffset={25}
         rotationSnaps={snapToGrid ? [0, 45, 90, 135, 180, 225, 270, 315] : []}
         rotationSnapTolerance={snapToGrid ? 6 : 0}
-        boundBoxFunc={(oldBox, newBox) => {
-          if (newBox.width < 10 || newBox.height < 10) {
-            return oldBox;
-          }
-          return newBox;
-        }}
+        boundBoxFunc={(oldBox, newBox) =>
+          newBox.width < 10 || newBox.height < 10 ? oldBox : newBox
+        }
       />
     </Layer>
   );

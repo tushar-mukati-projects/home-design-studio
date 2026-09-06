@@ -1,6 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import * as Y from "yjs";
-import { buildYjsState, extractCanvasFromDoc, COLLECTION_KEYS } from "@/collaboration/yjs-doc";
+import {
+  buildYjsState,
+  extractCanvasFromDoc,
+  fillDocFromCanvas,
+  META_KEY,
+} from "@/collaboration/yjs-doc";
+import { CANVAS_COLLECTIONS, emptyCanvas, type Canvas } from "@/schemas/canvas.schema";
 
 const docFromState = (state: Uint8Array): Y.Doc => {
   const doc = new Y.Doc();
@@ -8,81 +14,93 @@ const docFromState = (state: Uint8Array): Y.Doc => {
   return doc;
 };
 
-const roundTrip = (canvas: Record<string, unknown>) =>
+const roundTrip = (canvas: Partial<Canvas>) =>
   extractCanvasFromDoc(docFromState(buildYjsState(canvas)));
 
-describe("buildYjsState / extractCanvasFromDoc", () => {
-  test("round-trips every collection", () => {
-    const canvas = {
-      walls: [{ id: "w1", x1: 0, y1: 0, x2: 10, y2: 0, thickness: 8, color: "#000" }],
-      doors: [{ id: "d1", wallId: "w1", position: 0.5, width: 80, type: "single" }],
-      windows: [{ id: "n1", wallId: "w1", position: 0.2, width: 60 }],
-      furniture: [{ id: "f1", x: 5, y: 5, rotation: 0, scaleX: 1, scaleY: 1 }],
-      rooms: [{ id: "r1", name: "Living", type: "living_room", points: [], area: 100 }],
-    };
+const sample: Canvas = {
+  ...emptyCanvas(),
+  walls: [{ id: "w1", from: [0, 0], to: [4000, 0], thickness: 120, height: 2700 }],
+  openings: [{ id: "o1", kind: "door", wall: "w1", offset: 2000, width: 900, height: 2100 }],
+  rooms: [
+    {
+      id: "r1",
+      name: "Living",
+      usage: "living_room",
+      polygon: [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+      ],
+    },
+  ],
+  furniture: [{ id: "f1", item: "sofa", at: [500, 500], rotation: 90 }],
+};
 
-    expect(roundTrip(canvas)).toEqual(canvas);
+describe("buildYjsState / extractCanvasFromDoc", () => {
+  test("round-trips a canvas exactly, headers included", () => {
+    expect(roundTrip(sample)).toEqual(sample);
   });
 
-  test("returns an empty collection for every key when given nothing", () => {
-    const result = roundTrip({});
-    for (const key of COLLECTION_KEYS) {
-      expect(result[key]).toEqual([]);
-    }
+  test("an empty input yields a valid empty canvas", () => {
+    expect(roundTrip({})).toEqual(emptyCanvas());
   });
 
   test("drops items without a string id", () => {
     const result = roundTrip({
-      walls: [{ id: "keep" }, { id: 42 }, { noId: true }, null, undefined],
+      walls: [{ id: "keep" }, { id: 42 }, { noId: true }, null, undefined] as never,
     });
-
-    expect(result.walls).toEqual([{ id: "keep" }]);
+    expect(result.walls).toEqual([{ id: "keep" }] as never);
   });
 
-  test("ignores non-array collection values", () => {
-    const result = roundTrip({ walls: "not-an-array", rooms: 7, doors: null });
-
-    expect(result.walls).toEqual([]);
-    expect(result.rooms).toEqual([]);
-    expect(result.doors).toEqual([]);
-  });
-
-  test("ignores unknown keys", () => {
-    const result = roundTrip({ walls: [{ id: "w1" }], somethingElse: [{ id: "x" }] });
-
-    expect(result.walls).toEqual([{ id: "w1" }]);
-    expect(Object.keys(result).sort()).toEqual([...COLLECTION_KEYS].sort());
+  test("ignores keys that are not collections", () => {
+    const result = roundTrip({ walls: sample.walls, somethingElse: [{ id: "x" }] } as never);
+    expect(Object.keys(result).sort()).toEqual([
+      "furniture",
+      "openings",
+      "rooms",
+      "units",
+      "version",
+      "walls",
+    ]);
+    expect(result.walls).toEqual(sample.walls);
   });
 
   test("keeps the last entry when ids collide", () => {
     const result = roundTrip({
       walls: [
-        { id: "dup", color: "first" },
-        { id: "dup", color: "second" },
+        { ...sample.walls[0]!, thickness: 100 },
+        { ...sample.walls[0]!, thickness: 200 },
       ],
     });
-
-    expect(result.walls).toEqual([{ id: "dup", color: "second" }]);
+    expect(result.walls.map((w) => w.thickness)).toEqual([200]);
   });
 
-  test("produces state that merges into an existing doc", () => {
-    const doc = docFromState(buildYjsState({ walls: [{ id: "w1" }] }));
-    Y.applyUpdate(doc, buildYjsState({ walls: [{ id: "w1" }, { id: "w2" }] }));
-
-    const ids = extractCanvasFromDoc(doc).walls.map((w) => w.id);
-    expect(ids.sort()).toEqual(["w1", "w2"]);
+  test("the document has exactly one Y.Map per collection", () => {
+    const doc = docFromState(buildYjsState(sample));
+    for (const key of CANVAS_COLLECTIONS) expect(doc.getMap(key).size).toBe(1);
   });
 
-  test("preserves nested structures", () => {
-    const rooms = [
-      {
-        id: "r1",
-        points: [
-          { x: 1, y: 2 },
-          { x: 3, y: 4 },
-        ],
-      },
-    ];
-    expect(roundTrip({ rooms }).rooms).toEqual(rooms);
+  test("fillDocFromCanvas replaces, so removed items disappear", () => {
+    const doc = docFromState(buildYjsState(sample));
+    fillDocFromCanvas(doc, { ...sample, furniture: [] });
+    expect(extractCanvasFromDoc(doc).furniture).toEqual([]);
+    expect(extractCanvasFromDoc(doc).walls).toEqual(sample.walls);
+  });
+
+  test("state merges into an existing doc", () => {
+    const doc = docFromState(buildYjsState({ walls: [sample.walls[0]!] }));
+    Y.applyUpdate(
+      doc,
+      buildYjsState({ walls: [sample.walls[0]!, { ...sample.walls[0]!, id: "w2" }] }),
+    );
+    expect(
+      extractCanvasFromDoc(doc)
+        .walls.map((w) => w.id)
+        .sort(),
+    ).toEqual(["w1", "w2"]);
+  });
+
+  test("the meta map is named consistently for both ends", () => {
+    expect(META_KEY).toBe("meta");
   });
 });

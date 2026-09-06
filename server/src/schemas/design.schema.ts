@@ -1,11 +1,10 @@
 import { z } from "zod";
+import { canvasSchema } from "./canvas.schema";
 
 export const createDesignSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(255),
     description: z.string().max(2000).optional(),
-    width: z.number().positive().optional(),
-    height: z.number().positive().optional(),
     templateId: z.string().uuid().optional(),
   }),
 });
@@ -18,9 +17,7 @@ export const updateDesignSchema = z.object({
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(2000).nullable().optional(),
     thumbnail: z.string().nullable().optional(),
-    canvasData: z.record(z.unknown()).optional(),
-    width: z.number().positive().optional(),
-    height: z.number().positive().optional(),
+    canvasData: canvasSchema.optional(),
   }),
 });
 

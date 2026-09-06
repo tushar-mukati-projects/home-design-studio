@@ -6,7 +6,7 @@ import cors from "cors";
 import { config, disabledFeatures } from "./lib/config";
 import { logger } from "./lib/logger";
 import { router as routes } from "./routes";
-import { seedDefaultFurniture } from "./services/furniture.service";
+import { seedFurniture } from "./services/furniture.service";
 import { seedTemplates } from "./services/template.service";
 import { startCollab } from "./collaboration/hocuspocus";
 import { buildOpenApiDocument, swaggerHtml } from "./lib/openapi";
@@ -84,7 +84,7 @@ server.on("upgrade", (req, socket, head) => {
 
 const start = async () => {
   try {
-    await seedDefaultFurniture();
+    await seedFurniture();
     logger.info("Default furniture seeded");
   } catch (err) {
     logger.error("Failed to seed furniture", { error: err });

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
-import type { Design, CanvasData } from "@/types";
+import type { Design, Canvas } from "@/types";
 import { API_ROUTES, QUERY_KEYS } from "./constants";
 
 interface UpdateDesignPayload {
@@ -10,7 +10,7 @@ interface UpdateDesignPayload {
   thumbnail?: string;
   width?: number;
   height?: number;
-  canvasData?: CanvasData;
+  canvasData?: Canvas;
 }
 
 export const useUpdateDesign = () => {

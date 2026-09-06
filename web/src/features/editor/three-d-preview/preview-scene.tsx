@@ -9,8 +9,9 @@ import { useEditorStore } from "@/stores/editor-store";
 import { Wall3D } from "./wall-3d";
 import { Furniture3D } from "./furniture-3d";
 import { Room3D } from "./room-3d";
+import { boundsOf } from "@/lib/canvas";
 
-const SCALE = 0.01;
+const SCALE = 0.001;
 
 interface CameraPreset {
   position: [number, number, number];
@@ -52,68 +53,29 @@ const SceneContents = ({
   furnitureColor,
 }: Omit<PreviewSceneProps, "cameraPreset">) => {
   const walls = useEditorStore((s) => s.walls);
-  const doors = useEditorStore((s) => s.doors);
-  const windows = useEditorStore((s) => s.windows);
+  const openings = useEditorStore((s) => s.openings);
   const furniture = useEditorStore((s) => s.furniture);
   const rooms = useEditorStore((s) => s.rooms);
 
   const bounds = useMemo(() => {
-    const allX: number[] = [];
-    const allY: number[] = [];
-
-    for (const w of walls) {
-      allX.push(w.x1, w.x2);
-      allY.push(w.y1, w.y2);
-    }
-
-    for (const f of furniture) {
-      allX.push(f.x);
-      allY.push(f.y);
-    }
-
-    for (const r of rooms) {
-      for (const p of r.points) {
-        allX.push(p.x);
-        allY.push(p.y);
-      }
-    }
-
-    if (allX.length === 0) {
-      return { minX: 0, maxX: 10, minY: 0, maxY: 10, cx: 0, cz: 0, size: 10 };
-    }
-
-    const minX = Math.min(...allX) * SCALE;
-    const maxX = Math.max(...allX) * SCALE;
-    const minY = Math.min(...allY) * SCALE;
-    const maxY = Math.max(...allY) * SCALE;
-    const cx = (minX + maxX) / 2;
-    const cz = (minY + maxY) / 2;
-    const size = Math.max(maxX - minX, maxY - minY, 5);
-
-    return { minX, maxX, minY, maxY, cx, cz, size };
+    const b = boundsOf({ walls, rooms, furniture });
+    if (!b) return { cx: 0, cz: 0, size: 10 };
+    const minX = b.minX * SCALE;
+    const maxX = b.maxX * SCALE;
+    const minY = b.minY * SCALE;
+    const maxY = b.maxY * SCALE;
+    return {
+      cx: (minX + maxX) / 2,
+      cz: (minY + maxY) / 2,
+      size: Math.max(maxX - minX, maxY - minY, 5),
+    };
   }, [walls, furniture, rooms]);
 
-  const wallDoorMap = useMemo(() => {
-    const map = new Map<string, typeof doors>();
-    for (const wall of walls) {
-      map.set(
-        wall.id,
-        doors.filter((d) => d.wallId === wall.id),
-      );
-    }
+  const openingsByWall = useMemo(() => {
+    const map = new Map<string, typeof openings>();
+    for (const o of openings) map.set(o.wall, [...(map.get(o.wall) ?? []), o]);
     return map;
-  }, [walls, doors]);
-
-  const wallWindowMap = useMemo(() => {
-    const map = new Map<string, typeof windows>();
-    for (const wall of walls) {
-      map.set(
-        wall.id,
-        windows.filter((w) => w.wallId === wall.id),
-      );
-    }
-    return map;
-  }, [walls, windows]);
+  }, [openings]);
 
   const hasContent = walls.length > 0 || rooms.length > 0 || furniture.length > 0;
 
@@ -189,8 +151,7 @@ const SceneContents = ({
         <Wall3D
           key={wall.id}
           wall={wall}
-          doors={wallDoorMap.get(wall.id) || []}
-          windows={wallWindowMap.get(wall.id) || []}
+          openings={openingsByWall.get(wall.id) ?? []}
           offsetX={bounds.cx}
           offsetZ={bounds.cz}
           wallColor={wallColor}
@@ -254,29 +215,9 @@ export const PreviewScene = ({
   const rooms = useEditorStore((s) => s.rooms);
 
   const sceneSize = useMemo(() => {
-    const allX: number[] = [];
-    const allY: number[] = [];
-
-    for (const w of walls) {
-      allX.push(w.x1, w.x2);
-      allY.push(w.y1, w.y2);
-    }
-    for (const f of furniture) {
-      allX.push(f.x);
-      allY.push(f.y);
-    }
-    for (const r of rooms) {
-      for (const p of r.points) {
-        allX.push(p.x);
-        allY.push(p.y);
-      }
-    }
-
-    if (allX.length === 0) return 5;
-
-    const rangeX = (Math.max(...allX) - Math.min(...allX)) * SCALE;
-    const rangeY = (Math.max(...allY) - Math.min(...allY)) * SCALE;
-    return Math.max(rangeX, rangeY, 5);
+    const b = boundsOf({ walls, rooms, furniture });
+    if (!b) return 5;
+    return Math.max((b.maxX - b.minX) * SCALE, (b.maxY - b.minY) * SCALE, 5);
   }, [walls, furniture, rooms]);
 
   const preset = useMemo(() => {

@@ -151,7 +151,7 @@ Plus a WebSocket at `/collaboration` for real-time editing, and `GET /health`.
 
 ## The data model
 
-Six tables. `prisma/schema.prisma` is the single source of truth for all of them.
+Nine tables. `prisma/schema.prisma` is the single source of truth for all of them.
 
 | Table              | Holds |
 | ------------------ | ----- |
@@ -162,12 +162,12 @@ Six tables. `prisma/schema.prisma` is the single source of truth for all of them
 | `design_versions`  | Point-in-time snapshots of a design's `canvas_data`. |
 | `design_members`   | Who a design is shared with, by email, and whether they can edit. |
 | `design_links`     | Share links: a secret code per link, optionally expiring. |
-| `furniture_items`  | The catalog of things that *can* be placed. Seeded on boot. |
+| `furniture_items`  | The catalog of things that *can* be placed. `id` is a slug like `sofa`. Seeded on boot. |
 | `design_templates` | Starter floor plans. Seeded on boot. |
 
-**Walls, doors, windows, rooms and furniture placements are not tables.** They all live
-inside `designs.canvas_data`, because the collaborative editor owns that document and
-writes it as one unit. The API's `rooms` and `furniture` fields are *derived* from it in
+**Walls, openings, rooms and furniture placements are not tables.** They all live inside
+`designs.canvas_data`, because the collaborative editor owns that document and writes it as
+one unit. The API's `rooms` and `furniture` fields are *derived* from it in
 `lib/serializers.ts`, so they cannot fall out of step with the drawing.
 
 `furniture_items` is the one genuinely relational piece, and stays a table: it is the
@@ -175,19 +175,51 @@ shared catalog every design draws from, not something a single design owns.
 
 ---
 
+## The canvas format
+
+`canvas_data` is a small, self-describing document. `server/src/schemas/canvas.schema.ts` is
+the Zod definition and validates every write; `web/src/types/index.ts` mirrors it.
+
+```jsonc
+{
+  "version": 1,
+  "units": "mm",
+  "walls":     [{ "id": "w1", "from": [0, 0], "to": [6000, 0], "thickness": 120, "height": 2700 }],
+  "openings":  [{ "id": "o1", "kind": "door", "wall": "w1", "offset": 1200, "width": 900, "height": 2100,
+                  "variant": "single", "hinge": "left", "swing": "in" },
+                { "id": "o2", "kind": "window", "wall": "w1", "offset": 3500, "width": 1200, "height": 1200, "sill": 900 }],
+  "rooms":     [{ "id": "r1", "name": "Living", "usage": "living_room",
+                  "polygon": [[0, 0], [6000, 0], [6000, 4000], [0, 4000]] }],
+  "furniture": [{ "id": "f1", "item": "sofa", "at": [2400, 1800], "rotation": 90 }]
+}
+```
+
+Four rules make it readable without a manual:
+
+- **Every length is an integer millimetre.** The screen scale lives in exactly one place,
+  `PX_PER_MM` in `web/src/lib/constants.ts`; the data never knows about pixels.
+- **Every coordinate is an `[x, y]` pair** and `size` is always `[width, depth, height]`.
+- **Every reference is the bare id of what it points at.** An opening's `wall`, a
+  placement's `item` (a catalog slug such as `"sofa"`, valid in every database).
+- **Nothing derived is stored.** A room's area comes from its polygon, a wall's length from
+  its endpoints, a placement's size from the catalog unless it was resized.
+
+Doors and windows are one collection, `openings`, told apart by `kind`. An opening sits at
+`offset` mm from its wall's `from` end, so stretching a wall does not move its doors.
+Viewport state (zoom, pan, grid) is not part of the document.
+
+---
+
 ## Key concepts
 
-**Coordinates are canvas pixels.** `30 px = 1 foot`, defined once in
-`web/src/lib/constants.ts`. Always convert through those helpers rather than dividing by 30.
-
-**`canvas_data` is the single source of truth for a design.** Walls, doors, windows, rooms
-and furniture all live in that one JSON column — there are no tables for them. The API's
-`rooms` and `furniture` fields are *derived* from it in `lib/serializers.ts`, so they can
-never go stale.
+**`canvas_data` is the single source of truth for a design.** Walls, openings, rooms and
+furniture all live in that one JSON column. The API's `rooms` and `furniture` fields are
+*derived* from it in `lib/serializers.ts`, so they can never go stale.
 
 **A design has a live copy while it is being edited.** The editor syncs through a Yjs
-document over WebSocket (so several people can edit at once), and that document owns
-persistence: its save hook writes `canvas_data` and `yjs_state` together.
+document over WebSocket (so several people can edit at once). The document is the canvas
+with each array turned into a `Y.Map` keyed by id, plus a `meta` map for the name, and it
+owns persistence: its save hook writes `canvas_data` and `yjs_state` together.
 
 So **server-side canvas changes go through the document, never the columns.**
 `updateDesign()` and version restore both call `applyToCollabDoc()`
@@ -197,8 +229,7 @@ So **server-side canvas changes go through the document, never the columns.**
 - loads the existing CRDT state first, so removing an element records a real deletion — a
   freshly rebuilt state has no deletion history, and a client reconnecting with an old
   local copy would push the removed elements straight back;
-- keeps `canvas_data` and `yjs_state` in agreement, and preserves keys like `gridSize`
-  that are not part of the drawing itself.
+- keeps `canvas_data` and `yjs_state` in agreement.
 
 It throws if it cannot apply the change, so a caller never reports success on a write that
 did not land.
@@ -251,4 +282,5 @@ connects to it as an ordinary Postgres database.
 - Restoring a version **overwrites the current canvas with no undo** — nothing snapshots
   what it replaces, and the editor reloads afterwards, so the local undo stack is gone too.
 - `PATCH /api/designs/:id` replaces `canvas_data` wholesale. A partial body such as
-  `{"canvasData":{"walls":[…]}}` clears rooms, furniture, doors and windows.
+  `{"canvasData":{"walls":[…]}}` is rejected by validation; a complete document that omits
+  rooms or furniture clears them.

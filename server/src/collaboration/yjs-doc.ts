@@ -1,36 +1,35 @@
 import * as Y from "yjs";
+import { CANVAS_COLLECTIONS, emptyCanvas, type Canvas } from "../schemas/canvas.schema";
 
-export const COLLECTION_KEYS = ["walls", "doors", "windows", "furniture", "rooms"] as const;
+// The live document is the canvas with each array turned into a Y.Map keyed by id.
+export const META_KEY = "meta";
 
-export const extractCanvasFromDoc = (doc: Y.Doc) => {
-  const toArray = (yMap: Y.Map<unknown>) => {
-    const arr: Record<string, unknown>[] = [];
-    yMap.forEach((v) => arr.push(v as Record<string, unknown>));
-    return arr;
-  };
-
-  return {
-    walls: toArray(doc.getMap("walls")),
-    doors: toArray(doc.getMap("doors")),
-    windows: toArray(doc.getMap("windows")),
-    furniture: toArray(doc.getMap("furniture")),
-    rooms: toArray(doc.getMap("rooms")),
-  };
+export const extractCanvasFromDoc = (doc: Y.Doc): Canvas => {
+  const canvas = emptyCanvas();
+  for (const key of CANVAS_COLLECTIONS) {
+    const items: unknown[] = [];
+    doc.getMap(key).forEach((value) => items.push(value));
+    (canvas[key] as unknown[]) = items;
+  }
+  return canvas;
 };
 
-export const buildYjsState = (canvas: Record<string, unknown>): Uint8Array<ArrayBuffer> => {
-  const doc = new Y.Doc();
+export const fillDocFromCanvas = (doc: Y.Doc, canvas: Partial<Canvas>): void => {
   doc.transact(() => {
-    for (const key of COLLECTION_KEYS) {
+    for (const key of CANVAS_COLLECTIONS) {
       const map = doc.getMap(key);
-      const arr = Array.isArray(canvas[key]) ? (canvas[key] as Array<Record<string, unknown>>) : [];
-      for (const item of arr) {
-        if (item && typeof item.id === "string") {
-          map.set(item.id, item);
-        }
+      map.clear();
+      const items = Array.isArray(canvas[key]) ? (canvas[key] as { id?: unknown }[]) : [];
+      for (const item of items) {
+        if (item && typeof item.id === "string") map.set(item.id, item);
       }
     }
   });
+};
+
+export const buildYjsState = (canvas: Partial<Canvas>): Uint8Array<ArrayBuffer> => {
+  const doc = new Y.Doc();
+  fillDocFromCanvas(doc, canvas);
   const state = new Uint8Array(Y.encodeStateAsUpdate(doc));
   doc.destroy();
   return state;

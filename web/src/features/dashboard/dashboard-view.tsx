@@ -17,7 +17,6 @@ import {
   FileQuestion,
   DoorOpen,
   Armchair,
-  Ruler,
   Users,
   Layers,
   Crown,
@@ -55,110 +54,75 @@ import { UpgradeModal } from "@/features/billing/upgrade-modal";
 import { PlanBadge } from "@/features/billing/plan-badge";
 import { cn } from "@/lib/utils";
 import type { DesignTemplate, DesignSummary } from "@/types";
+import { ROOM_USAGE_COLORS, boundsOf } from "@/lib/canvas";
 import { TemplateGallery } from "./template-gallery";
-
-const DIMENSION_PRESETS = [
-  { label: "Studio Apartment (8×6m)", width: 800, height: 600 },
-  { label: "One Bedroom (10×8m)", width: 1000, height: 800 },
-  { label: "Two Bedroom (14×10m)", width: 1400, height: 1000 },
-  { label: "Custom", width: 0, height: 0 },
-] as const;
 
 interface DesignThumbnailProps {
   design: DesignSummary;
 }
 
 const DesignThumbnail = ({ design }: DesignThumbnailProps) => {
-  const { width, height, rooms } = design;
-  const aspectRatio = width / height;
-  const svgWidth = 400;
-  const svgHeight = svgWidth / aspectRatio;
-  const scaleX = svgWidth / width;
-  const scaleY = svgHeight / height;
+  const bounds = boundsOf({ walls: [], rooms: design.rooms, furniture: design.furniture });
+
+  if (!bounds) {
+    return (
+      <svg viewBox="0 0 400 300" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+        <rect x={0} y={0} width={400} height={300} fill="var(--secondary)" rx={4} />
+        <rect
+          x={80}
+          y={60}
+          width={240}
+          height={180}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={2}
+        />
+        <line
+          x1={200}
+          y1={60}
+          x2={200}
+          y2={240}
+          stroke="var(--border)"
+          strokeWidth={1}
+          strokeDasharray="4 4"
+        />
+        <line
+          x1={80}
+          y1={150}
+          x2={320}
+          y2={150}
+          stroke="var(--border)"
+          strokeWidth={1}
+          strokeDasharray="4 4"
+        />
+      </svg>
+    );
+  }
+
+  const pad = 300;
+  const x = bounds.minX - pad;
+  const y = bounds.minY - pad;
+  const w = bounds.maxX - bounds.minX + pad * 2;
+  const h = bounds.maxY - bounds.minY + pad * 2;
 
   return (
     <svg
-      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      viewBox={`${x} ${y} ${w} ${h}`}
       className="h-full w-full"
       preserveAspectRatio="xMidYMid meet"
     >
-      <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="var(--secondary)" rx={4} />
-      {rooms.length > 0 ? (
-        rooms.map((room) => {
-          const minX = Math.min(...room.points.map((p) => p.x));
-          const minY = Math.min(...room.points.map((p) => p.y));
-          const maxX = Math.max(...room.points.map((p) => p.x));
-          const maxY = Math.max(...room.points.map((p) => p.y));
-          return (
-            <rect
-              key={room.id}
-              x={minX * scaleX + 2}
-              y={minY * scaleY + 2}
-              width={(maxX - minX) * scaleX - 4}
-              height={(maxY - minY) * scaleY - 4}
-              fill={room.color}
-              opacity={0.25}
-              rx={3}
-              stroke={room.color}
-              strokeWidth={1.5}
-              strokeOpacity={0.5}
-            />
-          );
-        })
-      ) : (
-        <>
-          <line
-            x1={svgWidth * 0.2}
-            y1={svgHeight * 0.2}
-            x2={svgWidth * 0.8}
-            y2={svgHeight * 0.2}
-            stroke="var(--border)"
-            strokeWidth={2}
-          />
-          <line
-            x1={svgWidth * 0.8}
-            y1={svgHeight * 0.2}
-            x2={svgWidth * 0.8}
-            y2={svgHeight * 0.8}
-            stroke="var(--border)"
-            strokeWidth={2}
-          />
-          <line
-            x1={svgWidth * 0.8}
-            y1={svgHeight * 0.8}
-            x2={svgWidth * 0.2}
-            y2={svgHeight * 0.8}
-            stroke="var(--border)"
-            strokeWidth={2}
-          />
-          <line
-            x1={svgWidth * 0.2}
-            y1={svgHeight * 0.8}
-            x2={svgWidth * 0.2}
-            y2={svgHeight * 0.2}
-            stroke="var(--border)"
-            strokeWidth={2}
-          />
-          <line
-            x1={svgWidth * 0.5}
-            y1={svgHeight * 0.2}
-            x2={svgWidth * 0.5}
-            y2={svgHeight * 0.8}
-            stroke="var(--border)"
-            strokeWidth={1}
-            strokeDasharray="4 4"
-          />
-          <line
-            x1={svgWidth * 0.2}
-            y1={svgHeight * 0.5}
-            x2={svgWidth * 0.8}
-            y2={svgHeight * 0.5}
-            stroke="var(--border)"
-            strokeWidth={1}
-            strokeDasharray="4 4"
-          />
-        </>
-      )}
+      <rect x={x} y={y} width={w} height={h} fill="var(--secondary)" />
+      {design.rooms.map((room) => (
+        <polygon
+          key={room.id}
+          points={room.polygon.map((p) => p.join(",")).join(" ")}
+          fill={ROOM_USAGE_COLORS[room.usage] ?? ROOM_USAGE_COLORS.generic}
+          opacity={0.25}
+          stroke={ROOM_USAGE_COLORS[room.usage] ?? ROOM_USAGE_COLORS.generic}
+          strokeWidth={30}
+          strokeOpacity={0.5}
+        />
+      ))}
     </svg>
   );
 };
@@ -287,9 +251,6 @@ export const DashboardView = () => {
 
   const [newDesignName, setNewDesignName] = useState("");
   const [newDesignDescription, setNewDesignDescription] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState(0);
-  const [customWidth, setCustomWidth] = useState(800);
-  const [customHeight, setCustomHeight] = useState(600);
 
   const designs = useMemo(() => fetchedDesigns ?? [], [fetchedDesigns]);
 
@@ -304,9 +265,6 @@ export const DashboardView = () => {
   const resetCreateForm = () => {
     setNewDesignName("");
     setNewDesignDescription("");
-    setSelectedPreset(0);
-    setCustomWidth(800);
-    setCustomHeight(600);
     setCreateTab("blank");
     setSelectedTemplate(null);
   };
@@ -317,21 +275,10 @@ export const DashboardView = () => {
       return;
     }
 
-    const isCustom = selectedPreset === 3;
-    const width = isCustom ? customWidth : DIMENSION_PRESETS[selectedPreset].width;
-    const height = isCustom ? customHeight : DIMENSION_PRESETS[selectedPreset].height;
-
-    if (isCustom && (customWidth < 200 || customHeight < 200)) {
-      toast.error("Minimum dimensions are 200 × 200");
-      return;
-    }
-
     try {
       const design = await createDesign.mutateAsync({
         name: newDesignName.trim(),
         description: newDesignDescription.trim() || undefined,
-        width,
-        height,
       });
       toast.success("Design created successfully");
       setCreateDialogOpen(false);
@@ -379,8 +326,6 @@ export const DashboardView = () => {
       const duplicated = await createDesign.mutateAsync({
         name: `${design.name} (Copy)`,
         description: design.description ?? undefined,
-        width: design.width,
-        height: design.height,
       });
       toast.success(`Duplicated as "${duplicated.name}"`);
     } catch {}
@@ -471,7 +416,7 @@ export const DashboardView = () => {
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-sm">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--secondary)]">
-                <Ruler className="h-4 w-4 text-[var(--muted-foreground)]" />
+                <Crown className="h-4 w-4 text-[var(--muted-foreground)]" />
               </div>
               <div>
                 <p className="text-lg leading-tight font-semibold text-[var(--foreground)]">
@@ -699,59 +644,6 @@ export const DashboardView = () => {
                     className="flex w-full resize-none rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm transition-colors placeholder:text-[var(--muted-foreground)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--background)] focus-visible:outline-none"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[var(--foreground)]">Dimensions</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DIMENSION_PRESETS.map((preset, idx) => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => setSelectedPreset(idx)}
-                        className={cn(
-                          "rounded-md border px-3 py-2.5 text-left text-sm transition-all",
-                          selectedPreset === idx
-                            ? "border-[var(--primary)] bg-[var(--primary)]/10 text-[var(--foreground)]"
-                            : "border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50 hover:text-[var(--foreground)]",
-                        )}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {selectedPreset === 3 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex gap-3"
-                  >
-                    <div className="flex-1 space-y-1.5">
-                      <label className="text-xs font-medium text-[var(--muted-foreground)]">
-                        Width (cm)
-                      </label>
-                      <Input
-                        type="number"
-                        min={200}
-                        max={5000}
-                        value={customWidth}
-                        onChange={(e) => setCustomWidth(Number(e.target.value))}
-                      />
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <label className="text-xs font-medium text-[var(--muted-foreground)]">
-                        Height (cm)
-                      </label>
-                      <Input
-                        type="number"
-                        min={200}
-                        max={5000}
-                        value={customHeight}
-                        onChange={(e) => setCustomHeight(Number(e.target.value))}
-                      />
-                    </div>
-                  </motion.div>
-                )}
               </>
             ) : (
               <div className="space-y-2">
@@ -773,7 +665,7 @@ export const DashboardView = () => {
                         {t.name}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--muted-foreground)] capitalize">
-                        {t.category} &middot; {t.width}&times;{t.height}
+                        {t.category}
                       </p>
                     </button>
                   ))}
@@ -906,10 +798,6 @@ const GridCard = ({ design, onOpen, onDuplicate, onRename, onDelete }: DesignCar
         <CardContent className="p-4">
           <h3 className="truncate font-semibold text-[var(--foreground)]">{design.name}</h3>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="gap-1 font-normal">
-              <Ruler className="h-3 w-3" />
-              {design.width} × {design.height}
-            </Badge>
             {design.rooms.length > 0 && (
               <Badge variant="secondary" className="gap-1 font-normal">
                 <DoorOpen className="h-3 w-3" />
@@ -981,10 +869,6 @@ const ListCard = ({ design, onOpen, onDuplicate, onRename, onDelete }: DesignCar
               </p>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1 font-normal">
-                <Ruler className="h-3 w-3" />
-                {design.width} × {design.height}
-              </Badge>
               {design.rooms.length > 0 && (
                 <Badge variant="secondary" className="gap-1 font-normal">
                   <DoorOpen className="h-3 w-3" />

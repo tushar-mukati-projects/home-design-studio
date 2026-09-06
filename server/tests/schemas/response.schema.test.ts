@@ -8,15 +8,29 @@ import {
   successResponse,
   planResponse,
 } from "@/schemas/response.schema";
+import { emptyCanvas } from "@/schemas/canvas.schema";
 
 const designRow = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Plan",
   description: null,
   thumbnail: null,
-  canvasData: { walls: [], rooms: [{ id: "r1" }], furniture: [{ id: "f1" }] },
-  width: 800,
-  height: 600,
+  canvasData: {
+    ...emptyCanvas(),
+    rooms: [
+      {
+        id: "r1",
+        name: "Living",
+        usage: "living_room",
+        polygon: [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+      },
+    ],
+    furniture: [{ id: "f1", item: "sofa", at: [100, 100], rotation: 0 }],
+  },
   userId: "22222222-2222-4222-8222-222222222222",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-02T00:00:00.000Z"),
@@ -24,16 +38,11 @@ const designRow = {
 };
 
 const furnitureRow = {
-  id: "33333333-3333-4333-8333-333333333333",
+  id: "sofa",
   name: "Sofa",
-  category: "living-room",
-  width: 200,
-  height: 90,
-  depth: 85,
+  category: "living_room",
+  size: [2000, 900, 850],
   color: "#9ca3af",
-  icon: "sofa",
-  description: null,
-  isDefault: true,
 };
 
 // These are the assertions that keep the OpenAPI document honest: if a
@@ -63,7 +72,7 @@ describe("declared responses match what the serializers actually return", () => 
 
   test("a response schema rejects the wrong shape", () => {
     expect(designResponse.safeParse({ id: "not-a-uuid" }).success).toBe(false);
-    expect(furnitureItemResponse.safeParse({ ...furnitureRow, width: "wide" }).success).toBe(false);
+    expect(furnitureItemResponse.safeParse({ ...furnitureRow, size: "big" }).success).toBe(false);
   });
 });
 

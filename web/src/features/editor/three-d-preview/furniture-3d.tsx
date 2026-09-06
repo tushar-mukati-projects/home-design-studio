@@ -3,9 +3,11 @@
 import { useMemo, useEffect } from "react";
 import { RoundedBox, Cylinder, Sphere } from "@react-three/drei";
 import { MeshStandardMaterial, Color } from "three";
-import type { PlacedFurniture } from "@/types";
+import type { Furniture } from "@/types";
+import { useEditorStore } from "@/stores/editor-store";
+import { furnitureColor, furnitureSize } from "@/lib/canvas";
 
-const SCALE = 0.01;
+const SCALE = 0.001;
 
 const CHROME = new MeshStandardMaterial({
   color: "#b8b8c0",
@@ -1057,58 +1059,39 @@ const FurnitureModel = ({ itemId, w, h, d, material }: FurnitureModelProps) => {
 };
 
 interface Furniture3DProps {
-  placed: PlacedFurniture;
+  placed: Furniture;
   offsetX: number;
   offsetZ: number;
   furnitureColor?: string;
 }
 
-export const Furniture3D = ({ placed, offsetX, offsetZ, furnitureColor }: Furniture3DProps) => {
-  const item = placed.furnitureItem;
+export const Furniture3D = ({
+  placed,
+  offsetX,
+  offsetZ,
+  furnitureColor: override,
+}: Furniture3DProps) => {
+  const catalog = useEditorStore((s) => s.catalog);
+  const [width, depth, height] = furnitureSize(placed, catalog);
+  const color = override || furnitureColor(placed, catalog);
 
   const material = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        color: furnitureColor || item.color || "#909098",
-        roughness: 0.5,
-        metalness: 0.15,
-      }),
-    [item.color, furnitureColor],
+    () => new MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.15 }),
+    [color],
   );
-
   useEffect(() => () => material.dispose(), [material]);
 
-  const dimensions = useMemo(() => {
-    const w = item.width * SCALE * (placed.scaleX || 1);
-    const h = (item.depth || item.height * 0.5) * SCALE;
-    const d = item.height * SCALE * (placed.scaleY || 1);
-
-    return { w, h, d };
-  }, [item.width, item.height, item.depth, placed.scaleX, placed.scaleY]);
-
-  const position = useMemo(() => {
-    const x = placed.x * SCALE - offsetX;
-    const y = dimensions.h / 2;
-    const z = placed.y * SCALE - offsetZ;
-
-    return [x, y, z] as [number, number, number];
-  }, [placed.x, placed.y, offsetX, offsetZ, dimensions.h]);
-
-  const rotation = useMemo(() => {
-    const rad = ((placed.rotation || 0) * Math.PI) / 180;
-    return [0, -rad, 0] as [number, number, number];
-  }, [placed.rotation]);
+  const w = width * SCALE;
+  const d = depth * SCALE;
+  const h = height * SCALE;
 
   return (
-    <group position={position} rotation={rotation}>
-      <group position={[0, -dimensions.h / 2, 0]}>
-        <FurnitureModel
-          itemId={item.icon ?? item.id}
-          w={dimensions.w}
-          h={dimensions.h}
-          d={dimensions.d}
-          material={material}
-        />
+    <group
+      position={[placed.at[0] * SCALE - offsetX, h / 2, placed.at[1] * SCALE - offsetZ]}
+      rotation={[0, -(placed.rotation * Math.PI) / 180, 0]}
+    >
+      <group position={[0, -h / 2, 0]}>
+        <FurnitureModel itemId={placed.item} w={w} h={h} d={d} material={material} />
       </group>
     </group>
   );

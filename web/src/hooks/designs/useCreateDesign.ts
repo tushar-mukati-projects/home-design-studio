@@ -6,8 +6,6 @@ import { API_ROUTES, QUERY_KEYS } from "./constants";
 interface CreateDesignPayload {
   name: string;
   description?: string;
-  width: number;
-  height: number;
 }
 
 export const useCreateDesign = () => {

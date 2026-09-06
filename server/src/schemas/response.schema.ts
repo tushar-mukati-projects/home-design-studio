@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { canvasSchema, catalogItemSchema, roomSchema, furnitureSchema } from "./canvas.schema";
 
 const permission = z.enum(["readonly", "readwrite"]);
 const isoDate = z.string().datetime();
@@ -6,24 +7,20 @@ const isoDate = z.string().datetime();
 export const errorResponse = z.object({ error: z.string() });
 export const successResponse = z.object({ success: z.literal(true) });
 
-const canvasElements = z.array(z.record(z.unknown()));
-
 export const designSummaryResponse = z.object({
   id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
   thumbnail: z.string().nullable(),
-  width: z.number(),
-  height: z.number(),
   userId: z.string().uuid(),
   createdAt: isoDate,
   updatedAt: isoDate,
-  rooms: canvasElements,
-  furniture: canvasElements,
+  rooms: z.array(roomSchema),
+  furniture: z.array(furnitureSchema),
 });
 
 export const designResponse = designSummaryResponse.extend({
-  canvasData: z.record(z.unknown()),
+  canvasData: canvasSchema,
 });
 
 export const designWithPermissionResponse = designResponse.extend({
@@ -44,18 +41,7 @@ export const designListResponse = z.object({
   offset: z.number().int(),
 });
 
-export const furnitureItemResponse = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  category: z.string(),
-  width: z.number(),
-  height: z.number(),
-  depth: z.number(),
-  color: z.string(),
-  icon: z.string().nullable(),
-  description: z.string().nullable(),
-  isDefault: z.boolean(),
-});
+export const furnitureItemResponse = catalogItemSchema;
 
 export const furnitureListResponse = z.array(furnitureItemResponse);
 
@@ -65,9 +51,7 @@ const templateResponse = z.object({
   description: z.string().nullable(),
   category: z.string(),
   thumbnail: z.string().nullable(),
-  canvasData: z.record(z.unknown()),
-  width: z.number(),
-  height: z.number(),
+  canvasData: canvasSchema,
   sortOrder: z.number().int(),
 });
 
@@ -76,7 +60,7 @@ export const templateListResponse = z.array(templateResponse);
 export const versionResponse = z.object({
   id: z.string().uuid(),
   name: z.string(),
-  canvasData: z.record(z.unknown()),
+  canvasData: canvasSchema,
   designId: z.string().uuid(),
   createdById: z.string().uuid().nullable(),
   createdAt: isoDate,

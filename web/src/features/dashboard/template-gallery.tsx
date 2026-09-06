@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFetchTemplates, useCreateFromTemplate } from "@/hooks/templates";
 import { cn } from "@/lib/utils";
-import type { DesignTemplate, Wall } from "@/types";
+import type { DesignTemplate } from "@/types";
+import { ROOM_USAGE_COLORS, boundsOf } from "@/lib/canvas";
 
 interface CategoryTab {
   label: string;
@@ -30,72 +31,54 @@ interface TemplatePreviewProps {
 }
 
 const TemplatePreview = ({ template }: TemplatePreviewProps) => {
-  const { width, height, canvasData } = template;
-  const walls: Wall[] = canvasData?.walls ?? [];
-  const rooms = canvasData?.rooms;
-  const furniture = canvasData?.furniture;
-  const aspectRatio = width / height;
-  const svgWidth = 400;
-  const svgHeight = svgWidth / aspectRatio;
-  const scaleX = svgWidth / width;
-  const scaleY = svgHeight / height;
-
-  const ROOM_FILLS: Record<string, string> = {
-    living_room: "#e8e8ec",
-    bedroom: "#e4e0ec",
-    kitchen: "#ece8e4",
-    bathroom: "#e0e8ec",
-    dining: "#ece8e0",
-    office: "#e4ece4",
-    hallway: "#f0f0f4",
-    closet: "#eaeaee",
-    generic: "#eaeaee",
-  };
+  const canvas = template.canvasData;
+  const bounds = boundsOf(canvas);
+  const pad = 300;
+  const minX = (bounds?.minX ?? 0) - pad;
+  const minY = (bounds?.minY ?? 0) - pad;
+  const width = bounds ? bounds.maxX - bounds.minX + pad * 2 : 8000;
+  const height = bounds ? bounds.maxY - bounds.minY + pad * 2 : 6000;
 
   return (
     <svg
-      viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+      viewBox={`${minX} ${minY} ${width} ${height}`}
       className="h-full w-full"
       preserveAspectRatio="xMidYMid meet"
     >
-      <rect x={0} y={0} width={svgWidth} height={svgHeight} fill="var(--secondary)" rx={4} />
-      {rooms?.map((room) => {
-        if (!room.points || room.points.length < 3) return null;
-        const pts = room.points.map((p) => `${p.x * scaleX},${p.y * scaleY}`).join(" ");
-        return (
-          <polygon
-            key={room.id}
-            points={pts}
-            fill={ROOM_FILLS[room.type] || ROOM_FILLS.generic}
-            stroke="none"
-          />
-        );
-      })}
-      {walls.map((wall) => (
+      <rect x={minX} y={minY} width={width} height={height} fill="var(--secondary)" />
+      {canvas.rooms.map((room) => (
+        <polygon
+          key={room.id}
+          points={room.polygon.map((p) => p.join(",")).join(" ")}
+          fill={ROOM_USAGE_COLORS[room.usage] ?? ROOM_USAGE_COLORS.generic}
+          opacity={0.18}
+        />
+      ))}
+      {canvas.walls.map((wall) => (
         <line
           key={wall.id}
-          x1={wall.x1 * scaleX}
-          y1={wall.y1 * scaleY}
-          x2={wall.x2 * scaleX}
-          y2={wall.y2 * scaleY}
-          stroke={wall.color}
-          strokeWidth={Math.max(wall.thickness * scaleX, 2)}
+          x1={wall.from[0]}
+          y1={wall.from[1]}
+          x2={wall.to[0]}
+          y2={wall.to[1]}
+          stroke={wall.color ?? "#52525b"}
+          strokeWidth={Math.max(wall.thickness, 40)}
           strokeLinecap="round"
         />
       ))}
-      {furniture?.map((f) => {
-        const w = (f.furnitureItem?.width ?? 40) * (f.scaleX ?? 1) * scaleX;
-        const h = (f.furnitureItem?.height ?? 40) * (f.scaleY ?? 1) * scaleY;
+      {canvas.furniture.map((f) => {
+        const [w, d] = f.size ?? [800, 600];
         return (
           <rect
             key={f.id}
-            x={f.x * scaleX - w / 2}
-            y={f.y * scaleY - h / 2}
+            x={f.at[0] - w / 2}
+            y={f.at[1] - d / 2}
             width={w}
-            height={h}
-            rx={2}
+            height={d}
+            rx={40}
             fill="#b4b4bc"
             opacity={0.5}
+            transform={`rotate(${f.rotation} ${f.at[0]} ${f.at[1]})`}
           />
         );
       })}

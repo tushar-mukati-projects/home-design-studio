@@ -1,30 +1,19 @@
-import type { Design, FurnitureItem, User } from "@prisma/client";
-
-type DesignWithRelations = Design & {
-  user?: User;
-};
+import type { Design, FurnitureItem } from "@prisma/client";
+import type { Canvas, CatalogItem } from "../schemas/canvas.schema";
 
 export const serializeDate = (date: Date): string => date.toISOString();
 
-export const serializeFurnitureItem = (item: FurnitureItem) => ({
+export const serializeFurnitureItem = (item: FurnitureItem): CatalogItem => ({
   id: item.id,
   name: item.name,
-  category: item.category,
-  width: item.width,
-  height: item.height,
-  depth: item.depth,
+  category: item.category as CatalogItem["category"],
+  size: item.size as CatalogItem["size"],
   color: item.color,
-  icon: item.icon,
-  description: item.description,
-  isDefault: item.isDefault,
 });
 
-const asArray = (value: unknown): Record<string, unknown>[] =>
-  Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
-
 // rooms and furniture are derived from canvasData so they can never be a stale copy.
-export const serializeDesign = (design: DesignWithRelations) => {
-  const canvas = (design.canvasData ?? {}) as Record<string, unknown>;
+export const serializeDesign = (design: Design) => {
+  const canvas = (design.canvasData ?? {}) as Partial<Canvas>;
 
   return {
     id: design.id,
@@ -32,19 +21,15 @@ export const serializeDesign = (design: DesignWithRelations) => {
     description: design.description,
     thumbnail: design.thumbnail,
     canvasData: design.canvasData,
-    width: design.width,
-    height: design.height,
     userId: design.userId,
     createdAt: serializeDate(design.createdAt),
     updatedAt: serializeDate(design.updatedAt),
-    rooms: asArray(canvas.rooms),
-    furniture: asArray(canvas.furniture),
+    rooms: Array.isArray(canvas.rooms) ? canvas.rooms : [],
+    furniture: Array.isArray(canvas.furniture) ? canvas.furniture : [],
   };
 };
 
-// For list views: same shape minus canvasData, which a listing never reads and
-// which duplicates the rooms/furniture already derived from it.
-export const serializeDesignSummary = (design: DesignWithRelations) => {
+export const serializeDesignSummary = (design: Design) => {
   const { canvasData: _canvasData, ...rest } = serializeDesign(design);
   return rest;
 };

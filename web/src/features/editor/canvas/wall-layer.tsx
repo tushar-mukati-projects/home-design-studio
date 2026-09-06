@@ -3,216 +3,165 @@
 import { memo, useRef, useCallback, useEffect, useState } from "react";
 import { Layer, Line, Circle, Text, Group, Shape } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
-import { pxToFeet } from "@/lib/constants";
+import { PX_PER_MM, formatLength } from "@/lib/constants";
+import { wallAngle, wallLength, toVec } from "@/lib/canvas";
 
 interface WallLayerProps {
   mousePosRef: React.RefObject<{ x: number; y: number } | null>;
   redrawRef: React.MutableRefObject<(() => void) | null>;
-  doorWindowPriorityRef: React.RefObject<boolean>;
+  openingPriorityRef: React.RefObject<boolean>;
 }
 
-const getWallLength = (x1: number, y1: number, x2: number, y2: number) => {
-  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-};
+const DEFAULT_WALL_COLOR = "#3a3a4a";
 
-const getWallAngle = (x1: number, y1: number, x2: number, y2: number) => {
-  return (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
-};
+export const WallLayer = memo(({ mousePosRef, redrawRef, openingPriorityRef }: WallLayerProps) => {
+  const walls = useEditorStore((s) => s.walls);
+  const activeTool = useEditorStore((s) => s.activeTool);
+  const selectedElementId = useEditorStore((s) => s.selectedElementId);
+  const isDrawing = useEditorStore((s) => s.isDrawing);
+  const currentWallStart = useEditorStore((s) => s.currentWallStart);
+  const zoom = useEditorStore((s) => s.zoom);
+  const canEdit = useEditorStore((s) => s.canEdit);
+  const updateWall = useEditorStore((s) => s.updateWall);
+  const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
+  const snapPoint = useEditorStore((s) => s.snapPoint);
 
-const getMidPoint = (x1: number, y1: number, x2: number, y2: number) => {
-  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
-};
+  // Millimetres per screen pixel, so handles and text stay the same size on screen.
+  const px = 1 / (zoom * PX_PER_MM);
 
-export const WallLayer = memo(
-  ({ mousePosRef, redrawRef, doorWindowPriorityRef }: WallLayerProps) => {
-    const walls = useEditorStore((s) => s.walls);
-    const activeTool = useEditorStore((s) => s.activeTool);
-    const selectedElementId = useEditorStore((s) => s.selectedElementId);
-    const isDrawing = useEditorStore((s) => s.isDrawing);
-    const currentWallStart = useEditorStore((s) => s.currentWallStart);
-    const zoom = useEditorStore((s) => s.zoom);
-    const canEdit = useEditorStore((s) => s.canEdit);
-    const updateWall = useEditorStore((s) => s.updateWall);
-    const setSelectedElement = useEditorStore((s) => s.setSelectedElement);
-    const snapPoint = useEditorStore((s) => s.snapPoint);
+  const [, forceRedraw] = useState(0);
+  const triggerRedraw = useCallback(() => forceRedraw((n) => n + 1), []);
+  useEffect(() => {
+    redrawRef.current = triggerRedraw;
+  }, [redrawRef, triggerRedraw]);
 
-    const draggingRef = useRef(false);
-    const previewShapeRef = useRef<{ getLayer: () => { batchDraw: () => void } | null } | null>(
-      null,
-    );
-    const [, forceRedraw] = useState(0);
+  const previewShapeRef = useRef(null);
 
-    const triggerRedraw = useCallback(() => {
-      forceRedraw((n) => n + 1);
-    }, []);
+  const select = (id: string) => {
+    if (openingPriorityRef.current) {
+      (openingPriorityRef as React.MutableRefObject<boolean>).current = false;
+      return;
+    }
+    if (activeTool === "select") setSelectedElement(id);
+  };
 
-    useEffect(() => {
-      redrawRef.current = triggerRedraw;
-    }, [redrawRef, triggerRedraw]);
+  return (
+    <Layer>
+      {walls.map((wall) => {
+        const isSelected = selectedElementId === wall.id;
+        const length = wallLength(wall);
+        const mid = [(wall.from[0] + wall.to[0]) / 2, (wall.from[1] + wall.to[1]) / 2];
+        const normal = wallAngle(wall) + Math.PI / 2;
+        const labelOffset = wall.thickness / 2 + 14 * px;
+        const labelX = mid[0] + Math.cos(normal) * labelOffset;
+        const labelY = mid[1] + Math.sin(normal) * labelOffset;
 
-    return (
-      <Layer>
-        {walls.map((wall) => {
-          const isSelected = selectedElementId === wall.id;
-          const length = getWallLength(wall.x1, wall.y1, wall.x2, wall.y2);
-          const mid = getMidPoint(wall.x1, wall.y1, wall.x2, wall.y2);
-          const angle = getWallAngle(wall.x1, wall.y1, wall.x2, wall.y2);
-          const normalAngle = angle + 90;
-          const labelOffset = wall.thickness / 2 + 14 / zoom;
-          const labelX = mid.x + Math.cos((normalAngle * Math.PI) / 180) * labelOffset;
-          const labelY = mid.y + Math.sin((normalAngle * Math.PI) / 180) * labelOffset;
+        const handle = (end: "from" | "to") => (
+          <>
+            <Circle
+              x={wall[end][0]}
+              y={wall[end][1]}
+              radius={14 * px}
+              fill="rgba(124, 99, 80, 0.15)"
+              stroke="rgba(124, 99, 80, 0.4)"
+              strokeWidth={1.5 * px}
+              listening={false}
+            />
+            <Circle
+              x={wall[end][0]}
+              y={wall[end][1]}
+              radius={8 * px}
+              fill="#ffffff"
+              stroke="#7c6350"
+              strokeWidth={2.5 * px}
+              shadowColor="#7c6350"
+              shadowBlur={8 * px}
+              shadowOpacity={0.6}
+              draggable={canEdit}
+              onDragEnd={(e) => {
+                const pos = snapPoint({ x: e.target.x(), y: e.target.y() });
+                updateWall(wall.id, { [end]: toVec(pos) });
+                e.target.position(pos);
+              }}
+            />
+          </>
+        );
 
-          return (
-            <Group key={wall.id}>
-              <Line
-                points={[wall.x1, wall.y1, wall.x2, wall.y2]}
-                stroke={isSelected ? "#52525b" : wall.color}
-                strokeWidth={wall.thickness}
-                lineCap="round"
-                lineJoin="round"
-                hitStrokeWidth={Math.max(wall.thickness, 20 / zoom)}
-                onClick={() => {
-                  if (doorWindowPriorityRef.current) {
-                    doorWindowPriorityRef.current = false;
-                    return;
-                  }
-                  if (activeTool === "select") {
-                    setSelectedElement(wall.id);
-                  }
-                }}
-                onTap={() => {
-                  if (doorWindowPriorityRef.current) {
-                    doorWindowPriorityRef.current = false;
-                    return;
-                  }
-                  if (activeTool === "select") {
-                    setSelectedElement(wall.id);
-                  }
-                }}
-              />
-              {isSelected && (
-                <>
-                  <Circle
-                    x={wall.x1}
-                    y={wall.y1}
-                    radius={14 / zoom}
-                    fill="rgba(124, 99, 80, 0.15)"
-                    stroke="rgba(124, 99, 80, 0.4)"
-                    strokeWidth={1.5 / zoom}
-                    listening={false}
-                  />
-                  <Circle
-                    x={wall.x1}
-                    y={wall.y1}
-                    radius={8 / zoom}
-                    fill="#ffffff"
-                    stroke="#7c6350"
-                    strokeWidth={2.5 / zoom}
-                    shadowColor="#7c6350"
-                    shadowBlur={8 / zoom}
-                    shadowOpacity={0.6}
-                    draggable={canEdit}
-                    onDragStart={() => {
-                      draggingRef.current = true;
-                    }}
-                    onDragEnd={(e) => {
-                      draggingRef.current = false;
-                      const pos = snapPoint({ x: e.target.x(), y: e.target.y() });
-                      updateWall(wall.id, { x1: pos.x, y1: pos.y });
-                      e.target.position({ x: pos.x, y: pos.y });
-                    }}
-                  />
-                  <Circle
-                    x={wall.x2}
-                    y={wall.y2}
-                    radius={14 / zoom}
-                    fill="rgba(124, 99, 80, 0.15)"
-                    stroke="rgba(124, 99, 80, 0.4)"
-                    strokeWidth={1.5 / zoom}
-                    listening={false}
-                  />
-                  <Circle
-                    x={wall.x2}
-                    y={wall.y2}
-                    radius={8 / zoom}
-                    fill="#ffffff"
-                    stroke="#7c6350"
-                    strokeWidth={2.5 / zoom}
-                    shadowColor="#7c6350"
-                    shadowBlur={8 / zoom}
-                    shadowOpacity={0.6}
-                    draggable={canEdit}
-                    onDragStart={() => {
-                      draggingRef.current = true;
-                    }}
-                    onDragEnd={(e) => {
-                      draggingRef.current = false;
-                      const pos = snapPoint({ x: e.target.x(), y: e.target.y() });
-                      updateWall(wall.id, { x2: pos.x, y2: pos.y });
-                      e.target.position({ x: pos.x, y: pos.y });
-                    }}
-                  />
-                  <Text
-                    x={labelX - 40}
-                    y={labelY - 8}
-                    width={80}
-                    align="center"
-                    text={`${pxToFeet(length).toFixed(1)} ft`}
-                    fontSize={12 / zoom}
-                    fontFamily="Inter, sans-serif"
-                    fill="#8b6f4e"
-                    listening={false}
-                  />
-                </>
-              )}
-            </Group>
-          );
-        })}
+        return (
+          <Group key={wall.id}>
+            <Line
+              points={[...wall.from, ...wall.to]}
+              stroke={isSelected ? "#52525b" : (wall.color ?? DEFAULT_WALL_COLOR)}
+              strokeWidth={wall.thickness}
+              lineCap="round"
+              lineJoin="round"
+              hitStrokeWidth={Math.max(wall.thickness, 20 * px)}
+              onClick={() => select(wall.id)}
+              onTap={() => select(wall.id)}
+            />
+            {isSelected && (
+              <>
+                {handle("from")}
+                {handle("to")}
+                <Text
+                  x={labelX - 400}
+                  y={labelY - 8 * px}
+                  width={800}
+                  align="center"
+                  text={formatLength(length)}
+                  fontSize={12 * px}
+                  fontFamily="Inter, sans-serif"
+                  fill="#8b6f4e"
+                  listening={false}
+                />
+              </>
+            )}
+          </Group>
+        );
+      })}
 
-        {activeTool === "wall" && isDrawing && currentWallStart && (
-          <Shape
-            ref={previewShapeRef as React.RefObject<never>}
-            sceneFunc={(ctx) => {
-              const mousePos = mousePosRef.current;
-              if (!mousePos) return;
-              const snapped = snapPoint(mousePos);
-              const sx = currentWallStart.x;
-              const sy = currentWallStart.y;
-              const ex = snapped.x;
-              const ey = snapped.y;
-              const length = getWallLength(sx, sy, ex, ey);
-              const mid = getMidPoint(sx, sy, ex, ey);
+      {activeTool === "wall" && isDrawing && currentWallStart && (
+        <Shape
+          ref={previewShapeRef}
+          sceneFunc={(ctx) => {
+            const mousePos = mousePosRef.current;
+            if (!mousePos) return;
+            const snapped = snapPoint(mousePos);
+            const sx = currentWallStart.x;
+            const sy = currentWallStart.y;
+            const ex = snapped.x;
+            const ey = snapped.y;
+            const length = Math.hypot(ex - sx, ey - sy);
 
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.strokeStyle = "rgba(124, 99, 80, 0.6)";
+            ctx.lineWidth = 80;
+            ctx.lineCap = "round";
+            ctx.setLineDash([100, 50]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            for (const [x, y, fill] of [
+              [sx, sy, "#52525b"],
+              [ex, ey, "rgba(124, 99, 80, 0.8)"],
+            ] as const) {
               ctx.beginPath();
-              ctx.moveTo(sx, sy);
-              ctx.lineTo(ex, ey);
-              ctx.strokeStyle = "rgba(124, 99, 80, 0.6)";
-              ctx.lineWidth = 8;
-              ctx.lineCap = "round";
-              ctx.setLineDash([10, 5]);
-              ctx.stroke();
-              ctx.setLineDash([]);
-
-              ctx.beginPath();
-              ctx.arc(sx, sy, 6 / zoom, 0, Math.PI * 2);
-              ctx.fillStyle = "#52525b";
+              ctx.arc(x, y, 6 * px, 0, Math.PI * 2);
+              ctx.fillStyle = fill;
               ctx.fill();
+            }
 
-              ctx.beginPath();
-              ctx.arc(ex, ey, 6 / zoom, 0, Math.PI * 2);
-              ctx.fillStyle = "rgba(124, 99, 80, 0.8)";
-              ctx.fill();
-
-              ctx.font = `bold ${13 / zoom}px Inter, sans-serif`;
-              ctx.textAlign = "center";
-              ctx.fillStyle = "#8b6f4e";
-              ctx.fillText(`${pxToFeet(length).toFixed(1)} ft`, mid.x, mid.y - 14 / zoom);
-            }}
-            listening={false}
-          />
-        )}
-      </Layer>
-    );
-  },
-);
+            ctx.font = `bold ${13 * px}px Inter, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#8b6f4e";
+            ctx.fillText(formatLength(length), (sx + ex) / 2, (sy + ey) / 2 - 14 * px);
+          }}
+          listening={false}
+        />
+      )}
+    </Layer>
+  );
+});
 WallLayer.displayName = "WallLayer";

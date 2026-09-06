@@ -1,7 +1,8 @@
 import { http, HttpResponse, delay } from "msw";
 import { _designs, serializeMockDesign } from "../store";
 import { mockUrl } from "../config";
-import type { Design, CanvasData, Room, PlacedFurniture } from "@/types";
+import type { Design, Canvas } from "@/types";
+import { emptyCanvas } from "@/lib/canvas";
 
 export const designHandlers = [
   http.get(mockUrl("/designs"), async ({ request }) => {
@@ -32,12 +33,7 @@ export const designHandlers = [
 
   http.post(mockUrl("/designs"), async ({ request }) => {
     await delay(300);
-    const input = (await request.json()) as {
-      name: string;
-      description?: string;
-      width?: number;
-      height?: number;
-    };
+    const input = (await request.json()) as { name: string; description?: string };
 
     const now = new Date().toISOString();
     const design: Design = {
@@ -45,17 +41,7 @@ export const designHandlers = [
       name: input.name,
       description: input.description ?? null,
       thumbnail: null,
-      width: input.width ?? 800,
-      height: input.height ?? 600,
-      canvasData: {
-        walls: [],
-        doors: [],
-        windows: [],
-        gridSize: 25,
-        zoom: 1,
-        panX: 0,
-        panY: 0,
-      },
+      canvasData: emptyCanvas(),
       rooms: [],
       furniture: [],
       createdAt: now,
@@ -76,21 +62,13 @@ export const designHandlers = [
     const updates = (await request.json()) as Partial<{
       name: string;
       description: string;
-      width: number;
-      height: number;
-      canvasData: CanvasData;
-      rooms: Room[];
-      furniture: PlacedFurniture[];
+      canvasData: Canvas;
     }>;
 
     const design = _designs[idx];
     if (updates.name !== undefined) design.name = updates.name;
     if (updates.description !== undefined) design.description = updates.description;
-    if (updates.width !== undefined) design.width = updates.width;
-    if (updates.height !== undefined) design.height = updates.height;
     if (updates.canvasData !== undefined) design.canvasData = updates.canvasData;
-    if (updates.rooms !== undefined) design.rooms = updates.rooms;
-    if (updates.furniture !== undefined) design.furniture = updates.furniture;
     design.updatedAt = new Date().toISOString();
 
     return HttpResponse.json(serializeMockDesign(design));

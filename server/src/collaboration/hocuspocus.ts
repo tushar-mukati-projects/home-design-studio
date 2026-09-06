@@ -7,7 +7,8 @@ import { prisma } from "../lib/db";
 import { getDesignPermission } from "../lib/design-access";
 import { firebaseAuth } from "../lib/firebase-admin";
 import { logger } from "../lib/logger";
-import { extractCanvasFromDoc, buildYjsState, COLLECTION_KEYS } from "./yjs-doc";
+import { extractCanvasFromDoc, buildYjsState, fillDocFromCanvas, META_KEY } from "./yjs-doc";
+import type { Canvas } from "../schemas/canvas.schema";
 
 const collabDocumentName = (designId: string) => `design:${designId}`;
 
@@ -72,10 +73,10 @@ const hocuspocus = new Hocuspocus({
         if (design.yjsState) {
           Y.applyUpdate(doc, new Uint8Array(design.yjsState));
         } else if (design.canvasData) {
-          Y.applyUpdate(doc, buildYjsState(design.canvasData as Record<string, unknown>));
+          Y.applyUpdate(doc, buildYjsState(design.canvasData as Partial<Canvas>));
         }
 
-        const meta = doc.getMap("metadata");
+        const meta = doc.getMap(META_KEY);
         doc.transact(() => {
           if (meta.get("name") !== design.name) meta.set("name", design.name);
           if (meta.get("ownerUid") !== design.user.authSub) {
@@ -94,26 +95,17 @@ const hocuspocus = new Hocuspocus({
         const doc = new Y.Doc();
         Y.applyUpdate(doc, state);
         const canvas = extractCanvasFromDoc(doc);
-
-        const meta = doc.getMap("metadata");
-        const name = meta.get("name") as string | undefined;
-
+        const name = doc.getMap(META_KEY).get("name") as string | undefined;
         doc.destroy();
 
-        const existing = await prisma.design.findUnique({
-          where: { id: designId },
-          select: { canvasData: true },
-        });
-        if (!existing) return;
-
-        const prev = (existing.canvasData ?? {}) as Record<string, unknown>;
-        const canvasData = { ...prev, ...canvas };
+        const exists = await prisma.design.count({ where: { id: designId } });
+        if (!exists) return;
 
         await prisma.design.update({
           where: { id: designId },
           data: {
             yjsState: Buffer.from(state),
-            canvasData: canvasData as unknown as Prisma.InputJsonValue,
+            canvasData: canvas as unknown as Prisma.InputJsonValue,
             ...(name ? { name } : {}),
           },
         });
@@ -126,7 +118,7 @@ const hocuspocus = new Hocuspocus({
 // stale copy over a direct column write, and a rebuilt state would lose deletion history.
 export const applyToCollabDoc = async (
   designId: string,
-  update: { canvas?: Record<string, unknown>; name?: string },
+  update: { canvas?: Canvas; name?: string },
 ): Promise<void> => {
   const documentName = collabDocumentName(designId);
   let connection: Awaited<ReturnType<typeof hocuspocus.openDirectConnection>> | null = null;
@@ -135,23 +127,8 @@ export const applyToCollabDoc = async (
     connection = await hocuspocus.openDirectConnection(documentName);
     await connection.transact((doc) => {
       doc.transact(() => {
-        if (update.canvas) {
-          for (const key of COLLECTION_KEYS) {
-            const map = doc.getMap(key);
-            map.clear();
-            const items = Array.isArray(update.canvas[key])
-              ? (update.canvas[key] as Array<Record<string, unknown>>)
-              : [];
-            for (const item of items) {
-              if (item && typeof item.id === "string") {
-                map.set(item.id, item);
-              }
-            }
-          }
-        }
-        if (update.name !== undefined) {
-          doc.getMap("metadata").set("name", update.name);
-        }
+        if (update.canvas) fillDocFromCanvas(doc, update.canvas);
+        if (update.name !== undefined) doc.getMap(META_KEY).set("name", update.name);
       });
     });
     logger.debug("Applied server-side change to collab doc", { designId });
@@ -166,9 +143,7 @@ export const applyToCollabDoc = async (
   }
 };
 
-export const readCollabCanvas = async (
-  designId: string,
-): Promise<Record<string, unknown> | null> => {
+export const readCollabCanvas = async (designId: string): Promise<Canvas | null> => {
   const documentName = collabDocumentName(designId);
   const doc = hocuspocus.documents.get(documentName);
   return doc ? extractCanvasFromDoc(doc) : null;

@@ -3,6 +3,8 @@ import type { Response } from "express";
 import { config } from "../lib/config";
 import { prisma } from "../lib/db";
 import { logger } from "../lib/logger";
+import { serializeFurnitureItem } from "../lib/serializers";
+import type { CatalogItem } from "../schemas/canvas.schema";
 
 if (!config.openaiApiKey) {
   throw new Error(
@@ -21,47 +23,58 @@ interface FurnishRequest {
   existingFurniture?: string[];
 }
 
-interface FurnitureSuggestion {
-  furnitureItemId: string;
-  name: string;
-  x: number;
-  y: number;
+interface Placement {
+  item: string;
+  at: [number, number];
   rotation: number;
 }
 
-const buildPrompt = (
-  req: FurnishRequest,
-  availableItems: { id: string; name: string; width: number; depth: number }[],
-): string => {
-  const itemList = availableItems
-    .map((i) => `- ${i.name} (id: ${i.id}, ${i.width}cm x ${i.depth}cm)`)
+// Room usages that have no catalog category of their own borrow the living room's.
+const CATEGORY_FOR_USAGE: Record<string, CatalogItem["category"]> = {
+  living_room: "living_room",
+  bedroom: "bedroom",
+  kitchen: "kitchen",
+  bathroom: "bathroom",
+  office: "office",
+  dining: "kitchen",
+};
+
+const buildPrompt = (req: FurnishRequest, items: CatalogItem[]): string => {
+  const list = items
+    .map((i) => `- ${i.name} (id: ${i.id}, ${i.size[0]} × ${i.size[1]} mm)`)
     .join("\n");
 
-  const existingNote = req.existingFurniture?.length
+  const existing = req.existingFurniture?.length
     ? `\nAlready placed: ${req.existingFurniture.join(", ")}. Do not duplicate these.`
     : "";
 
-  return `You are an interior designer. Furnish a ${req.roomType} room (${req.width}cm x ${req.height}cm) in ${req.style} style.
-${existingNote}
+  return `You are an interior designer. Furnish a ${req.roomType} room of ${req.width} × ${req.height} mm in ${req.style} style.
+${existing}
 
-Available furniture items:
-${itemList}
+Available items:
+${list}
 
-Return a JSON array of placements. Each placement must have:
-- furnitureItemId: the exact id from the list above
-- name: the furniture name
-- x: horizontal position in cm from left edge (must fit within room width)
-- y: vertical position in cm from top edge (must fit within room height)
-- rotation: angle in degrees (0, 90, 180, or 270)
+Return a JSON array of placements. Each placement has:
+- item: the exact id from the list above
+- x: centre position in mm from the room's left edge
+- y: centre position in mm from the room's top edge
+- rotation: 0, 90, 180 or 270
 
 Rules:
-- Only use items from the available list
-- Items must not overlap
-- Items must fit within the room dimensions
-- Leave walkable paths (at least 60cm)
-- Place items logically (bed against wall, desk near window area, etc.)
+- Only use items from the list
+- Items must not overlap and must fit entirely inside the room
+- Leave walkable paths of at least 600 mm
+- Place items sensibly (bed against a wall, desk near a window, and so on)
 
-Respond ONLY with the JSON array, no other text.`;
+Respond ONLY with the JSON array.`;
+};
+
+const send = (res: Response, data: Record<string, unknown>) =>
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+const finish = (res: Response) => {
+  res.write("data: [DONE]\n\n");
+  res.end();
 };
 
 export const furnishRoom = async (req: FurnishRequest, res: Response) => {
@@ -71,37 +84,17 @@ export const furnishRoom = async (req: FurnishRequest, res: Response) => {
   res.flushHeaders();
 
   try {
-    const categoryMap: Record<string, string> = {
-      living_room: "living-room",
-      bedroom: "bedroom",
-      kitchen: "kitchen",
-      bathroom: "bathroom",
-      office: "office",
-      dining: "living-room",
-      generic: "living-room",
-    };
+    const category = CATEGORY_FOR_USAGE[req.roomType] ?? "living_room";
+    const items = (await prisma.furnitureItem.findMany({ where: { category } })).map(
+      serializeFurnitureItem,
+    );
 
-    const category = categoryMap[req.roomType] || "living-room";
-
-    const availableItems = await prisma.furnitureItem.findMany({
-      where: { category },
-      select: { id: true, name: true, width: true, depth: true },
-    });
-
-    if (availableItems.length === 0) {
-      res.write(
-        `data: ${JSON.stringify({ type: "error", message: "No furniture items available for this room type" })}\n\n`,
-      );
-      res.write("data: [DONE]\n\n");
-      res.end();
-      return;
+    if (items.length === 0) {
+      send(res, { type: "error", message: "No furniture items available for this room type" });
+      return finish(res);
     }
 
-    const prompt = buildPrompt(req, availableItems);
-
-    res.write(
-      `data: ${JSON.stringify({ type: "status", message: "Analyzing room layout..." })}\n\n`,
-    );
+    send(res, { type: "status", message: "Analyzing room layout..." });
 
     const stream = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -110,59 +103,57 @@ export const furnishRoom = async (req: FurnishRequest, res: Response) => {
           role: "system",
           content: "You are an expert interior designer AI. Always respond with valid JSON.",
         },
-        { role: "user", content: prompt },
+        { role: "user", content: buildPrompt(req, items) },
       ],
       temperature: 0.7,
       stream: true,
     });
 
-    let fullContent = "";
+    send(res, { type: "status", message: "Generating furniture placements..." });
 
-    res.write(
-      `data: ${JSON.stringify({ type: "status", message: "Generating furniture placements..." })}\n\n`,
-    );
-
+    let full = "";
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content;
       if (delta) {
-        fullContent += delta;
-        res.write(`data: ${JSON.stringify({ type: "chunk", content: delta })}\n\n`);
+        full += delta;
+        send(res, { type: "chunk", content: delta });
       }
     }
 
-    let suggestions: FurnitureSuggestion[] = [];
+    let raw: { item?: string; x?: number; y?: number; rotation?: number }[] = [];
     try {
-      const jsonMatch = fullContent.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        suggestions = JSON.parse(jsonMatch[0]);
-      }
+      const match = full.match(/\[[\s\S]*\]/);
+      if (match) raw = JSON.parse(match[0]);
     } catch {
-      logger.error("Failed to parse AI furniture suggestions", { content: fullContent });
-      res.write(
-        `data: ${JSON.stringify({ type: "error", message: "Failed to parse AI response" })}\n\n`,
-      );
-      res.write("data: [DONE]\n\n");
-      res.end();
-      return;
+      logger.error("Failed to parse AI furniture suggestions", { content: full });
+      send(res, { type: "error", message: "Failed to parse AI response" });
+      return finish(res);
     }
 
-    const validItemIds = new Set(availableItems.map((i) => i.id));
-    const validSuggestions = suggestions.filter(
-      (s) =>
-        validItemIds.has(s.furnitureItemId) &&
-        s.x >= 0 &&
-        s.x <= req.width &&
-        s.y >= 0 &&
-        s.y <= req.height,
-    );
+    const valid = new Set(items.map((i) => i.id));
+    const placements: Placement[] = raw
+      .filter(
+        (p) =>
+          typeof p.item === "string" &&
+          valid.has(p.item) &&
+          typeof p.x === "number" &&
+          typeof p.y === "number" &&
+          p.x >= 0 &&
+          p.x <= req.width &&
+          p.y >= 0 &&
+          p.y <= req.height,
+      )
+      .map((p) => ({
+        item: p.item as string,
+        at: [Math.round(p.x as number), Math.round(p.y as number)],
+        rotation: p.rotation ?? 0,
+      }));
 
-    res.write(`data: ${JSON.stringify({ type: "suggestions", placements: validSuggestions })}\n\n`);
-    res.write("data: [DONE]\n\n");
-    res.end();
+    send(res, { type: "suggestions", placements });
+    finish(res);
   } catch (err) {
     logger.error("AI furnish room failed", { error: err });
-    res.write(`data: ${JSON.stringify({ type: "error", message: "AI service error" })}\n\n`);
-    res.write("data: [DONE]\n\n");
-    res.end();
+    send(res, { type: "error", message: "AI service error" });
+    finish(res);
   }
 };
