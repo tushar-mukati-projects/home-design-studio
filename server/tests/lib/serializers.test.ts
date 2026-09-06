@@ -37,14 +37,9 @@ const design = {
   userId: "user-1",
   createdAt: new Date("2026-01-02T03:04:05.000Z"),
   updatedAt: new Date("2026-02-03T04:05:06.000Z"),
-  yjsState: Buffer.from([1, 2, 3, 4]),
 };
 
 describe("serializeDesign", () => {
-  test("never leaks yjsState", () => {
-    expect(serializeDesign(design as never)).not.toHaveProperty("yjsState");
-  });
-
   test("exposes exactly the intended keys", () => {
     expect(Object.keys(serializeDesign(design as never)).sort()).toEqual(
       [

@@ -3,7 +3,6 @@ import { prisma } from "../lib/db";
 import { logger } from "../lib/logger";
 import { DEFAULT_TEMPLATES } from "../lib/seed-data/templates";
 import { serializeDesign } from "../lib/serializers";
-import { buildYjsState } from "../collaboration/yjs-doc";
 import type { Canvas } from "../schemas/canvas.schema";
 
 export const listTemplates = () =>
@@ -23,7 +22,6 @@ export const createDesignFromTemplate = async (
       name,
       description: template.description,
       canvasData: canvas as unknown as Prisma.InputJsonValue,
-      yjsState: buildYjsState(canvas),
       userId,
     },
   });

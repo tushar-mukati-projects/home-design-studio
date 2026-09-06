@@ -58,23 +58,14 @@ const hocuspocus = new Hocuspocus({
 
         const design = await prisma.design.findUnique({
           where: { id: designId },
-          select: {
-            yjsState: true,
-            canvasData: true,
-            name: true,
-            user: { select: { authSub: true } },
-          },
+          select: { canvasData: true, name: true, user: { select: { authSub: true } } },
         });
 
         if (!design) return null;
 
+        // The live document is rebuilt from canvas_data every time it is opened.
         const doc = new Y.Doc();
-
-        if (design.yjsState) {
-          Y.applyUpdate(doc, new Uint8Array(design.yjsState));
-        } else if (design.canvasData) {
-          Y.applyUpdate(doc, buildYjsState(design.canvasData as Partial<Canvas>));
-        }
+        Y.applyUpdate(doc, buildYjsState(design.canvasData as Partial<Canvas>));
 
         const meta = doc.getMap(META_KEY);
         doc.transact(() => {
@@ -104,7 +95,6 @@ const hocuspocus = new Hocuspocus({
         await prisma.design.update({
           where: { id: designId },
           data: {
-            yjsState: Buffer.from(state),
             canvasData: canvas as unknown as Prisma.InputJsonValue,
             ...(name ? { name } : {}),
           },
@@ -115,7 +105,7 @@ const hocuspocus = new Hocuspocus({
 });
 
 // The write path for a design's canvas: an open document would otherwise flush its own
-// stale copy over a direct column write, and a rebuilt state would lose deletion history.
+// stale copy over a direct column write.
 export const applyToCollabDoc = async (
   designId: string,
   update: { canvas?: Canvas; name?: string },

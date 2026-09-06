@@ -218,18 +218,21 @@ furniture all live in that one JSON column. The API's `rooms` and `furniture` fi
 
 **A design has a live copy while it is being edited.** The editor syncs through a Yjs
 document over WebSocket (so several people can edit at once). The document is the canvas
-with each array turned into a `Y.Map` keyed by id, plus a `meta` map for the name, and it
-owns persistence: its save hook writes `canvas_data` and `yjs_state` together.
+with each array turned into a `Y.Map` keyed by id, plus a `meta` map for the name. It is
+rebuilt from `canvas_data` whenever a design is opened and its save hook writes
+`canvas_data` back — the column is the only stored copy.
+
+Because the rebuilt document carries no edit history, a client that reconnects after the
+server has closed the document **adopts the server copy** rather than merging into it. Edits
+made during the disconnection are dropped; nothing is resurrected or half-merged.
 
 So **server-side canvas changes go through the document, never the columns.**
 `updateDesign()` and version restore both call `applyToCollabDoc()`
 (`collaboration/hocuspocus.ts`), which:
 
 - reaches any editor that currently has the design open, instead of being flushed away by it;
-- loads the existing CRDT state first, so removing an element records a real deletion — a
-  freshly rebuilt state has no deletion history, and a client reconnecting with an old
-  local copy would push the removed elements straight back;
-- keeps `canvas_data` and `yjs_state` in agreement.
+- records real deletions in the live document, so connected editors drop the element rather
+  than pushing their copy of it back.
 
 It throws if it cannot apply the change, so a caller never reports success on a write that
 did not land.

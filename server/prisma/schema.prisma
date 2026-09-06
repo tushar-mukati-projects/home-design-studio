@@ -81,7 +81,6 @@ model Design {
   thumbnail       String?
 
   canvasData      Json             @map("canvas_data")
-  yjsState        Bytes?           @map("yjs_state")
 
   userId          String           @map("user_id")
   createdAt       DateTime         @default(now()) @map("created_at")

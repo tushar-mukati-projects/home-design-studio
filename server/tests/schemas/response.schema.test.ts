@@ -34,7 +34,6 @@ const designRow = {
   userId: "22222222-2222-4222-8222-222222222222",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-02T00:00:00.000Z"),
-  yjsState: Buffer.from([1]),
 };
 
 const furnitureRow = {

@@ -69,6 +69,10 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   });
   const [error, setError] = useState<string | null>(null);
   const [hasSyncedOnce, setHasSyncedOnce] = useState(false);
+  // Bumped on a dropped connection so the effect below starts a fresh document. The server
+  // rebuilds its copy from canvas_data with no edit history, so merging our old document into
+  // it would resurrect deleted elements; adopting the server copy is the predictable rule.
+  const [generation, setGeneration] = useState(0);
   const canEditRef = useRef(true);
   const cursorsRef = useRef<Map<number, CollaboratorCursor>>(new Map());
 
@@ -105,15 +109,17 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
       docRef.current = doc;
       initialSyncDoneRef.current = false;
 
-      useEditorStore.setState({
-        walls: [],
-        openings: [],
-        rooms: [],
-        furniture: [],
-        past: [],
-        future: [],
-        selectedElementId: null,
-      });
+      if (generation === 0) {
+        useEditorStore.setState({
+          walls: [],
+          openings: [],
+          rooms: [],
+          furniture: [],
+          past: [],
+          future: [],
+          selectedElementId: null,
+        });
+      }
 
       const maps = new Map<CollectionKey, Y.Map<unknown>>();
       for (const key of COLLECTION_KEYS) maps.set(key, doc.getMap(key));
@@ -154,6 +160,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
 
       provider.on("status", ({ status }: { status: string }) => {
         setConnected(status === "connected");
+        if (status === "disconnected" && initialSyncDoneRef.current) setGeneration((g) => g + 1);
       });
 
       provider.on("authenticated", () => {
@@ -244,7 +251,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
       cancelled = true;
       cleanupFn?.();
     };
-  }, [designId, enabled, setConnected, setSynced, setCollaborators]);
+  }, [designId, enabled, generation, setConnected, setSynced, setCollaborators]);
 
   const lastCursorBroadcastRef = useRef(0);
   const cursorFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
