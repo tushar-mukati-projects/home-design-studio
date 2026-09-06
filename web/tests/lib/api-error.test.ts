@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import { describe, test, expect } from "bun:test";
 import { AxiosError, AxiosHeaders } from "axios";
 import { getApiErrorMessage, sessionErrorMessage } from "@/lib/api-error";
