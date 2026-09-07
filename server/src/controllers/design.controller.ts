@@ -12,11 +12,13 @@ import * as designService from "../services/design.service";
 
 export const create = async (req: Request, res: Response) => {
   const { body } = validated(req, createDesignSchema);
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const design = await designService.createDesign(body, userId);
+  const { userId, email } = (req as AuthenticatedRequest).auth!;
+  const design = await designService.createDesign(body, userId, email);
 
   if (!design) {
-    res.status(404).json({ error: "Template not found" });
+    res
+      .status(404)
+      .json({ error: body.duplicateOf ? "Design to copy not found" : "Template not found" });
     return;
   }
 

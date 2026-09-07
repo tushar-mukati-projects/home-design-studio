@@ -8,8 +8,6 @@ interface UpdateDesignPayload {
   name?: string;
   description?: string;
   thumbnail?: string;
-  width?: number;
-  height?: number;
   canvasData?: Canvas;
 }
 

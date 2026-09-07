@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Layer, Group, Shape, Rect, Text } from "react-konva";
 import type { CollaboratorCursor } from "@/stores/collaboration-store";
-import { EXPORT_HIDDEN_LAYER_NAME } from "@/lib/constants";
+import { EXPORT_HIDDEN_LAYER_NAME, PX_PER_MM } from "@/lib/constants";
+import { useEditorStore } from "@/stores/editor-store";
 
 interface CollaboratorCursorsProps {
   collaborators: CollaboratorCursor[];
@@ -13,6 +14,9 @@ const CURSOR_FADE_MS = 5000;
 
 export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps) => {
   const [now, setNow] = useState(() => Date.now());
+  const zoom = useEditorStore((s) => s.zoom);
+  // The stage is in millimetres; this keeps the cursor and label the same size on screen.
+  const px = 1 / (zoom * PX_PER_MM);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -25,10 +29,10 @@ export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps)
         const elapsed = now - c.lastSeen;
         const opacity = elapsed > CURSOR_FADE_MS ? 0.2 : 1;
         const displayName = c.name.split("-").join(" ");
-        const labelW = displayName.length * 6.2 + 16;
+        const labelW = displayName.length * 7 + 18;
 
         return (
-          <Group key={c.id} x={c.x} y={c.y} opacity={opacity}>
+          <Group key={c.id} x={c.x} y={c.y} opacity={opacity} scaleX={px} scaleY={px}>
             <Shape
               sceneFunc={(ctx, shape) => {
                 ctx.beginPath();
@@ -64,7 +68,7 @@ export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps)
               width={labelW}
               height={14}
               text={displayName}
-              fontSize={10}
+              fontSize={11}
               fontStyle="600"
               fill="#fff"
               align="center"

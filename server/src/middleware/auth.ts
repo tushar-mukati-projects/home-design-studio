@@ -3,6 +3,11 @@ import { prisma } from "../lib/db";
 import { logger } from "../lib/logger";
 import type { Request, Response, NextFunction } from "express";
 import type { AuthInfo, AuthenticatedRequest } from "../lib/types";
+import { TtlCache } from "../lib/ttl-cache";
+
+// The user row for a uid does not change between requests, but looking it up costs a full
+// database round trip on every call. Token verification itself still runs every time.
+const identityCache = new TtlCache<string, AuthInfo>(5 * 60 * 1000);
 
 type Resolved = { state: "ok"; auth: AuthInfo } | { state: "anonymous" } | { state: "invalid" };
 
@@ -21,6 +26,10 @@ const resolveAuth = async (req: Request): Promise<Resolved> => {
   }
 
   const email = decoded.email?.toLowerCase() ?? null;
+  const verifiedEmail = decoded.email_verified && email ? email : undefined;
+
+  const cached = identityCache.get(decoded.uid);
+  if (cached && cached.email === verifiedEmail) return { state: "ok", auth: cached };
 
   let user = await prisma.user.findUnique({ where: { authSub: decoded.uid } });
 
@@ -34,14 +43,9 @@ const resolveAuth = async (req: Request): Promise<Resolved> => {
     });
   }
 
-  return {
-    state: "ok",
-    auth: {
-      userId: user.id,
-      authSub: decoded.uid,
-      email: decoded.email_verified && email ? email : undefined,
-    },
-  };
+  const auth: AuthInfo = { userId: user.id, authSub: decoded.uid, email: verifiedEmail };
+  identityCache.set(decoded.uid, auth);
+  return { state: "ok", auth };
 };
 
 export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {

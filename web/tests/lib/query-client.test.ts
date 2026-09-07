@@ -50,7 +50,7 @@ describe("global mutation error handling", () => {
 
   test("still reports when the server sends no message", async () => {
     await runFailingMutation(serverError(503, ""));
-    expect(errorToasts[0]).toContain("temporarily unavailable");
+    expect(errorToasts[0]).toContain("Try again");
   });
 
   test("a caller can opt out with meta.skipErrorToast", async () => {
