@@ -1,38 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Layer, Group, Shape, Rect, Text } from "react-konva";
-import type { CollaboratorCursor } from "@/stores/collaboration-store";
-import { EXPORT_HIDDEN_LAYER_NAME, PX_PER_MM } from "@/lib/constants";
+import { memo, useState, useEffect } from "react";
+import { Group, Shape, Rect, Text } from "react-konva";
+import { useCollaborationStore } from "@/stores/collaboration-store";
 import { useEditorStore } from "@/stores/editor-store";
-
-interface CollaboratorCursorsProps {
-  collaborators: CollaboratorCursor[];
-}
+import { PX_PER_MM } from "@/lib/constants";
 
 const CURSOR_FADE_MS = 5000;
+const flat = { perfectDrawEnabled: false, shadowForStrokeEnabled: false } as const;
 
-export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps) => {
-  const [now, setNow] = useState(() => Date.now());
+// Lives in the overlay layer; positions are millimetres, the glyph is scaled to screen size.
+export const CollaboratorCursors = memo(function CollaboratorCursors() {
+  const collaborators = useCollaborationStore((s) => s.collaborators);
   const zoom = useEditorStore((s) => s.zoom);
-  // The stage is in millimetres; this keeps the cursor and label the same size on screen.
   const px = 1 / (zoom * PX_PER_MM);
 
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (collaborators.length === 0) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [collaborators.length]);
 
   return (
-    <Layer listening={false} name={EXPORT_HIDDEN_LAYER_NAME}>
+    <>
       {collaborators.map((c) => {
-        const elapsed = now - c.lastSeen;
-        const opacity = elapsed > CURSOR_FADE_MS ? 0.2 : 1;
+        const faded = now - c.lastSeen > CURSOR_FADE_MS;
         const displayName = c.name.split("-").join(" ");
         const labelW = displayName.length * 7 + 18;
 
         return (
-          <Group key={c.id} x={c.x} y={c.y} opacity={opacity} scaleX={px} scaleY={px}>
+          <Group
+            key={c.id}
+            x={c.x}
+            y={c.y}
+            opacity={faded ? 0.25 : 1}
+            scaleX={px}
+            scaleY={px}
+            listening={false}
+          >
             <Shape
               sceneFunc={(ctx, shape) => {
                 ctx.beginPath();
@@ -49,18 +55,16 @@ export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps)
               fill={c.color}
               stroke="#fff"
               strokeWidth={1.2}
+              {...flat}
             />
-            <Rect x={13} y={17} width={labelW} height={20} fill={c.color} cornerRadius={4} />
-            <Shape
-              sceneFunc={(ctx, shape) => {
-                ctx.beginPath();
-                ctx.moveTo(13, 22);
-                ctx.lineTo(17, 17);
-                ctx.lineTo(21, 22);
-                ctx.closePath();
-                ctx.fillStrokeShape(shape);
-              }}
+            <Rect
+              x={13}
+              y={17}
+              width={labelW}
+              height={20}
               fill={c.color}
+              cornerRadius={4}
+              {...flat}
             />
             <Text
               x={13}
@@ -77,6 +81,6 @@ export const CollaboratorCursors = ({ collaborators }: CollaboratorCursorsProps)
           </Group>
         );
       })}
-    </Layer>
+    </>
   );
-};
+});

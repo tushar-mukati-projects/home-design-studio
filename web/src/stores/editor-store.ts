@@ -68,6 +68,7 @@ interface EditorState extends Collections {
 
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
+  setView: (view: { zoom: number; panX: number; panY: number }) => void;
   setGridSize: (size: number) => void;
   toggleGrid: () => void;
   toggleSnap: () => void;
@@ -277,6 +278,7 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
 
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
   setPan: (x, y) => set({ panX: x, panY: y }),
+  setView: ({ zoom, panX, panY }) => set({ zoom: Math.max(0.1, Math.min(5, zoom)), panX, panY }),
   setGridSize: (size) => set({ gridSize: Math.max(50, Math.min(1000, size)) }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),

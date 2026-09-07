@@ -31,6 +31,7 @@ import { VersionHistoryPanel } from "./version-history/version-history-panel";
 import { ImportDesignModal } from "./import/import-design-modal";
 import { DesignChat } from "./ai-chat/design-chat";
 import { useCollaboration, ConnectionStatus } from "./collaboration";
+import { useCollaborationStore } from "@/stores/collaboration-store";
 import { resolveShortcut, shouldPreventDefault, shortcutForTool } from "./keyboard-shortcuts";
 import { PX_PER_MM } from "@/lib/constants";
 import { boundsOf } from "@/lib/canvas";
@@ -60,6 +61,19 @@ const SIDEBAR_TOOLS: SidebarTool[] = BASE_TOOLS.map((t) => ({
   ...t,
   shortcut: shortcutForTool(t.tool),
 }));
+
+// Only this label re-renders as the zoom changes; the rest of the editor chrome does not.
+const ZoomLabel = ({ onClick }: { onClick: () => void }) => {
+  const zoom = useEditorStore((s) => s.zoom);
+  return (
+    <button
+      onClick={onClick}
+      className="min-w-[40px] px-1 py-1 font-mono text-[10px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] sm:min-w-[52px] sm:px-2 sm:text-xs"
+    >
+      {Math.round(zoom * 100)}%
+    </button>
+  );
+};
 
 const fitToScreen = (
   container: HTMLDivElement,
@@ -108,12 +122,12 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
     isConnected,
     isSynced,
     hasSyncedOnce,
-    collaborators,
     broadcastCursor,
     designMeta,
     updateDesignName,
     error,
   } = useCollaboration(designId, collaborationEnabled);
+  const collaborators = useCollaborationStore((s) => s.collaborators);
 
   const canEdit = permissionOverride
     ? permissionOverride === "owner" || permissionOverride === "readwrite"
@@ -122,7 +136,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
 
   const activeTool = useEditorStore((s) => s.activeTool);
   const setTool = useEditorStore((s) => s.setTool);
-  const zoom = useEditorStore((s) => s.zoom);
   const setZoom = useEditorStore((s) => s.setZoom);
   const setPan = useEditorStore((s) => s.setPan);
   const undo = useEditorStore((s) => s.undo);
@@ -243,12 +256,12 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   );
 
   const handleZoomIn = useCallback(() => {
-    setZoom(Math.min(zoom * 1.2, 5));
-  }, [zoom, setZoom]);
+    setZoom(Math.min(useEditorStore.getState().zoom * 1.2, 5));
+  }, [setZoom]);
 
   const handleZoomOut = useCallback(() => {
-    setZoom(Math.max(zoom / 1.2, 0.1));
-  }, [zoom, setZoom]);
+    setZoom(Math.max(useEditorStore.getState().zoom / 1.2, 0.1));
+  }, [setZoom]);
 
   const handleZoomReset = useCallback(() => {
     const container = canvasContainerRef.current;
@@ -352,7 +365,6 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             containerRef={canvasContainerRef}
             stageRef={stageRef}
             onCursorMove={canEdit ? broadcastCursor : undefined}
-            collaborators={collaborators}
           />
 
           {collaborationEnabled && canEdit && (
@@ -479,12 +491,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
                 <ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
-            <button
-              onClick={handleZoomReset}
-              className="min-w-[40px] px-1 py-1 font-mono text-[10px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] sm:min-w-[52px] sm:px-2 sm:text-xs"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
+            <ZoomLabel onClick={handleZoomReset} />
             <Tooltip content="Zoom In" side="top">
               <Button
                 variant="ghost"
