@@ -44,7 +44,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useFetchDesigns, useCreateDesign, useDeleteDesign } from "@/hooks/designs";
+import {
+  useFetchDesigns,
+  useCreateDesign,
+  useDeleteDesign,
+  useUpdateDesign,
+} from "@/hooks/designs";
 import { useSharedWithMe } from "@/hooks/designs/useSharing";
 import { useFetchTemplates, useCreateFromTemplate } from "@/hooks/templates";
 import { useFetchPlan } from "@/hooks/billing";
@@ -221,6 +226,7 @@ export const DashboardView = () => {
   const { data: sharedDesigns } = useSharedWithMe();
   const createDesign = useCreateDesign();
   const deleteDesign = useDeleteDesign();
+  const updateDesign = useUpdateDesign();
   const { data: templates } = useFetchTemplates();
   const createFromTemplate = useCreateFromTemplate();
   const { data: planData } = useFetchPlan();
@@ -246,7 +252,7 @@ export const DashboardView = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [designToDelete, setDesignToDelete] = useState<DesignSummary | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
-  const [, setDesignToRename] = useState<DesignSummary | null>(null);
+  const [designToRename, setDesignToRename] = useState<DesignSummary | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
   const [newDesignName, setNewDesignName] = useState("");
@@ -326,8 +332,25 @@ export const DashboardView = () => {
       const duplicated = await createDesign.mutateAsync({
         name: `${design.name} (Copy)`,
         description: design.description ?? undefined,
+        duplicateOf: design.id,
       });
       toast.success(`Duplicated as "${duplicated.name}"`);
+    } catch {}
+  };
+
+  const closeRenameDialog = () => {
+    setRenameDialogOpen(false);
+    setDesignToRename(null);
+  };
+
+  const handleRename = async () => {
+    const name = renameValue.trim();
+    if (!designToRename || !name) return;
+    if (name === designToRename.name) return closeRenameDialog();
+    try {
+      await updateDesign.mutateAsync({ id: designToRename.id, name });
+      toast.success(`Renamed to "${name}"`);
+      closeRenameDialog();
     } catch {}
   };
 
@@ -730,7 +753,7 @@ export const DashboardView = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+      <Dialog open={renameDialogOpen} onOpenChange={(open) => !open && closeRenameDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>Rename Design</DialogTitle>
@@ -742,34 +765,17 @@ export const DashboardView = () => {
               onChange={(e) => setRenameValue(e.target.value)}
               placeholder="Design name"
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  toast.success(`Renamed to "${renameValue}"`);
-                  setRenameDialogOpen(false);
-                  setDesignToRename(null);
-                }
+                if (e.key === "Enter") void handleRename();
               }}
+              autoFocus
             />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setRenameDialogOpen(false);
-                setDesignToRename(null);
-              }}
-            >
+            <Button variant="outline" onClick={closeRenameDialog}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                if (renameValue.trim()) {
-                  toast.success(`Renamed to "${renameValue}"`);
-                  setRenameDialogOpen(false);
-                  setDesignToRename(null);
-                }
-              }}
-            >
-              Rename
+            <Button onClick={handleRename} disabled={!renameValue.trim() || updateDesign.isPending}>
+              {updateDesign.isPending ? "Renaming…" : "Rename"}
             </Button>
           </DialogFooter>
         </DialogContent>

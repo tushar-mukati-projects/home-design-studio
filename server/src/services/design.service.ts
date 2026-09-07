@@ -6,6 +6,7 @@ import {
   findDesignByLinkCode,
   findEditableDesign,
   getDesignPermission,
+  readableDesignWhere,
 } from "../lib/design-access";
 import { createDesignFromTemplate } from "./template.service";
 import { emptyCanvas, type Canvas } from "../schemas/canvas.schema";
@@ -20,16 +21,28 @@ export const createDesign = async (
     name: string;
     description?: string;
     templateId?: string;
+    duplicateOf?: string;
   },
   userId: string,
+  email?: string,
 ) => {
   if (data.templateId) return createDesignFromTemplate(data.templateId, userId, data.name);
+
+  let canvasData: Prisma.InputJsonValue = emptyCanvas();
+  if (data.duplicateOf) {
+    const source = await prisma.design.findFirst({
+      where: readableDesignWhere(data.duplicateOf, userId, email),
+      select: { canvasData: true },
+    });
+    if (!source) return null;
+    canvasData = source.canvasData as Prisma.InputJsonValue;
+  }
 
   const design = await prisma.design.create({
     data: {
       name: data.name,
       description: data.description,
-      canvasData: emptyCanvas(),
+      canvasData,
       userId,
     },
   });

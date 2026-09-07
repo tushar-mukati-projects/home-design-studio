@@ -6,6 +6,7 @@ export const createDesignSchema = z.object({
     name: z.string().min(1).max(255),
     description: z.string().max(2000).optional(),
     templateId: z.string().uuid().optional(),
+    duplicateOf: z.string().uuid().optional(),
   }),
 });
 

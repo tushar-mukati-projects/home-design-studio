@@ -25,15 +25,15 @@ describe("getApiErrorMessage", () => {
   });
 
   test("falls back to a readable message per status", () => {
-    expect(getApiErrorMessage(axiosError(401, {}))).toContain("sign in");
+    expect(getApiErrorMessage(axiosError(401, {}))).toContain("Sign in again");
     expect(getApiErrorMessage(axiosError(403, {}))).toContain("permission");
     expect(getApiErrorMessage(axiosError(404, {}))).toContain("no longer exists");
-    expect(getApiErrorMessage(axiosError(503, {}))).toContain("temporarily unavailable");
+    expect(getApiErrorMessage(axiosError(503, {}))).toContain("Try again");
   });
 
   test("explains an unreachable server rather than blaming the user", () => {
     const offline = new AxiosError("Network Error");
-    expect(getApiErrorMessage(offline)).toContain("Cannot reach the server");
+    expect(getApiErrorMessage(offline)).toContain("can't connect");
   });
 
   test("never returns an empty string", () => {
@@ -69,18 +69,18 @@ describe("sessionErrorMessage", () => {
   };
 
   test("no response at all means the server is not reachable", () => {
-    expect(sessionErrorMessage(axiosError())).toContain("Cannot reach the server");
+    expect(sessionErrorMessage(axiosError())).toContain("can't connect");
   });
 
   test("a 401 tells the user to sign in again", () => {
-    expect(sessionErrorMessage(axiosError(401))).toContain("sign in again");
+    expect(sessionErrorMessage(axiosError(401))).toContain("Sign in again");
   });
 
   test("a 503 is the database, not the user", () => {
-    expect(sessionErrorMessage(axiosError(503))).toContain("database");
+    expect(sessionErrorMessage(axiosError(503))).toContain("try again");
   });
 
   test("anything else carries the generic message through", () => {
-    expect(sessionErrorMessage(new Error("weird"))).toBe("Could not load your account. weird");
+    expect(sessionErrorMessage(new Error("weird"))).toBe("We couldn't load your account. weird");
   });
 });

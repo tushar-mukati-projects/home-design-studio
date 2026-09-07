@@ -6,6 +6,8 @@ import { API_ROUTES, QUERY_KEYS } from "./constants";
 interface CreateDesignPayload {
   name: string;
   description?: string;
+  templateId?: string;
+  duplicateOf?: string;
 }
 
 export const useCreateDesign = () => {
