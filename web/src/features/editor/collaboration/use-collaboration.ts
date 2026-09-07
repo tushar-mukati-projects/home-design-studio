@@ -19,13 +19,20 @@ interface HasId {
 
 const LOCAL_ORIGIN = "local";
 
-const syncArrayToYMap = <T extends HasId>(doc: Y.Doc, yMap: Y.Map<unknown>, items: T[]): void => {
+// The store is immutable, so an item that was not edited is the same object as before;
+// only items whose reference changed are written.
+const syncArrayToYMap = <T extends HasId>(
+  doc: Y.Doc,
+  yMap: Y.Map<unknown>,
+  items: T[],
+  prev: T[] = [],
+): void => {
+  const prevById = new Map(prev.map((i) => [i.id, i]));
   doc.transact(() => {
     const newIds = new Set(items.map((i) => i.id));
     for (const id of yMap.keys()) if (!newIds.has(id)) yMap.delete(id);
     for (const item of items) {
-      const existing = yMap.get(item.id);
-      if (!existing || JSON.stringify(existing) !== JSON.stringify(item)) {
+      if (prevById.get(item.id) !== item || !yMap.has(item.id)) {
         yMap.set(item.id, structuredClone(item));
       }
     }
@@ -76,7 +83,8 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   const canEditRef = useRef(true);
   const cursorsRef = useRef<Map<number, CollaboratorCursor>>(new Map());
 
-  const { isConnected, isSynced, collaborators } = useCollaborationStore();
+  const isConnected = useCollaborationStore((s) => s.isConnected);
+  const isSynced = useCollaborationStore((s) => s.isSynced);
   const setConnected = useCollaborationStore((s) => s.setConnected);
   const setSynced = useCollaborationStore((s) => s.setSynced);
   const setCollaborators = useCollaborationStore((s) => s.setCollaborators);
@@ -153,7 +161,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
         if (!initialSyncDoneRef.current) return;
         for (const key of COLLECTION_KEYS) {
           if (state[key] !== prevState[key]) {
-            syncArrayToYMap(doc, maps.get(key)!, state[key] as HasId[]);
+            syncArrayToYMap(doc, maps.get(key)!, state[key] as HasId[], prevState[key] as HasId[]);
           }
         }
       });
@@ -281,7 +289,6 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
     isConnected,
     isSynced,
     hasSyncedOnce,
-    collaborators,
     broadcastCursor,
     designMeta,
     updateDesignName,
