@@ -100,8 +100,8 @@ export const ShareModal = ({ open, onClose, designId, designName }: ShareModalPr
               onChange={(e) => setPermission(e.target.value as "readonly" | "readwrite")}
               className="h-10 rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs font-medium text-[var(--foreground)] outline-none focus:ring-1 focus:ring-[var(--ring)]"
             >
-              <option value="readonly">Viewer</option>
-              <option value="readwrite">Editor</option>
+              <option value="readonly">Can view</option>
+              <option value="readwrite">Can edit</option>
             </select>
             <Button
               className="h-10 gap-2 px-4"

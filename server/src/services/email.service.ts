@@ -42,7 +42,7 @@ export const sendShareInviteEmail = async (
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; background: #0C0C0C; border-radius: 12px; overflow: hidden;">
       <div style="background: linear-gradient(135deg, #D4A853, #B8922E); padding: 28px 32px;">
-        <h1 style="margin: 0; font-size: 20px; color: #0C0C0C; font-weight: 700;">DesignStudio</h1>
+        <h1 style="margin: 0; font-size: 20px; color: #0C0C0C; font-weight: 700;">Home Design Studio</h1>
       </div>
       <div style="padding: 32px;">
         <p style="color: #F5F0EB; font-size: 16px; margin: 0 0 16px;">
@@ -64,7 +64,7 @@ export const sendShareInviteEmail = async (
 
   try {
     await transporter.sendMail({
-      from: `"DesignStudio" <${fromEmail}>`,
+      from: `"Home Design Studio" <${fromEmail}>`,
       to: toEmail,
       subject: `${inviterName} shared "${designName}" with you`.replace(/[\r\n]/g, " "),
       html,

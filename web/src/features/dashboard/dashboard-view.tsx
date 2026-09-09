@@ -585,7 +585,7 @@ export const DashboardView = () => {
                         {item.ownerName || item.ownerEmail}
                       </Badge>
                       <Badge variant="secondary" className="text-xs font-normal">
-                        {item.permission === "readwrite" ? "Can edit" : "View only"}
+                        {item.permission === "readwrite" ? "Can edit" : "Can view"}
                       </Badge>
                     </div>
                   </CardContent>
@@ -610,7 +610,7 @@ export const DashboardView = () => {
             <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
               Create New Design
             </DialogTitle>
-            <DialogDescription>Start from a blank canvas or choose a template.</DialogDescription>
+            <DialogDescription>Start from a blank plan or choose a template.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-1 rounded-md border border-[var(--border)] p-1">
             <button
@@ -623,7 +623,7 @@ export const DashboardView = () => {
                   : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
               )}
             >
-              Blank Canvas
+              Blank Plan
             </button>
             <button
               type="button"

@@ -89,7 +89,7 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
   };
 
   return (
-    <Tooltip content={`${item.name} - Click to quick-add`} side="top">
+    <Tooltip content={`${item.name} - Click to add`} side="top">
       <div
         draggable
         onDragStart={handleDragStart}

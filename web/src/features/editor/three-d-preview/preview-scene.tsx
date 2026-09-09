@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import { MeshStandardMaterial } from "three";
@@ -41,6 +41,23 @@ const InvalidateOnChange = (props: Record<string, unknown>) => {
     props.furnitureColor,
     invalidate,
   ]);
+  return null;
+};
+
+const CameraRig = ({ preset }: { preset: CameraPreset }) => {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    camera.position.set(...preset.position);
+    if (controls) {
+      controls.target.set(...preset.target);
+      controls.update();
+    } else {
+      camera.lookAt(...preset.target);
+    }
+    invalidate();
+  }, [preset, camera, controls, invalidate]);
   return null;
 };
 
@@ -209,7 +226,6 @@ export const PreviewScene = ({
   wallColor,
   furnitureColor,
 }: PreviewSceneProps) => {
-  const controlsRef = useRef<OrbitControlsImpl>(null);
   const walls = useEditorStore((s) => s.walls);
   const furniture = useEditorStore((s) => s.furniture);
   const rooms = useEditorStore((s) => s.rooms);
@@ -224,13 +240,6 @@ export const PreviewScene = ({
     const fn = CAMERA_PRESETS[cameraPreset] || CAMERA_PRESETS.corner;
     return fn(sceneSize);
   }, [cameraPreset, sceneSize]);
-
-  useEffect(() => {
-    if (controlsRef.current) {
-      controlsRef.current.target.set(...preset.target);
-      controlsRef.current.update();
-    }
-  }, [preset]);
 
   return (
     <Canvas
@@ -255,15 +264,14 @@ export const PreviewScene = ({
         invalidate();
       }}
     >
+      <CameraRig preset={preset} />
       <OrbitControls
-        ref={controlsRef}
         makeDefault
         enableDamping
         dampingFactor={0.08}
         minDistance={0.5}
         maxDistance={sceneSize * 5}
         maxPolarAngle={Math.PI * 0.48}
-        target={preset.target}
       />
       <SceneContents
         showFurniture={showFurniture}

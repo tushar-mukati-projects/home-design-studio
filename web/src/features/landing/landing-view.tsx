@@ -10,13 +10,8 @@ import {
   Armchair,
   Sparkles,
   Download,
-  Play,
   ArrowRight,
   Home,
-  Github,
-  Twitter,
-  Linkedin,
-  Instagram,
   Minus,
   Square,
   Circle,
@@ -554,7 +549,7 @@ const featureData = [
   {
     icon: ScanLine,
     title: "Rooms & Areas",
-    description: "Name rooms, colour them by type, and see live square footage as you draw.",
+    description: "Name rooms, colour them by type, and see live floor area in m² as you draw.",
   },
   {
     icon: Armchair,
@@ -570,9 +565,9 @@ const featureData = [
   },
   {
     icon: MessageSquare,
-    title: "AI Chat Assistant",
+    title: "Design AI",
     description:
-      "Describe changes in plain English and watch them happen. Add rooms, rearrange furniture, or clear the canvas — all through conversation.",
+      "Describe changes in plain English and watch them happen. Add rooms, rearrange furniture, or clear the plan — all through conversation.",
   },
   {
     icon: Sparkles,
@@ -582,7 +577,7 @@ const featureData = [
   },
   {
     icon: History,
-    title: "Version History",
+    title: "Versions",
     description:
       "Save named snapshots of your design and restore any version instantly. Never lose a good iteration.",
   },
@@ -1132,10 +1127,6 @@ export const LandingView = () => {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Button variant="outline" size="lg" className="h-12 gap-2 px-8 text-base font-medium">
-                <Play className="h-4 w-4" />
-                Watch Demo
-              </Button>
             </motion.div>
             <EditorMockup />
           </motion.div>
@@ -1395,7 +1386,7 @@ export const LandingView = () => {
       {}
       <footer className="relative border-t border-[var(--border)] bg-[var(--card)] px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 md:grid-cols-5">
+          <div className="grid gap-12 md:grid-cols-3">
             <div className="md:col-span-2">
               <Link href="/" className="inline-flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#2c2c2e]">
@@ -1405,29 +1396,13 @@ export const LandingView = () => {
                   className="text-xl text-[var(--foreground)]"
                   style={{ fontFamily: "var(--font-heading)" }}
                 >
-                  DesignStudio
+                  Home Design Studio
                 </span>
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-[var(--muted-foreground)]">
                 The modern floor plan editor for homeowners, interior designers, and architects.
                 Design in 2D, experience in 3D.
               </p>
-              <div className="mt-6 flex items-center gap-3">
-                {[
-                  { icon: Twitter, href: "#" },
-                  { icon: Github, href: "#" },
-                  { icon: Linkedin, href: "#" },
-                  { icon: Instagram, href: "#" },
-                ].map(({ icon: SocialIcon, href }, i) => (
-                  <a
-                    key={i}
-                    href={href}
-                    className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--foreground)]/30 hover:text-[var(--foreground)]"
-                  >
-                    <SocialIcon className="h-4 w-4" />
-                  </a>
-                ))}
-              </div>
             </div>
             {[
               {
@@ -1436,23 +1411,6 @@ export const LandingView = () => {
                   { label: "Features", href: "#features" },
                   { label: "Pricing", href: "/pricing" },
                   { label: "Editor", href: "/dashboard" },
-                  { label: "3D Preview", href: "#" },
-                ],
-              },
-              {
-                title: "Company",
-                links: [
-                  { label: "About", href: "#" },
-                  { label: "Contact", href: "#" },
-                  { label: "Blog", href: "#" },
-                  { label: "Careers", href: "#" },
-                ],
-              },
-              {
-                title: "Legal",
-                links: [
-                  { label: "Privacy", href: "#" },
-                  { label: "Terms", href: "#" },
                 ],
               },
             ].map((col) => (

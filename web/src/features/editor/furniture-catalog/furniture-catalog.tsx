@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEditorStore } from "@/stores/editor-store";
 import { useFetchFurniture } from "@/hooks/furniture";
 import { FURNITURE_CATEGORIES, type CatalogItem, type FurnitureCategory } from "@/types";
@@ -28,7 +29,7 @@ export const FurnitureCatalog = () => {
 
   const addFurniture = useEditorStore((s) => s.addFurniture);
   const setCatalog = useEditorStore((s) => s.setCatalog);
-  const { data: catalog = [] } = useFetchFurniture();
+  const { data: catalog = [], isLoading } = useFetchFurniture();
 
   useEffect(() => {
     if (catalog.length) setCatalog(catalog);
@@ -52,7 +53,7 @@ export const FurnitureCatalog = () => {
         ? [Math.round((bounds.minX + bounds.maxX) / 2), Math.round((bounds.minY + bounds.maxY) / 2)]
         : [3000, 2000];
       addFurniture({ id: newId(), item: item.id, at, rotation: 0 });
-      toast.success(`${item.name} added to canvas`);
+      toast.success(`${item.name} added to the plan`);
     },
     [addFurniture],
   );
@@ -129,7 +130,20 @@ export const FurnitureCatalog = () => {
 
       <ScrollArea className="flex-1 px-3 py-3">
         <AnimatePresence mode="popLayout">
-          {filteredItems.length > 0 ? (
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="grid grid-cols-2 gap-2.5"
+            >
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-lg" />
+              ))}
+            </motion.div>
+          ) : filteredItems.length > 0 ? (
             <motion.div
               key="grid"
               initial={{ opacity: 0 }}

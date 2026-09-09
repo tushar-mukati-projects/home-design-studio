@@ -150,7 +150,6 @@ const TemplateCard = ({ template, onUse, index }: TemplateCardProps) => {
               size="sm"
               variant="ghost"
               className="h-7 gap-1 px-2 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-              onClick={(e) => e.stopPropagation()}
             >
               Use
               <ArrowRight className="h-3 w-3" />

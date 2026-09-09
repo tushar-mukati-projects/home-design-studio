@@ -71,9 +71,8 @@ const ExportDialog = ({ open, onOpenChange, stageRef, designName }: ExportDialog
   };
 
   const paperSizeOptions = [
-    { value: "a4", label: "A4 (297 x 210 mm)" },
-    { value: "letter", label: "Letter (11 x 8.5 in)" },
-    { value: "a3", label: "A3 (420 x 297 mm)" },
+    { value: "a4", label: "A4 (210 x 297 mm)" },
+    { value: "a3", label: "A3 (297 x 420 mm)" },
   ];
 
   const qualityOptions = [
