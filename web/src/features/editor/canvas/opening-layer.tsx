@@ -98,6 +98,57 @@ const Door = ({ opening, wall, bg }: { opening: Opening; wall: Wall; bg: string 
   );
 };
 
+const SlidingDoor = ({ opening, wall, bg }: { opening: Opening; wall: Wall; bg: string }) => {
+  const half = opening.width / 2;
+  const t = wall.thickness / 2;
+  const side = opening.swing === "out" ? -1 : 1;
+  const dir = opening.hinge === "right" ? -1 : 1;
+  const leaf = { fill: LEAF, stroke: LEAF_EDGE, strokeWidth: 1, ...hairline };
+  const arrowY = side * (t + 70);
+  return (
+    <>
+      <Rect
+        x={-half}
+        y={-t - 2}
+        width={opening.width}
+        height={wall.thickness + 4}
+        fill={bg}
+        {...flat}
+      />
+      {[-half, half].map((x) => (
+        <Line key={x} points={[x, -t, x, t]} stroke={JAMB} strokeWidth={2} {...hairline} />
+      ))}
+      <Rect x={dir > 0 ? -half : 0} y={-20} width={half} height={40} {...leaf} />
+      <Rect
+        x={dir > 0 ? -60 : -half + 60}
+        y={side > 0 ? 25 : -65}
+        width={half}
+        height={40}
+        {...leaf}
+      />
+      <Line
+        points={[dir * -half * 0.1, arrowY, dir * half * 0.7, arrowY]}
+        stroke={SWING}
+        strokeWidth={1}
+        {...hairline}
+      />
+      <Line
+        points={[
+          dir * half * 0.5,
+          arrowY - 40,
+          dir * half * 0.7,
+          arrowY,
+          dir * half * 0.5,
+          arrowY + 40,
+        ]}
+        stroke={SWING}
+        strokeWidth={1}
+        {...hairline}
+      />
+    </>
+  );
+};
+
 const Window = ({ opening, wall, bg }: { opening: Opening; wall: Wall; bg: string }) => {
   const half = opening.width / 2;
   const t = wall.thickness / 2;
@@ -199,7 +250,11 @@ const OpeningItem = memo(function OpeningItem({
       {...hover}
     >
       {opening.kind === "door" ? (
-        <Door opening={opening} wall={wall} bg={bg} />
+        opening.variant === "sliding" ? (
+          <SlidingDoor opening={opening} wall={wall} bg={bg} />
+        ) : (
+          <Door opening={opening} wall={wall} bg={bg} />
+        )
       ) : (
         <Window opening={opening} wall={wall} bg={bg} />
       )}

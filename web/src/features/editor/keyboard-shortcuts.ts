@@ -31,16 +31,28 @@ export const shortcutForTool = (tool: EditorTool): string | undefined => {
   return entry?.[0].toUpperCase();
 };
 
-const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+const NON_TEXT_INPUTS = new Set([
+  "range",
+  "checkbox",
+  "radio",
+  "button",
+  "submit",
+  "color",
+  "file",
+]);
 
 interface ShortcutTarget {
   tagName?: string;
+  type?: string;
   isContentEditable?: boolean;
 }
 
 export const isTypingTarget = (target: ShortcutTarget | null | undefined): boolean => {
   if (!target) return false;
-  return TYPING_TAGS.has(target.tagName ?? "") || target.isContentEditable === true;
+  if (target.isContentEditable === true) return true;
+  const tag = target.tagName ?? "";
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  return tag === "INPUT" && !NON_TEXT_INPUTS.has((target.type ?? "text").toLowerCase());
 };
 
 export interface ShortcutEvent {

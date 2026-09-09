@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, PackageOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
@@ -28,12 +28,7 @@ export const FurnitureCatalog = () => {
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   const addFurniture = useEditorStore((s) => s.addFurniture);
-  const setCatalog = useEditorStore((s) => s.setCatalog);
   const { data: catalog = [], isLoading } = useFetchFurniture();
-
-  useEffect(() => {
-    if (catalog.length) setCatalog(catalog);
-  }, [catalog, setCatalog]);
 
   const filteredItems = useMemo(() => {
     let items = catalog;

@@ -44,7 +44,7 @@ const cursorForTool = (tool: EditorTool) =>
 const nearestWall = (x: number, y: number, walls: Wall[], threshold: number) => {
   let best: { wall: Wall; dist: number } | null = null;
   for (const wall of walls) {
-    const dist = distanceToWall(wall, x, y);
+    const dist = distanceToWall(wall, x, y) - wall.thickness / 2;
     if (dist < threshold && (!best || dist < best.dist)) best = { wall, dist };
   }
   return best?.wall ?? null;
