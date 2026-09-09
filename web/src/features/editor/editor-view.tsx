@@ -34,6 +34,7 @@ import { useCollaboration, ConnectionStatus } from "./collaboration";
 import { useCollaborationStore } from "@/stores/collaboration-store";
 import { resolveShortcut, shouldPreventDefault, shortcutForTool } from "./keyboard-shortcuts";
 import { PX_PER_MM } from "@/lib/constants";
+import { useFetchFurniture } from "@/hooks/furniture";
 import { boundsOf } from "@/lib/canvas";
 interface EditorViewProps {
   designId: string;
@@ -150,6 +151,11 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   useEffect(() => {
     useEditorStore.getState().setCanEdit(canEdit);
   }, [canEdit]);
+
+  const { data: catalog } = useFetchFurniture();
+  useEffect(() => {
+    if (catalog?.length) useEditorStore.getState().setCatalog(catalog);
+  }, [catalog]);
 
   useEffect(() => {
     const unsub = useEditorStore.subscribe((state, prevState) => {
@@ -612,7 +618,9 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       )}
       <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
       <ImportDesignModal open={showImportModal} onClose={() => setShowImportModal(false)} />
-      <DesignChat designId={designId} onUpgradeRequired={() => setShowUpgradeModal(true)} />
+      {canEdit && (
+        <DesignChat designId={designId} onUpgradeRequired={() => setShowUpgradeModal(true)} />
+      )}
     </div>
   );
 };

@@ -53,6 +53,26 @@ describe("resolveShortcut - modifiers must not hijack browser combos", () => {
   });
 });
 
+describe("isTypingTarget", () => {
+  test("text-like inputs, textareas, selects and editable nodes swallow shortcuts", () => {
+    expect(isTypingTarget({ tagName: "INPUT" })).toBe(true);
+    expect(isTypingTarget({ tagName: "INPUT", type: "number" })).toBe(true);
+    expect(isTypingTarget({ tagName: "TEXTAREA" })).toBe(true);
+    expect(isTypingTarget({ tagName: "SELECT" })).toBe(true);
+    expect(isTypingTarget({ tagName: "DIV", isContentEditable: true })).toBe(true);
+  });
+
+  test("a focused slider or checkbox does not block undo", () => {
+    expect(isTypingTarget({ tagName: "INPUT", type: "range" })).toBe(false);
+    expect(isTypingTarget({ tagName: "INPUT", type: "checkbox" })).toBe(false);
+    expect(
+      resolve({ key: "z", ctrlKey: true, target: { tagName: "INPUT", type: "range" } }),
+    ).toEqual({
+      action: "undo",
+    });
+  });
+});
+
 describe("resolveShortcut - nudge", () => {
   test("arrow keys nudge the selection", () => {
     expect(resolve({ key: "ArrowLeft" })).toEqual({ action: "nudge", dx: -1, dy: 0, large: false });
