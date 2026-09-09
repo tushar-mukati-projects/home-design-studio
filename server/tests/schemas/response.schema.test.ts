@@ -45,9 +45,6 @@ const furnitureRow = {
   color: "#9ca3af",
 };
 
-// These are the assertions that keep the OpenAPI document honest: if a
-// serializer changes shape, the declared response schema stops matching and
-// this fails rather than the docs quietly becoming wrong.
 describe("declared responses match what the serializers actually return", () => {
   test("serializeDesign satisfies designResponse", () => {
     const result = designResponse.safeParse(serializeDesign(designRow as never));

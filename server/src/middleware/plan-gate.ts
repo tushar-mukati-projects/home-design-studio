@@ -22,8 +22,6 @@ export const checkDesignLimit = async (req: Request, res: Response, next: NextFu
   const planConfig = PLANS[subscription?.plan ?? "free"] ?? PLANS.free;
 
   if (planConfig.designLimit !== Infinity) {
-    // Serializable so two concurrent creates cannot both read a count below
-    // the limit and both succeed.
     const count = await prisma.$transaction((tx) => tx.design.count({ where: { userId } }), {
       isolationLevel: "Serializable",
     });

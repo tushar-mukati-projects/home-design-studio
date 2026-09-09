@@ -57,12 +57,13 @@ const BASE_TOOLS: Omit<SidebarTool, "shortcut">[] = [
   { tool: "pan", icon: <Hand className="h-5 w-5" />, label: "Pan" },
 ];
 
+const NUDGE_MM = 50;
+
 const SIDEBAR_TOOLS: SidebarTool[] = BASE_TOOLS.map((t) => ({
   ...t,
   shortcut: shortcutForTool(t.tool),
 }));
 
-// Only this label re-renders as the zoom changes; the rest of the editor chrome does not.
 const ZoomLabel = ({ onClick }: { onClick: () => void }) => {
   const zoom = useEditorStore((s) => s.zoom);
   return (
@@ -89,7 +90,6 @@ const fitToScreen = (
     return;
   }
 
-  // Content is in millimetres; a 1 m margin keeps walls off the edge.
   const margin = 1000;
   const contentW = (bounds.maxX - bounds.minX + margin * 2) * PX_PER_MM;
   const contentH = (bounds.maxY - bounds.minY + margin * 2) * PX_PER_MM;
@@ -145,6 +145,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
   const clearSelection = useEditorStore((s) => s.clearSelection);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
   const removeElement = useEditorStore((s) => s.removeElement);
+  const nudgeSelected = useEditorStore((s) => s.nudgeSelected);
 
   useEffect(() => {
     useEditorStore.getState().setCanEdit(canEdit);
@@ -206,7 +207,11 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
       );
       if (!shortcut) return;
 
-      if (shortcut.action === "deleteSelected" && !selectedElementId) return;
+      if (
+        (shortcut.action === "deleteSelected" || shortcut.action === "nudge") &&
+        !selectedElementId
+      )
+        return;
       if (shouldPreventDefault(shortcut)) e.preventDefault();
 
       switch (shortcut.action) {
@@ -228,6 +233,11 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
         case "toggleSnap":
           toggleSnap();
           return;
+        case "nudge": {
+          const step = shortcut.large ? useEditorStore.getState().gridSize : NUDGE_MM;
+          nudgeSelected(shortcut.dx * step, shortcut.dy * step);
+          return;
+        }
         case "setTool":
           setTool(shortcut.tool);
           return;
@@ -246,6 +256,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
     toggleSnap,
     setTool,
     removeElement,
+    nudgeSelected,
   ]);
 
   const handleNameChange = useCallback(
@@ -316,12 +327,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
 
       <div className="flex flex-1 overflow-hidden">
         {canEdit && (
-          <motion.div
-            className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3 md:flex"
-            initial={{ x: -56 }}
-            animate={{ x: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
+          <div className="hidden w-14 shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--sidebar-background)] py-3 md:flex">
             {SIDEBAR_TOOLS.map((t) => {
               const isActive = activeTool === t.tool;
               return (
@@ -357,7 +363,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
                 <Layers className="h-5 w-5" />
               </button>
             </Tooltip>
-          </motion.div>
+          </div>
         )}
 
         <div className="relative flex-1 bg-[var(--canvas-bg)]" ref={canvasContainerRef}>
@@ -475,12 +481,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
             )}
           </AnimatePresence>
 
-          <motion.div
-            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5 shadow-lg sm:bottom-4 sm:gap-1 sm:p-1"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5 shadow-lg sm:bottom-4 sm:gap-1 sm:p-1">
             <Tooltip content="Zoom Out" side="top">
               <Button
                 variant="ghost"
@@ -513,7 +514,7 @@ export const EditorView = ({ designId, preloadedDesign, permissionOverride }: Ed
                 <Maximize className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Tooltip>
-          </motion.div>
+          </div>
 
           {canEdit && (
             <div className="absolute bottom-14 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--sidebar-background)] p-1 shadow-lg md:hidden">

@@ -7,6 +7,7 @@ type EditorShortcut =
   | { action: "deleteSelected" }
   | { action: "toggleGrid" }
   | { action: "toggleSnap" }
+  | { action: "nudge"; dx: number; dy: number; large: boolean }
   | { action: "setTool"; tool: EditorTool };
 
 export const TOOL_SHORTCUTS: Record<string, EditorTool> = {
@@ -16,6 +17,13 @@ export const TOOL_SHORTCUTS: Record<string, EditorTool> = {
   n: "window",
   e: "eraser",
   h: "pan",
+};
+
+const ARROWS: Record<string, [number, number]> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
 };
 
 export const shortcutForTool = (tool: EditorTool): string | undefined => {
@@ -48,6 +56,7 @@ const PREVENT_DEFAULT: ReadonlySet<EditorShortcut["action"]> = new Set([
   "undo",
   "redo",
   "deleteSelected",
+  "nudge",
 ]);
 
 export const shouldPreventDefault = (shortcut: EditorShortcut): boolean =>
@@ -72,6 +81,9 @@ export const resolveShortcut = (
   if (event.key === "Delete" || event.key === "Backspace") return { action: "deleteSelected" };
 
   if (hasCmd || event.altKey === true) return null;
+
+  const arrow = ARROWS[event.key];
+  if (arrow) return { action: "nudge", dx: arrow[0], dy: arrow[1], large: event.shiftKey === true };
 
   if (key === "g") return { action: "toggleGrid" };
   if (key === "s") return { action: "toggleSnap" };

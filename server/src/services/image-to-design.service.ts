@@ -24,7 +24,6 @@ if (!config.openaiApiKey) {
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
-// The model works on a small pixel canvas, which it handles well. We scale to mm afterwards.
 const PX_TO_MM = 10;
 
 interface Sketch {

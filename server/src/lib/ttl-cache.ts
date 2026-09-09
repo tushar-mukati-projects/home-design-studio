@@ -1,5 +1,3 @@
-// A tiny in-memory cache with per-entry expiry. Used to skip the database on the hot
-// path where a single round trip costs hundreds of milliseconds.
 export class TtlCache<K, V> {
   private readonly entries = new Map<K, { value: V; expiresAt: number }>();
 

@@ -2,6 +2,9 @@ import { describe, test, expect } from "bun:test";
 import {
   boundsOf,
   centroid,
+  constrainAngle,
+  snapToEndpoints,
+  wallJunctions,
   clampOpeningOffset,
   distanceToWall,
   emptyCanvas,
@@ -91,5 +94,31 @@ describe("bounds", () => {
       furniture: [{ id: "f", item: "sofa", at: [-500, 100] as [number, number], rotation: 0 }],
     };
     expect(boundsOf(canvas)).toEqual({ minX: -500, minY: 0, maxX: 4000, maxY: 6000 });
+  });
+});
+
+describe("drawing aids", () => {
+  const other: Wall = { id: "o", from: [4000, 0], to: [4000, 3000], thickness: 120, height: 2700 };
+
+  test("snapToEndpoints picks the closest endpoint inside the threshold", () => {
+    expect(snapToEndpoints({ x: 3950, y: 40 }, [wall, other], 100)).toEqual([4000, 0]);
+    expect(snapToEndpoints({ x: 2000, y: 500 }, [wall, other], 100)).toBeNull();
+  });
+
+  test("snapToEndpoints ignores the wall being edited", () => {
+    expect(snapToEndpoints({ x: 10, y: 10 }, [wall], 100, "w")).toBeNull();
+  });
+
+  test("constrainAngle rounds to 45° and keeps the length", () => {
+    const to = constrainAngle({ x: 0, y: 0 }, { x: 1000, y: 100 });
+    expect(to).toEqual({ x: 1005, y: 0 });
+    const diag = constrainAngle({ x: 0, y: 0 }, { x: 1000, y: 900 });
+    expect(Math.abs(diag.x - diag.y)).toBeLessThanOrEqual(1);
+  });
+
+  test("wallJunctions lists only shared endpoints, once each", () => {
+    const junctions = wallJunctions([wall, other]);
+    expect(junctions).toEqual([{ at: [4000, 0], thickness: 120 }]);
+    expect(wallJunctions([wall])).toEqual([]);
   });
 });

@@ -29,7 +29,6 @@ interface Placement {
   rotation: number;
 }
 
-// Room usages that have no catalog category of their own borrow the living room's.
 const CATEGORY_FOR_USAGE: Record<string, CatalogItem["category"]> = {
   living_room: "living_room",
   bedroom: "bedroom",

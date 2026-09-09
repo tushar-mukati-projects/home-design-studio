@@ -1,23 +1,24 @@
 "use client";
 
 import { memo, useRef, useEffect, useCallback, useMemo } from "react";
-import { Rect, Text, Group, Transformer } from "react-konva";
+import { Group, Transformer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
+import { PX_PER_MM } from "@/lib/constants";
 import { furnitureSize, toVec } from "@/lib/canvas";
 import { FurnitureShape } from "./furniture-shape";
+import { ACCENT, Chip } from "./wall-layer";
+import { useHover } from "./hover";
 import type { CatalogItem, Furniture } from "@/types";
 import type Konva from "konva";
 
-const flat = { perfectDrawEnabled: false, shadowForStrokeEnabled: false } as const;
-
-function textColorFor(hex: string): string {
-  const c = hex.replace("#", "");
-  if (c.length !== 6) return "#1a1a2e";
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1a1a2e" : "#f0f0f4";
-}
+const FurnitureLabel = ({ name, rotation }: { name: string; rotation: number }) => {
+  const zoom = useEditorStore((s) => s.zoom);
+  return (
+    <Group rotation={-rotation} listening={false}>
+      <Chip x={0} y={0} px={1 / (zoom * PX_PER_MM)} text={name} strong />
+    </Group>
+  );
+};
 
 interface FurnitureItemProps {
   piece: Furniture;
@@ -34,6 +35,7 @@ const FurnitureItem = memo(function FurnitureItem({
   draggable,
   register,
 }: FurnitureItemProps) {
+  const { hovered, ...hover } = useHover();
   const [w, d, h] = piece.size ?? item?.size ?? [600, 600, 600];
   const color = piece.color ?? item?.color ?? "#d4d4d8";
   const name = item?.name ?? piece.item;
@@ -58,6 +60,7 @@ const FurnitureItem = memo(function FurnitureItem({
       draggable={draggable}
       onClick={select}
       onTap={select}
+      onDragStart={select}
       onDragEnd={(e) => {
         const pos = settledPosition(e.target);
         useEditorStore.getState().updateFurniture(piece.id, { at: toVec(pos) });
@@ -68,57 +71,17 @@ const FurnitureItem = memo(function FurnitureItem({
         const pos = settledPosition(node);
         useEditorStore.getState().updateFurniture(piece.id, {
           at: toVec(pos),
-          rotation: node.rotation(),
+          rotation: Math.round(node.rotation()),
           size: [Math.round(w * node.scaleX()), Math.round(d * node.scaleY()), h],
         });
         node.scaleX(1);
         node.scaleY(1);
         node.position(pos);
       }}
+      {...hover}
     >
-      <FurnitureShape furnitureId={piece.item} width={w} height={d} color={color} />
-      <Rect
-        width={w}
-        height={d}
-        offsetX={w / 2}
-        offsetY={d / 2}
-        stroke={isSelected ? "#3a3a4a" : "#8a8a9480"}
-        strokeWidth={isSelected ? 2 : 1}
-        strokeScaleEnabled={false}
-        cornerRadius={40}
-        listening={false}
-        {...flat}
-      />
-      <Rect
-        width={w * 0.35}
-        height={30}
-        offsetX={(w * 0.35) / 2}
-        offsetY={d / 2}
-        fill="#52525b"
-        cornerRadius={10}
-        opacity={0.7}
-        listening={false}
-        {...flat}
-      />
-      {w > 600 && d > 400 && (
-        <Text
-          width={w}
-          height={d}
-          offsetX={w / 2}
-          offsetY={d / 2}
-          text={name}
-          fontSize={Math.min(110, w / 7, d / 4.5)}
-          fontFamily="Inter, sans-serif"
-          fontStyle="600"
-          fill={textColorFor(color)}
-          align="center"
-          verticalAlign="middle"
-          listening={false}
-          wrap="word"
-          padding={40}
-          {...flat}
-        />
-      )}
+      <FurnitureShape item={piece.item} width={w} depth={d} color={color} />
+      {(hovered || isSelected) && <FurnitureLabel name={name} rotation={piece.rotation} />}
     </Group>
   );
 });
@@ -130,6 +93,8 @@ export const FurnitureShapes = memo(function FurnitureShapes() {
   const canEdit = useEditorStore((s) => s.canEdit);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
   const snapToGrid = useEditorStore((s) => s.snapToGrid);
+  const zoom = useEditorStore((s) => s.zoom);
+  const anchorSize = Math.max(8, Math.min(12, 10 * Math.sqrt(zoom)));
 
   const byId = useMemo(() => new Map(catalog.map((c) => [c.id, c])), [catalog]);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -166,13 +131,15 @@ export const FurnitureShapes = memo(function FurnitureShapes() {
         ref={transformerRef}
         rotateEnabled
         enabledAnchors={["top-left", "top-right", "bottom-left", "bottom-right"]}
-        borderStroke="#52525b"
-        borderStrokeWidth={2}
-        anchorFill="#52525b"
-        anchorStroke="#ffffff"
-        anchorSize={10}
-        anchorCornerRadius={2}
-        rotateAnchorOffset={25}
+        borderStroke={ACCENT}
+        borderStrokeWidth={1.5}
+        borderDash={[4, 3]}
+        anchorFill="#ffffff"
+        anchorStroke={ACCENT}
+        anchorStrokeWidth={2}
+        anchorSize={anchorSize}
+        anchorCornerRadius={anchorSize / 2}
+        rotateAnchorOffset={24}
         rotationSnaps={snapToGrid ? [0, 45, 90, 135, 180, 225, 270, 315] : []}
         rotationSnapTolerance={snapToGrid ? 6 : 0}
         boundBoxFunc={(oldBox, newBox) =>

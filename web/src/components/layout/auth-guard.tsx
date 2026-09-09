@@ -71,8 +71,6 @@ interface AuthGuardProps {
   children: React.ReactNode;
 }
 
-// Two gates in order: a Firebase session, then the API's own view of that user.
-// Nothing below renders until both hold, so /me is always the first request.
 export const AuthGuard = ({ children }: AuthGuardProps) => {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();

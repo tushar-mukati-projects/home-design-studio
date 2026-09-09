@@ -1,520 +1,425 @@
 "use client";
 
 import { memo } from "react";
-import { Rect, Circle, Line, Shape, Group } from "react-konva";
+import { Rect, Circle, Ellipse, Line, Group } from "react-konva";
 
-function darkenColor(hex: string, amount = 0.22): string {
+const flat = { perfectDrawEnabled: false, shadowForStrokeEnabled: false } as const;
+const detail = { strokeScaleEnabled: false, listening: false, ...flat } as const;
+
+const shade = (hex: string, amount: number): string => {
   const c = hex.replace("#", "");
   if (c.length !== 6) return hex;
-  const r = Math.max(0, Math.round(parseInt(c.substring(0, 2), 16) * (1 - amount)));
-  const g = Math.max(0, Math.round(parseInt(c.substring(2, 4), 16) * (1 - amount)));
-  const b = Math.max(0, Math.round(parseInt(c.substring(4, 6), 16) * (1 - amount)));
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
+  const channel = (i: number) => {
+    const v = parseInt(c.slice(i, i + 2), 16);
+    const out = amount < 0 ? v * (1 + amount) : v + (255 - v) * amount;
+    return Math.round(Math.max(0, Math.min(255, out)))
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(2)}${channel(4)}`;
+};
 
 interface FurnitureShapeProps {
-  furnitureId: string;
+  item: string;
   width: number;
-  height: number;
+  depth: number;
   color: string;
 }
 
 export const FurnitureShape = memo(function FurnitureShape({
-  furnitureId,
+  item,
   width: w,
-  height: h,
+  depth: d,
   color,
 }: FurnitureShapeProps) {
-  const dark = darkenColor(color);
   const hw = w / 2;
-  const hh = h / 2;
+  const hd = d / 2;
+  const dark = shade(color, -0.2);
+  const light = shade(color, 0.4);
+  const edge = shade(color, -0.45);
+  const min = Math.min(w, d);
 
-  switch (furnitureId) {
-    case "sofa": {
-      const backH = h * 0.15;
-      const cushions = w > 120 ? 3 : 2;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
-          <Rect x={-hw} y={-hh} width={w} height={backH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
-          {Array.from({ length: cushions - 1 }, (_, i) => {
-            const lx = -hw + ((i + 1) * w) / cushions;
-            return (
-              <Line
-                key={i}
-                points={[lx, -hh + backH + 4, lx, hh - 4]}
-                stroke={dark}
-                strokeWidth={1}
-                listening={false}
-              />
-            );
-          })}
-        </Group>
-      );
-    }
+  const body = (radius = 30, fill = color) => (
+    <Rect
+      x={-hw}
+      y={-hd}
+      width={w}
+      height={d}
+      fill={fill}
+      stroke={edge}
+      strokeWidth={1}
+      strokeScaleEnabled={false}
+      cornerRadius={radius}
+      {...flat}
+    />
+  );
+  const inset = (by: number, radius = 20, fill?: string) => (
+    <Rect
+      x={-hw + by}
+      y={-hd + by}
+      width={w - by * 2}
+      height={d - by * 2}
+      fill={fill}
+      stroke={edge}
+      strokeWidth={1}
+      cornerRadius={radius}
+      {...detail}
+    />
+  );
+  const stroke = (points: number[], width = 1) => (
+    <Line key={points.join()} points={points} stroke={edge} strokeWidth={width} {...detail} />
+  );
+  const knob = (x: number, y: number, r = 25) => (
+    <Circle key={`${x},${y}`} x={x} y={y} radius={r} fill={dark} {...detail} />
+  );
 
+  switch (item) {
+    case "sofa":
     case "armchair": {
-      const backH = h * 0.15;
-      const armW = w * 0.12;
+      const back = d * 0.22;
+      const arm = item === "sofa" ? w * 0.09 : w * 0.15;
+      const seats = item === "sofa" ? (w >= 1800 ? 3 : 2) : 1;
       return (
         <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
-          <Rect x={-hw} y={-hh} width={w} height={backH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
-          <Rect x={-hw} y={-hh} width={armW} height={h} fill={dark} cornerRadius={[3, 0, 0, 3]} />
-          <Rect
-            x={hw - armW}
-            y={-hh}
-            width={armW}
-            height={h}
-            fill={dark}
-            cornerRadius={[0, 3, 3, 0]}
-          />
-        </Group>
-      );
-    }
-
-    case "coffee-table": {
-      const legR = Math.min(4, w * 0.05);
-      const inset = legR + 3;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={6} />
-          <Circle x={-hw + inset} y={-hh + inset} radius={legR} fill={dark} />
-          <Circle x={hw - inset} y={-hh + inset} radius={legR} fill={dark} />
-          <Circle x={-hw + inset} y={hh - inset} radius={legR} fill={dark} />
-          <Circle x={hw - inset} y={hh - inset} radius={legR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "tv-stand": {
-      const tvH = Math.max(4, h * 0.12);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Rect
-            x={-hw + w * 0.1}
-            y={-hh}
-            width={w * 0.8}
-            height={tvH}
-            fill={dark}
-            cornerRadius={[2, 2, 0, 0]}
-          />
-        </Group>
-      );
-    }
-
-    case "bookshelf":
-    case "bookcase": {
-      const shelves = 4;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          {Array.from({ length: shelves }, (_, i) => {
-            const sy = -hh + ((i + 1) * h) / (shelves + 1);
-            return (
-              <Line
-                key={i}
-                points={[-hw + 3, sy, hw - 3, sy]}
-                stroke={dark}
-                strokeWidth={1.5}
-                listening={false}
-              />
-            );
-          })}
-        </Group>
-      );
-    }
-
-    case "floor-lamp": {
-      const r = Math.max(4, Math.min(hw, hh) - 2);
-      return (
-        <Group>
-          <Circle x={0} y={0} radius={r} fill={color} />
-          <Circle x={0} y={0} radius={Math.max(2, r * 0.25)} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "double-bed": {
-      const headH = h * 0.1;
-      const pillowW = w * 0.35;
-      const pillowH = h * 0.1;
-      const pillowY = -hh + headH + 6;
-      const gap = w * 0.06;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
-          <Rect x={-hw} y={-hh} width={w} height={headH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
-          <Rect
-            x={-hw + gap}
-            y={pillowY}
-            width={pillowW}
-            height={pillowH}
-            fill="#ffffff"
-            cornerRadius={3}
-            opacity={0.6}
-          />
-          <Rect
-            x={hw - gap - pillowW}
-            y={pillowY}
-            width={pillowW}
-            height={pillowH}
-            fill="#ffffff"
-            cornerRadius={3}
-            opacity={0.6}
-          />
-        </Group>
-      );
-    }
-
-    case "single-bed": {
-      const headH = h * 0.1;
-      const pillowW = w * 0.6;
-      const pillowH = h * 0.1;
-      const pillowY = -hh + headH + 6;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
-          <Rect x={-hw} y={-hh} width={w} height={headH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
-          <Rect
-            x={-pillowW / 2}
-            y={pillowY}
-            width={pillowW}
-            height={pillowH}
-            fill="#ffffff"
-            cornerRadius={3}
-            opacity={0.6}
-          />
-        </Group>
-      );
-    }
-
-    case "nightstand": {
-      const handleR = Math.min(4, w * 0.08);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Circle x={0} y={0} radius={handleR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "wardrobe": {
-      const handleR = Math.min(3, w * 0.04);
-      const handleGap = Math.max(6, w * 0.08);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Line
-            points={[0, -hh + 3, 0, hh - 3]}
-            stroke={dark}
-            strokeWidth={1.5}
-            listening={false}
-          />
-          <Circle x={-handleGap} y={0} radius={handleR} fill={dark} />
-          <Circle x={handleGap} y={0} radius={handleR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "dresser": {
-      const handleR = Math.min(3, w * 0.04);
-      const rows = 3;
-      const sectionH = h / rows;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          {Array.from({ length: rows }, (_, i) => {
-            const lineY = -hh + sectionH * (i + 1);
-            const handleY = -hh + sectionH * i + sectionH / 2;
-            return (
-              <Group key={i}>
-                {i < rows - 1 && (
-                  <Line
-                    points={[-hw + 3, lineY, hw - 3, lineY]}
-                    stroke={dark}
-                    strokeWidth={1}
-                    listening={false}
-                  />
-                )}
-                <Circle x={0} y={handleY} radius={handleR} fill={dark} />
-              </Group>
-            );
-          })}
-        </Group>
-      );
-    }
-
-    case "desk": {
-      const surfaceH = Math.max(3, h * 0.08);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
+          {body(60)}
           <Rect
             x={-hw}
-            y={-hh}
+            y={-hd}
             width={w}
-            height={surfaceH}
+            height={back}
             fill={dark}
-            cornerRadius={[2, 2, 0, 0]}
+            cornerRadius={[60, 60, 0, 0]}
+            {...detail}
           />
-        </Group>
-      );
-    }
-
-    case "dining-table": {
-      const legR = Math.min(4, w * 0.04);
-      const inset = Math.max(8, w * 0.08);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={3} />
-          <Circle x={-hw + inset} y={-hh + inset} radius={legR} fill={dark} />
-          <Circle x={hw - inset} y={-hh + inset} radius={legR} fill={dark} />
-          <Circle x={-hw + inset} y={hh - inset} radius={legR} fill={dark} />
-          <Circle x={hw - inset} y={hh - inset} radius={legR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "dining-chair": {
-      const backH = Math.max(4, h * 0.18);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Rect x={-hw} y={-hh} width={w} height={backH} fill={dark} cornerRadius={[2, 2, 0, 0]} />
-        </Group>
-      );
-    }
-
-    case "kitchen-island": {
-      const inset = Math.max(4, Math.min(w, h) * 0.06);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
           <Rect
-            x={-hw + inset}
-            y={-hh + inset}
-            width={w - inset * 2}
-            height={h - inset * 2}
-            stroke={dark}
-            strokeWidth={1}
-            listening={false}
-          />
-        </Group>
-      );
-    }
-
-    case "refrigerator": {
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Line
-            points={[0, -hh + 3, 0, hh - 3]}
-            stroke={dark}
-            strokeWidth={1.5}
-            listening={false}
-          />
-        </Group>
-      );
-    }
-
-    case "stove": {
-      const burnerR = Math.min(w * 0.14, h * 0.14);
-      const bx = w * 0.22;
-      const by = h * 0.22;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Circle
-            x={-bx}
-            y={-by}
-            radius={burnerR}
-            stroke={dark}
-            strokeWidth={1.5}
-            fill={darkenColor(color, 0.08)}
-          />
-          <Circle
-            x={bx}
-            y={-by}
-            radius={burnerR}
-            stroke={dark}
-            strokeWidth={1.5}
-            fill={darkenColor(color, 0.08)}
-          />
-          <Circle
-            x={-bx}
-            y={by}
-            radius={burnerR}
-            stroke={dark}
-            strokeWidth={1.5}
-            fill={darkenColor(color, 0.08)}
-          />
-          <Circle
-            x={bx}
-            y={by}
-            radius={burnerR}
-            stroke={dark}
-            strokeWidth={1.5}
-            fill={darkenColor(color, 0.08)}
-          />
-        </Group>
-      );
-    }
-
-    case "bathtub": {
-      const inset = Math.min(8, Math.min(w, h) * 0.12);
-      const outerR = Math.min(w, h) * 0.15;
-      const innerR = Math.min(w, h) * 0.1;
-      const drainR = Math.min(4, w * 0.04);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={outerR} />
-          <Rect
-            x={-hw + inset}
-            y={-hh + inset}
-            width={w - inset * 2}
-            height={h - inset * 2}
-            fill={darkenColor(color, 0.08)}
-            cornerRadius={innerR}
-          />
-          <Circle x={0} y={hh - inset - drainR * 2} radius={drainR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "toilet": {
-      const tankH = h * 0.25;
-      const bowlRx = w * 0.4;
-      const bowlRy = (h - tankH) * 0.42;
-      const bowlCy = -hh + tankH + (h - tankH) * 0.45;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={tankH} fill={dark} cornerRadius={[3, 3, 0, 0]} />
-          <Shape
-            sceneFunc={(ctx, shape) => {
-              ctx.beginPath();
-              const kappa = 0.5522848;
-              const ox = bowlRx * kappa;
-              const oy = bowlRy * kappa;
-              ctx.moveTo(-bowlRx, bowlCy);
-              ctx.bezierCurveTo(-bowlRx, bowlCy - oy, -ox, bowlCy - bowlRy, 0, bowlCy - bowlRy);
-              ctx.bezierCurveTo(ox, bowlCy - bowlRy, bowlRx, bowlCy - oy, bowlRx, bowlCy);
-              ctx.bezierCurveTo(bowlRx, bowlCy + oy, ox, bowlCy + bowlRy, 0, bowlCy + bowlRy);
-              ctx.bezierCurveTo(-ox, bowlCy + bowlRy, -bowlRx, bowlCy + oy, -bowlRx, bowlCy);
-              ctx.closePath();
-              ctx.fillStrokeShape(shape);
-            }}
-            fill={color}
-            stroke={dark}
-            strokeWidth={1}
-          />
-        </Group>
-      );
-    }
-
-    case "sink": {
-      const basinR = Math.min(w * 0.28, h * 0.28);
-      const faucetR = Math.min(3, w * 0.05);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={6} />
-          <Circle
-            x={0}
-            y={h * 0.05}
-            radius={basinR}
-            fill={darkenColor(color, 0.08)}
-            stroke={dark}
-            strokeWidth={1}
-          />
-          <Circle x={0} y={-hh + 6} radius={faucetR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "shower": {
-      const showerR = Math.min(4, w * 0.06);
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Line
-            points={[-hw + 6, -hh + 6, hw - 6, hh - 6]}
-            stroke={dark}
-            strokeWidth={1}
-            opacity={0.5}
-            listening={false}
-          />
-          <Line
-            points={[hw - 6, -hh + 6, -hw + 6, hh - 6]}
-            stroke={dark}
-            strokeWidth={1}
-            opacity={0.5}
-            listening={false}
-          />
-          <Circle x={hw - 8} y={-hh + 8} radius={showerR} fill={dark} />
-        </Group>
-      );
-    }
-
-    case "office-desk": {
-      const returnW = w * 0.4;
-      const returnH = h * 0.45;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          <Rect
-            x={hw - returnW}
-            y={hh - returnH}
-            width={returnW}
-            height={returnH}
+            x={-hw}
+            y={-hd}
+            width={arm}
+            height={d}
             fill={dark}
-            cornerRadius={[0, 0, 2, 0]}
+            cornerRadius={[60, 0, 0, 60]}
+            {...detail}
           />
-        </Group>
-      );
-    }
-
-    case "office-chair": {
-      const seatR = Math.min(hw, hh) * 0.75;
-      const backW = seatR * 1.2;
-      const backH = Math.max(4, h * 0.12);
-      return (
-        <Group>
-          <Circle x={0} y={h * 0.05} radius={seatR} fill={color} />
-          <Rect x={-backW / 2} y={-hh} width={backW} height={backH} fill={dark} cornerRadius={2} />
-        </Group>
-      );
-    }
-
-    case "filing-cabinet": {
-      const handleR = Math.min(3, w * 0.04);
-      const rows = 3;
-      const sectionH = h / rows;
-      return (
-        <Group>
-          <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={2} />
-          {Array.from({ length: rows }, (_, i) => {
-            const lineY = -hh + sectionH * (i + 1);
-            const handleY = -hh + sectionH * i + sectionH / 2;
-            return (
-              <Group key={i}>
-                {i < rows - 1 && (
-                  <Line
-                    points={[-hw + 3, lineY, hw - 3, lineY]}
-                    stroke={dark}
-                    strokeWidth={1}
-                    listening={false}
-                  />
-                )}
-                <Circle x={0} y={handleY} radius={handleR} fill={dark} />
-              </Group>
-            );
+          <Rect
+            x={hw - arm}
+            y={-hd}
+            width={arm}
+            height={d}
+            fill={dark}
+            cornerRadius={[0, 60, 60, 0]}
+            {...detail}
+          />
+          {Array.from({ length: seats - 1 }, (_, i) => {
+            const x = -hw + arm + ((i + 1) * (w - arm * 2)) / seats;
+            return stroke([x, -hd + back, x, hd - d * 0.1]);
           })}
         </Group>
       );
     }
 
+    case "dining-chair":
+    case "office-chair": {
+      const back = d * 0.2;
+      return (
+        <Group>
+          {body(item === "office-chair" ? min * 0.3 : 50)}
+          <Rect
+            x={-hw}
+            y={-hd}
+            width={w}
+            height={back}
+            fill={dark}
+            cornerRadius={[50, 50, 0, 0]}
+            {...detail}
+          />
+        </Group>
+      );
+    }
+
+    case "coffee-table":
+    case "dining-table":
+    case "kitchen-island":
+      return (
+        <Group>
+          {body(item === "kitchen-island" ? 20 : 80)}
+          {inset(min * 0.1, 50)}
+        </Group>
+      );
+
+    case "desk":
+    case "office-desk": {
+      const monitorW = Math.min(600, w * 0.4);
+      return (
+        <Group>
+          {body(30)}
+          <Rect
+            x={-monitorW / 2}
+            y={-hd + 60}
+            width={monitorW}
+            height={40}
+            fill={edge}
+            cornerRadius={8}
+            {...detail}
+          />
+          <Rect
+            x={-monitorW * 0.4}
+            y={-hd + d * 0.42}
+            width={monitorW * 0.8}
+            height={d * 0.18}
+            fill={light}
+            stroke={edge}
+            strokeWidth={1}
+            cornerRadius={15}
+            {...detail}
+          />
+        </Group>
+      );
+    }
+
+    case "tv-stand":
+      return (
+        <Group>
+          {body(20)}
+          <Rect
+            x={-w * 0.4}
+            y={-hd - 30}
+            width={w * 0.8}
+            height={40}
+            fill={edge}
+            cornerRadius={6}
+            {...detail}
+          />
+          {stroke([0, -hd, 0, hd])}
+        </Group>
+      );
+
+    case "bookshelf":
+    case "bookcase":
+      return (
+        <Group>
+          {body(10)}
+          {stroke([-hw, 0, hw, 0])}
+          {[0.25, 0.5, 0.75].map((f) => stroke([-hw + w * f, -hd, -hw + w * f, hd]))}
+        </Group>
+      );
+
+    case "floor-lamp":
+      return (
+        <Group>
+          <Circle
+            radius={min / 2}
+            fill={color}
+            stroke={edge}
+            strokeWidth={1}
+            strokeScaleEnabled={false}
+            {...flat}
+          />
+          <Circle radius={min * 0.16} fill={dark} {...detail} />
+        </Group>
+      );
+
+    case "double-bed":
+    case "single-bed": {
+      const head = d * 0.06;
+      const pillowH = d * 0.14;
+      const pillows = item === "double-bed" ? [-w * 0.24, w * 0.24] : [0];
+      const pillowW = item === "double-bed" ? w * 0.4 : w * 0.6;
+      const blanketY = -hd + head + pillowH + d * 0.12;
+      return (
+        <Group>
+          {body(40, light)}
+          <Rect
+            x={-hw}
+            y={-hd}
+            width={w}
+            height={head}
+            fill={edge}
+            cornerRadius={[40, 40, 0, 0]}
+            {...detail}
+          />
+          <Rect
+            x={-hw}
+            y={blanketY}
+            width={w}
+            height={hd - blanketY}
+            fill={color}
+            stroke={edge}
+            strokeWidth={1}
+            cornerRadius={[0, 0, 40, 40]}
+            {...detail}
+          />
+          {stroke([-hw, blanketY + d * 0.08, hw, blanketY + d * 0.08])}
+          {pillows.map((x) => (
+            <Rect
+              key={x}
+              x={x - pillowW / 2}
+              y={-hd + head + d * 0.05}
+              width={pillowW}
+              height={pillowH}
+              fill="#ffffff"
+              stroke={edge}
+              strokeWidth={1}
+              cornerRadius={30}
+              {...detail}
+            />
+          ))}
+        </Group>
+      );
+    }
+
+    case "nightstand":
+      return (
+        <Group>
+          {body(20)}
+          {knob(0, 0)}
+        </Group>
+      );
+
+    case "dresser":
+    case "filing-cabinet":
+      return (
+        <Group>
+          {body(15)}
+          {stroke([-hw, 0, hw, 0])}
+          {knob(-w * 0.25, 0, 22)}
+          {knob(w * 0.25, 0, 22)}
+        </Group>
+      );
+
+    case "wardrobe":
+      return (
+        <Group>
+          {body(10)}
+          {stroke([0, -hd, 0, hd])}
+          {knob(-60, hd * 0.3, 20)}
+          {knob(60, hd * 0.3, 20)}
+        </Group>
+      );
+
+    case "refrigerator":
+      return (
+        <Group>
+          {body(30)}
+          {stroke([-hw + w * 0.4, -hd, -hw + w * 0.4, hd])}
+          <Rect
+            x={-hw + w * 0.4 - 70}
+            y={hd - 40}
+            width={50}
+            height={-d * 0.5}
+            fill={edge}
+            cornerRadius={10}
+            {...detail}
+          />
+          <Rect
+            x={-hw + w * 0.4 + 20}
+            y={hd - 40}
+            width={50}
+            height={-d * 0.5}
+            fill={edge}
+            cornerRadius={10}
+            {...detail}
+          />
+        </Group>
+      );
+
+    case "stove": {
+      const r = min * 0.14;
+      return (
+        <Group>
+          {body(20)}
+          {[-1, 1].flatMap((sx) =>
+            [-1, 1].map((sy) => (
+              <Circle
+                key={`${sx}${sy}`}
+                x={sx * w * 0.24}
+                y={sy * d * 0.24}
+                radius={r}
+                stroke={edge}
+                strokeWidth={1.5}
+                fill={dark}
+                {...detail}
+              />
+            )),
+          )}
+        </Group>
+      );
+    }
+
+    case "bathtub":
+      return (
+        <Group>
+          {body(min * 0.18)}
+          {inset(min * 0.12, min * 0.14, light)}
+          <Circle x={-hw + min * 0.3} y={0} radius={40} fill={dark} {...detail} />
+        </Group>
+      );
+
+    case "toilet":
+      return (
+        <Group>
+          <Rect
+            x={-hw}
+            y={-hd}
+            width={w}
+            height={d * 0.32}
+            fill={dark}
+            stroke={edge}
+            strokeWidth={1}
+            cornerRadius={30}
+            {...flat}
+            strokeScaleEnabled={false}
+          />
+          <Ellipse
+            x={0}
+            y={hd - d * 0.34}
+            radiusX={w * 0.42}
+            radiusY={d * 0.34}
+            fill={color}
+            stroke={edge}
+            strokeWidth={1}
+            strokeScaleEnabled={false}
+            {...flat}
+          />
+          <Ellipse
+            x={0}
+            y={hd - d * 0.34}
+            radiusX={w * 0.28}
+            radiusY={d * 0.22}
+            fill={light}
+            {...detail}
+          />
+        </Group>
+      );
+
+    case "sink":
+      return (
+        <Group>
+          {body(30)}
+          <Ellipse
+            x={0}
+            y={d * 0.06}
+            radiusX={w * 0.34}
+            radiusY={d * 0.3}
+            fill={light}
+            stroke={edge}
+            strokeWidth={1}
+            {...detail}
+          />
+          {knob(0, -hd + d * 0.16, 25)}
+        </Group>
+      );
+
+    case "shower":
+      return (
+        <Group>
+          {body(30)}
+          {inset(min * 0.08, 15)}
+          <Circle radius={45} stroke={edge} strokeWidth={1.5} {...detail} />
+          {stroke([-hw + min * 0.08, -hd + min * 0.08, -min * 0.12, -min * 0.12])}
+        </Group>
+      );
+
     default:
-      return <Rect x={-hw} y={-hh} width={w} height={h} fill={color} cornerRadius={4} />;
+      return <Group>{body(30)}</Group>;
   }
 });

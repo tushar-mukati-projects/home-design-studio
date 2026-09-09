@@ -9,7 +9,6 @@ import { PX_PER_MM } from "@/lib/constants";
 const CURSOR_FADE_MS = 5000;
 const flat = { perfectDrawEnabled: false, shadowForStrokeEnabled: false } as const;
 
-// Lives in the overlay layer; positions are millimetres, the glyph is scaled to screen size.
 export const CollaboratorCursors = memo(function CollaboratorCursors() {
   const collaborators = useCollaborationStore((s) => s.collaborators);
   const zoom = useEditorStore((s) => s.zoom);

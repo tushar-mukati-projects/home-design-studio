@@ -37,7 +37,6 @@ const buildApp = () => {
   api.use("/designs", designs);
   app.use("/api", api);
 
-  // Express only builds the router lazily.
   app.get("/health", (_q, _s) => {});
   return app;
 };

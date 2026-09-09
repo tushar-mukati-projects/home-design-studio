@@ -5,8 +5,6 @@ import type { Request, Response, NextFunction } from "express";
 import type { AuthInfo, AuthenticatedRequest } from "../lib/types";
 import { TtlCache } from "../lib/ttl-cache";
 
-// The user row for a uid does not change between requests, but looking it up costs a full
-// database round trip on every call. Token verification itself still runs every time.
 const identityCache = new TtlCache<string, AuthInfo>(5 * 60 * 1000);
 
 type Resolved = { state: "ok"; auth: AuthInfo } | { state: "anonymous" } | { state: "invalid" };
@@ -70,9 +68,6 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
   next();
 };
 
-// Anonymous is a valid caller here, since a share link proves access by its code
-// alone. A token that was sent but failed still has to 401 so the client refreshes
-// it instead of reading the reply as "no such design".
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
   let resolved: Resolved;
 

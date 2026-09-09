@@ -20,8 +20,6 @@ export const validate = (schema: ZodSchema) => {
     }
   };
 
-  // The OpenAPI document reads this off the live router, so the docs are
-  // generated from the same schema that validates the request.
   handler.schema = schema;
   return handler;
 };
@@ -34,16 +32,12 @@ export const validated = <T>(req: Request, schema: ZodSchema<T>): T => {
   });
 };
 
-// Declares the success-response shape for a route. It does not run any checks;
-// the OpenAPI document reads it off the router so responses are documented from
-// a schema the tests also assert the serializers against.
 export const responds = (schema: ZodSchema) => {
   const handler = (_req: Request, _res: Response, next: NextFunction) => next();
   handler.responseSchema = schema;
   return handler;
 };
 
-// For endpoints that stream Server-Sent Events rather than returning JSON.
 export const respondsWithEvents = (description: string) => {
   const handler = (_req: Request, _res: Response, next: NextFunction) => next();
   handler.eventStream = description;

@@ -1,6 +1,5 @@
 import type { CatalogItem } from "@/types";
 
-// Same 25 items the server seeds; generated from server/src/lib/seed-data/furniture.ts.
 export const mockFurnitureItems: CatalogItem[] = [
   { id: "sofa", name: "Sofa", category: "living_room", size: [2000, 900, 850], color: "#9ca3af" },
   {

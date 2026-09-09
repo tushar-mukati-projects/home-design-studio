@@ -13,7 +13,6 @@ import { uploadImage } from "../middleware/upload";
 
 const router = Router();
 
-// Each call can run many model steps, so cap them per user.
 const aiLimit = rateLimit({ windowMs: 60_000, max: 10, name: "ai" });
 const heavyAiLimit = rateLimit({ windowMs: 60_000, max: 3, name: "ai-heavy" });
 

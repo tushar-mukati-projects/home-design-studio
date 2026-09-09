@@ -1,7 +1,6 @@
 import * as Y from "yjs";
 import { CANVAS_COLLECTIONS, emptyCanvas, type Canvas } from "../schemas/canvas.schema";
 
-// The live document is the canvas with each array turned into a Y.Map keyed by id.
 export const META_KEY = "meta";
 
 export const extractCanvasFromDoc = (doc: Y.Doc): Canvas => {

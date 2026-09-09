@@ -23,7 +23,6 @@ export const getApiErrorMessage = (error: unknown, fallback = "Something went wr
   return fallback;
 };
 
-// For the screen that gates the whole app: says what to do, not just what happened.
 export const sessionErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {

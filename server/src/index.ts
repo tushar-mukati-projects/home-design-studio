@@ -16,7 +16,6 @@ import { healthResponse } from "./schemas/response.schema";
 const app = express();
 
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
-// Must precede express.json: Stripe signs the raw bytes.
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 

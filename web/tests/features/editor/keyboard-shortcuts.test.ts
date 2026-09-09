@@ -53,6 +53,32 @@ describe("resolveShortcut - modifiers must not hijack browser combos", () => {
   });
 });
 
+describe("resolveShortcut - nudge", () => {
+  test("arrow keys nudge the selection", () => {
+    expect(resolve({ key: "ArrowLeft" })).toEqual({ action: "nudge", dx: -1, dy: 0, large: false });
+    expect(resolve({ key: "ArrowDown", shiftKey: true })).toEqual({
+      action: "nudge",
+      dx: 0,
+      dy: 1,
+      large: true,
+    });
+  });
+
+  test("arrows with Ctrl or Alt are left to the browser", () => {
+    expect(resolve({ key: "ArrowUp", ctrlKey: true })).toBeNull();
+    expect(resolve({ key: "ArrowUp", altKey: true })).toBeNull();
+  });
+
+  test("arrows do nothing for viewers and while typing", () => {
+    expect(resolve({ key: "ArrowUp" }, false)).toBeNull();
+    expect(resolve({ key: "ArrowUp", target: { tagName: "INPUT" } })).toBeNull();
+  });
+
+  test("nudges prevent the page from scrolling", () => {
+    expect(shouldPreventDefault({ action: "nudge", dx: 1, dy: 0, large: false })).toBe(true);
+  });
+});
+
 describe("resolveShortcut - tools", () => {
   const toolKeys: [string, EditorTool][] = [
     ["v", "select"],
@@ -83,7 +109,7 @@ describe("resolveShortcut - tools", () => {
   });
 
   test("unmapped keys resolve to nothing", () => {
-    for (const key of ["q", "1", "F5", "ArrowLeft", " "]) {
+    for (const key of ["q", "1", "F5", "Tab", " "]) {
       expect(resolve({ key })).toBeNull();
     }
   });
