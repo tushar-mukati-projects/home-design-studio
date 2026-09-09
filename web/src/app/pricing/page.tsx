@@ -17,9 +17,10 @@ const plans = [
     features: [
       "Up to 3 designs",
       "2D floor plan editor",
-      "Basic furniture catalog",
-      "PNG export",
-      "Community support",
+      "Full furniture catalog",
+      "3D preview",
+      "PNG and PDF export",
+      "Versions",
     ],
     cta: "Current Plan",
     highlighted: false,
@@ -30,14 +31,13 @@ const plans = [
     period: "/month",
     description: "Everything you need for professional home design",
     features: [
+      "Everything in Free",
       "Unlimited designs",
-      "3D preview & walkthrough",
-      "Full furniture catalog",
-      "PDF & SVG export",
+      "Design AI chat",
+      "AI room furnishing",
+      "Import a floor plan from a photo",
+      "Share with view or edit access",
       "Real-time collaboration",
-      "Version history",
-      "Share & embed designs",
-      "Priority support",
     ],
     cta: "Upgrade to Pro",
     highlighted: true,
@@ -48,7 +48,7 @@ const faqs = [
   {
     question: "Can I try Pro before paying?",
     answer:
-      "Yes — the Free plan gives you up to 3 designs with full editor access so you can evaluate the tool. Upgrade to Pro when you need unlimited designs, 3D walkthrough, and collaboration.",
+      "Yes — the Free plan gives you up to 3 designs with full editor access so you can evaluate the tool. Upgrade to Pro when you need unlimited designs, Design AI, and sharing.",
   },
   {
     question: "What happens to my designs if I downgrade?",
@@ -67,8 +67,7 @@ const faqs = [
   },
   {
     question: "What export formats are available?",
-    answer:
-      "Free plan supports PNG export. Pro unlocks PDF and SVG exports, which preserve vector quality for printing or sharing with contractors.",
+    answer: "All plans can export floor plans as PNG or PDF, or print them directly.",
   },
 ];
 
@@ -131,8 +130,9 @@ const PricingPage = () => {
         <div className="mt-16 grid gap-8 lg:grid-cols-2">
           {plans.map((plan) => {
             const isCurrentPlan =
-              (plan.name === "Free" && currentPlan === "free") ||
-              (plan.name === "Pro" && currentPlan === "pro");
+              !!user &&
+              ((plan.name === "Free" && currentPlan === "free") ||
+                (plan.name === "Pro" && currentPlan === "pro"));
 
             return (
               <div

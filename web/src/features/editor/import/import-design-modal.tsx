@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/stores/editor-store";
 import { auth } from "@/lib/firebase";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { Canvas } from "@/types";
 
 interface ImportDesignModalProps {
@@ -21,7 +22,9 @@ interface ImportDesignModalProps {
   onClose: () => void;
 }
 
-type ImportPhase = "upload" | "analyzing" | "success" | "error";
+type ImportPhase = "upload" | "confirm" | "analyzing" | "success" | "error";
+
+const importFailedMessage = "We couldn't read this image. Try another photo or plan.";
 
 export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => {
   const [phase, setPhase] = useState<ImportPhase>("upload");
@@ -34,6 +37,9 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
   const abortRef = useRef<AbortController | null>(null);
 
   const setCanvas = useEditorStore((s) => s.setCanvas);
+  const hasContent = useEditorStore(
+    (s) => s.walls.length > 0 || s.rooms.length > 0 || s.furniture.length > 0,
+  );
 
   const handleClose = useCallback(() => {
     if (phase === "analyzing") {
@@ -47,6 +53,15 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
     setResultSummary("");
     onClose();
   }, [phase, onClose]);
+
+  useEffect(() => {
+    if (!open || phase === "analyzing") return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, phase, handleClose]);
 
   const handleFileSelect = useCallback((file: File) => {
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -118,12 +133,12 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
       });
 
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Request failed" }));
-        throw new Error(err.error || `Server error: ${response.status}`);
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || importFailedMessage);
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response stream");
+      if (!reader) throw new Error(importFailedMessage);
 
       const decoder = new TextDecoder();
       let buffer = "";
@@ -165,7 +180,11 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setPhase("error");
-      setErrorMessage((err as Error).message || "Analysis failed. Please try again.");
+      setErrorMessage(
+        err instanceof TypeError
+          ? "We can't connect right now. Check your connection and try again."
+          : getApiErrorMessage(err, importFailedMessage),
+      );
     }
   }, [selectedFile, setCanvas]);
 
@@ -198,7 +217,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                   Import from Image
                 </h2>
                 <p className="text-xs text-[var(--muted-foreground)]">
-                  AI converts your photo into a floor plan
+                  Design AI turns your photo into a floor plan
                 </p>
               </div>
             </div>
@@ -279,6 +298,22 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
               </div>
             )}
 
+            {phase === "confirm" && (
+              <div className="flex flex-col items-center gap-4 py-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+                  <AlertCircle className="h-8 w-8 text-amber-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">
+                    Replace the current plan?
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    This can be undone with Ctrl+Z.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {phase === "analyzing" && (
               <div className="flex flex-col items-center gap-4 py-8">
                 <div className="relative">
@@ -287,7 +322,7 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-[var(--foreground)]">
-                    AI is analyzing your image
+                    Design AI is reading your image
                   </p>
                   <p className="mt-1 text-xs text-[var(--muted-foreground)]">{statusMessage}</p>
                 </div>
@@ -314,7 +349,9 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                   <AlertCircle className="h-8 w-8 text-red-500" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Analysis failed</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">
+                    We couldn&apos;t import this image
+                  </p>
                   <p className="mt-1 text-xs text-[var(--muted-foreground)]">{errorMessage}</p>
                 </div>
               </div>
@@ -330,11 +367,21 @@ export const ImportDesignModal = ({ open, onClose }: ImportDesignModalProps) => 
                 <Button
                   size="sm"
                   disabled={!selectedFile}
-                  onClick={handleAnalyze}
+                  onClick={hasContent ? () => setPhase("confirm") : handleAnalyze}
                   className="gap-1.5"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   Analyze & Import
+                </Button>
+              </>
+            )}
+            {phase === "confirm" && (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setPhase("upload")}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleAnalyze}>
+                  Replace
                 </Button>
               </>
             )}

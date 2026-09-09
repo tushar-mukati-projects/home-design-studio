@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, Infinity, Users, Wand2, Palette, Check, CreditCard } from "lucide-react";
+import { Sparkles, Infinity, Users, Wand2, ImageIcon, Check, CreditCard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,8 @@ interface FeatureItemProps {
 const PRO_FEATURES: FeatureItemProps[] = [
   { icon: <Infinity className="h-4 w-4" />, label: "Unlimited designs" },
   { icon: <Users className="h-4 w-4" />, label: "Real-time collaboration & sharing" },
-  { icon: <Wand2 className="h-4 w-4" />, label: "AI-powered design suggestions" },
-  { icon: <Palette className="h-4 w-4" />, label: "Premium templates & exports" },
+  { icon: <Wand2 className="h-4 w-4" />, label: "Design AI chat and room furnishing" },
+  { icon: <ImageIcon className="h-4 w-4" />, label: "Import a floor plan from a photo" },
 ];
 
 const FeatureItem = ({ icon, label }: FeatureItemProps) => (
@@ -73,7 +73,7 @@ export const UpgradeModal = ({ open, onClose }: UpgradeModalProps) => {
               <DialogDescription className="text-white/80">
                 {isPro
                   ? "You have access to all Pro features."
-                  : "Get unlimited designs, collaboration, and AI features."}
+                  : "Get unlimited designs, sharing, and Design AI."}
               </DialogDescription>
             </DialogHeader>
           </div>

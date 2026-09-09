@@ -86,7 +86,7 @@ export const EditorToolbar = ({
         <div className="hidden flex-col sm:flex">
           {!canEdit ? (
             <span className="max-w-[120px] truncate text-sm font-semibold text-[var(--foreground)] md:max-w-[200px]">
-              {designName || "Untitled Design"}
+              {designName || "Untitled design"}
             </span>
           ) : isEditingName ? (
             <input
@@ -108,7 +108,7 @@ export const EditorToolbar = ({
               onClick={() => setIsEditingName(true)}
               className="max-w-[120px] truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--muted-foreground)] md:max-w-[200px]"
             >
-              {designName || "Untitled Design"}
+              {designName || "Untitled design"}
             </button>
           )}
         </div>
@@ -204,7 +204,7 @@ export const EditorToolbar = ({
         </span>
 
         {canEdit && (
-          <Tooltip content="Version History" side="bottom">
+          <Tooltip content="Versions" side="bottom">
             <Button
               variant="ghost"
               size="sm"
@@ -212,7 +212,7 @@ export const EditorToolbar = ({
               onClick={onToggleHistory}
             >
               <Clock className="h-3.5 w-3.5" />
-              <span className="hidden text-xs lg:inline">History</span>
+              <span className="hidden text-xs lg:inline">Versions</span>
             </Button>
           </Tooltip>
         )}

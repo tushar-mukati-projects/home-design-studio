@@ -7,6 +7,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   useFetchVersions,
   useCreateVersion,
   useRestoreVersion,
@@ -25,6 +33,7 @@ export const VersionHistoryPanel = ({
   onRestored,
 }: VersionHistoryPanelProps) => {
   const [versionName, setVersionName] = useState("");
+  const [versionToRestore, setVersionToRestore] = useState<string | null>(null);
   const { data: versions, isLoading } = useFetchVersions(designId);
   const createMutation = useCreateVersion(designId);
   const restoreMutation = useRestoreVersion(designId);
@@ -38,10 +47,12 @@ export const VersionHistoryPanel = ({
     } catch {}
   };
 
-  const handleRestore = async (versionId: string) => {
+  const handleRestore = async () => {
+    if (!versionToRestore) return;
     try {
-      await restoreMutation.mutateAsync(versionId);
+      await restoreMutation.mutateAsync(versionToRestore);
       toast.success("Version restored");
+      setVersionToRestore(null);
       onRestored();
     } catch {}
   };
@@ -58,7 +69,7 @@ export const VersionHistoryPanel = ({
       <div className="flex h-12 items-center justify-between border-b border-[var(--border)] px-4">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-[var(--muted-foreground)]" />
-          <span className="text-sm font-semibold text-[var(--foreground)]">Version History</span>
+          <span className="text-sm font-semibold text-[var(--foreground)]">Versions</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -123,7 +134,7 @@ export const VersionHistoryPanel = ({
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-[var(--muted-foreground)] hover:text-[var(--primary)]"
-                  onClick={() => handleRestore(version.id)}
+                  onClick={() => setVersionToRestore(version.id)}
                   disabled={restoreMutation.isPending}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -142,6 +153,28 @@ export const VersionHistoryPanel = ({
           </div>
         ))}
       </div>
+
+      <Dialog
+        open={versionToRestore !== null}
+        onOpenChange={(v) => !v && setVersionToRestore(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "var(--font-heading)" }}>
+              Restore this version?
+            </DialogTitle>
+            <DialogDescription>Your current plan will be replaced.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionToRestore(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRestore} disabled={restoreMutation.isPending}>
+              {restoreMutation.isPending ? "Restoring..." : "Restore"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

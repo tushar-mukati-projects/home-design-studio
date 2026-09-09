@@ -40,7 +40,7 @@ const SUGGESTIONS = [
 
 const TOOL_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   fetch_canvas: {
-    label: "Reading canvas",
+    label: "Reading the plan",
     icon: <Database className="size-3" />,
     color: "text-blue-600 bg-blue-50 border-blue-200",
   },
@@ -50,7 +50,7 @@ const TOOL_CONFIG: Record<string, { label: string; icon: React.ReactNode; color:
     color: "text-violet-600 bg-violet-50 border-violet-200",
   },
   edit_canvas: {
-    label: "Editing canvas",
+    label: "Editing the plan",
     icon: <PencilRuler className="size-3" />,
     color: "text-violet-600 bg-violet-50 border-violet-200",
   },
@@ -94,7 +94,7 @@ const MarkdownMessage = ({ content }: { content: string }) => (
 
 const ToolPill = ({ tool }: { tool: ToolCall }) => {
   const config = TOOL_CONFIG[tool.name] ?? {
-    label: tool.name,
+    label: "Working on the plan",
     icon: <PencilRuler className="size-3" />,
     color: "text-zinc-600 bg-zinc-50 border-zinc-200",
   };
@@ -345,10 +345,9 @@ const EmptyState = ({
       <Sparkles className="size-7 text-violet-600" />
     </div>
     <div>
-      <p className="text-sm font-semibold text-[var(--foreground)]">Your AI Design Assistant</p>
+      <p className="text-sm font-semibold text-[var(--foreground)]">Design AI</p>
       <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
-        Tell me what to build and I&apos;ll add walls, rooms, and furniture directly onto your
-        canvas.
+        Tell me what to build and I&apos;ll add walls, rooms, and furniture directly onto your plan.
       </p>
     </div>
     <div className="flex w-full flex-col gap-1.5">

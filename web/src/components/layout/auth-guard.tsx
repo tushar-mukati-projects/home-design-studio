@@ -23,7 +23,7 @@ const Brand = () => (
       className="text-3xl text-[var(--foreground)]"
       style={{ fontFamily: "var(--font-heading)" }}
     >
-      DesignStudio
+      Home Design Studio
     </span>
   </motion.div>
 );

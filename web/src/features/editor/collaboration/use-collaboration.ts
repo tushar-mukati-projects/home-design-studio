@@ -68,7 +68,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   const initialSyncDoneRef = useRef(false);
 
   const [designMeta, setDesignMeta] = useState<DesignMeta>({
-    name: "Untitled Design",
+    name: "Untitled design",
     isOwner: true,
     canEdit: true,
   });
@@ -129,7 +129,7 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
 
       const metaMap = doc.getMap(META_KEY);
       const readMeta = () => {
-        const name = (metaMap.get("name") as string) || "Untitled Design";
+        const name = (metaMap.get("name") as string) || "Untitled design";
         const ownerUid = metaMap.get("ownerUid") as string;
         setDesignMeta({ name, isOwner: ownerUid === currentUser.uid, canEdit: canEditRef.current });
       };

@@ -162,7 +162,7 @@ export const Navbar = () => {
             className="text-xl text-[var(--foreground)]"
             style={{ fontFamily: "var(--font-heading)" }}
           >
-            DesignStudio
+            Home Design Studio
           </span>
         </Link>
 

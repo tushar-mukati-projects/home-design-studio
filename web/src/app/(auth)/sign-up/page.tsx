@@ -88,7 +88,7 @@ const SignUpPage = () => {
       }
       router.replace("/dashboard");
     } catch {
-      setError("OAuth sign-in failed. Please try again.");
+      setError("Sign-in failed. Please try again.");
     }
   };
 
@@ -128,7 +128,7 @@ const SignUpPage = () => {
                 className="text-2xl text-[var(--foreground)]"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
-                DesignStudio
+                Home Design Studio
               </span>
             </Link>
             <p className="text-sm text-[var(--muted-foreground)]">Create your account</p>

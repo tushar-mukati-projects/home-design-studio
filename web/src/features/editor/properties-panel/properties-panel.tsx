@@ -501,7 +501,7 @@ export const PropertiesPanel = () => {
       <Section title="Properties">
         <div className="flex flex-1 items-center justify-center p-6">
           <p className="text-center text-sm text-[var(--muted-foreground)]">
-            Select an element to edit its properties
+            Select an item to edit its properties
           </p>
         </div>
       </Section>

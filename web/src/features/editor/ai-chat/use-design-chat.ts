@@ -26,8 +26,7 @@ type SSEEvent =
   | { type: "done" };
 
 const readErrorMessage = async (res: Response): Promise<string> => {
-  if (res.status === 403)
-    return "The AI design assistant is a Pro feature. Upgrade your plan to use it.";
+  if (res.status === 403) return "Design AI is a Pro feature. Upgrade your plan to use it.";
   if (res.status === 401) return "Your session expired. Please refresh the page and sign in again.";
   try {
     const body = (await res.json()) as { error?: string };
@@ -99,7 +98,7 @@ export const useDesignChat = (designId: string) => {
         );
 
         if (!res.ok) throw new Error(await readErrorMessage(res));
-        if (!res.body) throw new Error("The assistant returned an empty response.");
+        if (!res.body) throw new Error("Design AI returned an empty response.");
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -159,7 +158,7 @@ export const useDesignChat = (designId: string) => {
               const message = event.message;
               patchAssistant((m) => ({
                 ...m,
-                content: m.content || `Error: ${message}`,
+                content: m.content || message,
                 toolCalls: (m.toolCalls ?? []).map((tc) =>
                   tc.status === "running" ? { ...tc, status: "done" } : tc,
                 ),

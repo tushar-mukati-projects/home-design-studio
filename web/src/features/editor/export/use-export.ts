@@ -8,7 +8,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { EXPORT_HIDDEN_LAYER_NAME, formatArea, formatLength } from "@/lib/constants";
 import { ROOM_USAGE_COLORS, furnitureName, polygonArea, wallLength } from "@/lib/canvas";
 
-type PaperSize = "a4" | "letter" | "a3";
+type PaperSize = "a4" | "a3";
 type Orientation = "landscape" | "portrait";
 type Quality = "standard" | "high";
 
@@ -23,7 +23,6 @@ interface PdfExportOptions {
 
 const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number }> = {
   a4: { width: 297, height: 210 },
-  letter: { width: 279.4, height: 215.9 },
   a3: { width: 420, height: 297 },
 };
 
@@ -38,7 +37,7 @@ const captureContent = (
   pixelRatio: number,
 ): Capture => {
   const stage = stageRef.current;
-  if (!stage) throw new Error("Canvas is not available");
+  if (!stage) throw new Error("The plan isn't ready to export yet. Try again in a moment.");
 
   const prevScale = { x: stage.scaleX(), y: stage.scaleY() };
   const prevPos = { x: stage.x(), y: stage.y() };
@@ -261,17 +260,6 @@ export const useExport = () => {
     [rooms, furniture, walls, catalog],
   );
 
-  const copyShareLink = useCallback(async (designId: string) => {
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/editor/${designId}?view=shared`,
-      );
-      toast.success("Share link copied to clipboard!");
-    } catch {
-      toast.error("Failed to copy share link");
-    }
-  }, []);
-
   const printFloorPlan = useCallback((stageRef: React.RefObject<Konva.Stage | null>) => {
     try {
       const { dataUrl } = captureContent(stageRef, 2);
@@ -303,7 +291,7 @@ export const useExport = () => {
     }
   }, []);
 
-  return { exportAsPng, exportAsPdf, copyShareLink, printFloorPlan };
+  return { exportAsPng, exportAsPdf, printFloorPlan };
 };
 
 export type { PdfExportOptions, PaperSize, Orientation, Quality };
