@@ -56,7 +56,6 @@ router.post(
   asyncHandler(designController.create),
 );
 
-// Unauthenticated when a share link code is supplied, signed in otherwise.
 router.get(
   "/:id",
   optionalAuth,

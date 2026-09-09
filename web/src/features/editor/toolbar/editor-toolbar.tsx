@@ -111,9 +111,6 @@ export const EditorToolbar = ({
               {designName || "Untitled Design"}
             </button>
           )}
-          <span className="text-[10px] font-medium tracking-wider text-[var(--muted-foreground)] uppercase">
-            Floor 1
-          </span>
         </div>
       </div>
 

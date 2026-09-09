@@ -316,6 +316,59 @@ describe("mutations", () => {
   });
 });
 
+describe("snapWallPoint", () => {
+  test("joins a nearby wall end exactly, ignoring the grid", () => {
+    store().addWall(wall("w1", { from: [0, 0], to: [4130, 70] }));
+    const { point, joined } = store().snapWallPoint({ x: 4180, y: 40 });
+    expect(joined).toEqual([4130, 70]);
+    expect(point).toEqual({ x: 4130, y: 70 });
+  });
+
+  test("the wall being edited does not snap to itself", () => {
+    store().addWall(wall("w1", { from: [0, 0], to: [4000, 0] }));
+    const { joined } = store().snapWallPoint({ x: 4010, y: 10 }, { ignoreWallId: "w1" });
+    expect(joined).toBeNull();
+  });
+
+  test("Shift holds the angle from the start point, then the grid rounds", () => {
+    store().setCurrentWallStart({ x: 0, y: 0 });
+    const { point } = store().snapWallPoint({ x: 3000, y: 240 }, { shift: true });
+    expect(point).toEqual({ x: 3000, y: 0 });
+    const diagonal = store().snapWallPoint({ x: 2000, y: 2200 }, { shift: true }).point;
+    expect(diagonal.x).toBe(diagonal.y);
+  });
+
+  test("falls back to the grid otherwise", () => {
+    expect(store().snapWallPoint({ x: 310, y: 90 }).point).toEqual({ x: 400, y: 0 });
+  });
+});
+
+describe("nudge", () => {
+  test("arrow-key nudges move the selected wall and coalesce into one undo step", () => {
+    store().addWall(wall("w1"));
+    store().setSelectedElement("w1");
+    const before = store().past.length;
+    for (let i = 0; i < 5; i++) store().nudgeSelected(200, 0);
+    expect(store().walls[0].from).toEqual([1000, 0]);
+    expect(store().walls[0].to).toEqual([5000, 0]);
+    expect(store().past.length - before).toBe(1);
+  });
+
+  test("nudging furniture moves its centre", () => {
+    store().addFurniture(furniture("f1"));
+    store().setSelectedElement("f1");
+    store().nudgeSelected(0, -200);
+    expect(store().furniture[0].at).toEqual([0, -200]);
+  });
+
+  test("nudge with nothing selected is a no-op", () => {
+    store().addWall(wall("w1"));
+    store().nudgeSelected(200, 0);
+    expect(store().walls[0].from).toEqual([0, 0]);
+    expect(store().past).toHaveLength(1);
+  });
+});
+
 describe("viewport", () => {
   test("zoom is clamped", () => {
     store().setZoom(99);

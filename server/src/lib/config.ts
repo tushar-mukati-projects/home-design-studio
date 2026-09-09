@@ -58,7 +58,6 @@ const config = {
   logLevel: env.LOG_LEVEL,
 };
 
-// Features degrade rather than crash, so warn once at boot about what is off.
 export const disabledFeatures = (): string[] => {
   const off: string[] = [];
   if (!config.firebaseProjectId || !config.firebasePrivateKey) off.push("authentication");

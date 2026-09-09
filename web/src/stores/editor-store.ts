@@ -8,14 +8,14 @@ import type {
   Opening,
   Point,
   Room,
+  Vec2,
   Wall,
 } from "@/types";
-import { GRID_MM } from "@/lib/constants";
-import { emptyCanvas } from "@/lib/canvas";
+import { GRID_MM, PX_PER_MM } from "@/lib/constants";
+import { constrainAngle, emptyCanvas, snapToEndpoints } from "@/lib/canvas";
 
 type Collections = Pick<Canvas, "walls" | "openings" | "rooms" | "furniture">;
 
-// Edits sharing a coalesce key inside this window collapse into one undo step.
 const HISTORY_COALESCE_MS = 700;
 
 const MAX_HISTORY = 50;
@@ -64,6 +64,7 @@ interface EditorState extends Collections {
 
   setRooms: (rooms: Room[], options?: { recordHistory?: boolean }) => void;
   removeElement: (id: string) => void;
+  nudgeSelected: (dx: number, dy: number) => void;
   setCanvas: (canvas: Collections) => void;
 
   setZoom: (zoom: number) => void;
@@ -87,6 +88,10 @@ interface EditorState extends Collections {
   clearCanvas: () => void;
 
   snapPoint: (point: Point) => Point;
+  snapWallPoint: (
+    point: Point,
+    options?: { shift?: boolean; ignoreWallId?: string },
+  ) => { point: Point; joined: Vec2 | null };
 }
 
 const snapshot = (state: Collections): Collections => ({
@@ -262,6 +267,25 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     }
   },
 
+  nudgeSelected: (dx, dy) => {
+    const state = get();
+    const id = state.selectedElementId;
+    if (!id) return;
+    const move = (p: [number, number]): [number, number] => [p[0] + dx, p[1] + dy];
+    if (state.walls.some((w) => w.id === id)) {
+      const wall = state.walls.find((w) => w.id === id)!;
+      state.updateWall(id, { from: move(wall.from), to: move(wall.to) }, `nudge:${id}`);
+    } else if (state.furniture.some((f) => f.id === id)) {
+      const piece = state.furniture.find((f) => f.id === id)!;
+      state.updateFurniture(id, { at: move(piece.at) }, `nudge:${id}`);
+    } else if (state.rooms.some((r) => r.id === id)) {
+      set({
+        ...recordHistory(state, `nudge:${id}`),
+        rooms: state.rooms.map((r) => (r.id === id ? { ...r, polygon: r.polygon.map(move) } : r)),
+      });
+    }
+  },
+
   setCanvas: (canvas) => {
     const state = get();
     set({
@@ -372,4 +396,24 @@ export const useEditorStore = create<EditorState>()((set, get) => ({
     const g = state.gridSize;
     return { x: Math.round(point.x / g) * g, y: Math.round(point.y / g) * g };
   },
+
+  snapWallPoint: (point, options = {}) => {
+    const state = get();
+    const joined = snapToEndpoints(
+      point,
+      state.walls,
+      12 / (state.zoom * PX_PER_MM),
+      options.ignoreWallId,
+    );
+    if (joined) return { point: { x: joined[0], y: joined[1] }, joined };
+    const aimed =
+      options.shift && state.currentWallStart
+        ? constrainAngle(state.currentWallStart, point)
+        : point;
+    return { point: state.snapPoint(aimed), joined: null };
+  },
 }));
+
+if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+  (window as unknown as { __editor: typeof useEditorStore }).__editor = useEditorStore;
+}

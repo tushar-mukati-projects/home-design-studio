@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-// The floor plan format. Every length is an integer millimetre, every coordinate an
-// [x, y] pair, every reference the bare id of what it points at.
-
 const id = z.string().min(1);
 const mm = z.number().int();
 const length = mm.positive();

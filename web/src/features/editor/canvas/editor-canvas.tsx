@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useRef, useState, useCallback, useEffect } from "react";
-import { Stage, Layer, Group } from "react-konva";
+import { Stage, Layer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
 import { EXPORT_HIDDEN_LAYER_NAME, PX_PER_MM } from "@/lib/constants";
 import {
@@ -15,17 +15,31 @@ import {
   toVec,
 } from "@/lib/canvas";
 import { applyGrid, type View } from "./grid";
-import { RoomShapes } from "./room-layer";
-import { WallShapes, WallPreview } from "./wall-layer";
+import { RoomShapes, RoomLabels } from "./room-layer";
+import { WallShapes, WallPreview, type PointerState } from "./wall-layer";
 import { OpeningShapes } from "./opening-layer";
 import { FurnitureShapes } from "./furniture-layer";
 import { CollaboratorCursors } from "../collaboration/collaborator-cursors";
-import type { Opening, Wall } from "@/types";
+import { isTypingTarget } from "../keyboard-shortcuts";
+import type { EditorTool, Opening, Wall } from "@/types";
 import type Konva from "konva";
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
 const COMMIT_IDLE_MS = 120;
+const WHEEL_STEP = 1.12;
+const EASE = 0.3;
+
+const clampZoom = (zoom: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom));
+
+const cursorForTool = (tool: EditorTool) =>
+  tool === "pan"
+    ? "grab"
+    : tool === "eraser"
+      ? "not-allowed"
+      : tool === "select"
+        ? "default"
+        : "crosshair";
 
 const nearestWall = (x: number, y: number, walls: Wall[], threshold: number) => {
   let best: { wall: Wall; dist: number } | null = null;
@@ -61,8 +75,6 @@ interface EditorCanvasProps {
   onCursorMove?: (x: number, y: number) => void;
 }
 
-// Pan and zoom are applied to the stage imperatively while the pointer is moving and
-// committed to the store once the gesture is idle. Nothing React-side re-renders per event.
 export const EditorCanvas = memo(function EditorCanvas({
   containerRef,
   stageRef,
@@ -70,8 +82,9 @@ export const EditorCanvas = memo(function EditorCanvas({
 }: EditorCanvasProps) {
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
   const overlayRef = useRef<Konva.Layer | null>(null);
-  const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerRef = useRef<PointerState | null>(null);
   const isPanningRef = useRef(false);
+  const spaceHeldRef = useRef(false);
   const lastPanPosRef = useRef({ x: 0, y: 0 });
   const openingPriorityRef = useRef(false);
   const rafRef = useRef<number | null>(null);
@@ -80,6 +93,12 @@ export const EditorCanvas = memo(function EditorCanvas({
   const isTouchPanningRef = useRef(false);
   const viewRef = useRef<View>({ zoom: 1, panX: 0, panY: 0 });
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animRef = useRef<{ target: View; frame: number } | null>(null);
+
+  const setCursor = useCallback(
+    (cursor: string) => stageRef.current?.container().style.setProperty("cursor", cursor),
+    [stageRef],
+  );
 
   const paintGrid = useCallback(() => {
     const el = containerRef.current;
@@ -110,18 +129,57 @@ export const EditorCanvas = memo(function EditorCanvas({
     }, COMMIT_IDLE_MS);
   }, []);
 
-  // Store → stage: fit-to-screen, zoom buttons and grid toggles write the store directly.
+  const stopAnimation = useCallback(() => {
+    if (animRef.current) cancelAnimationFrame(animRef.current.frame);
+    animRef.current = null;
+  }, []);
+
+  const animateTo = useCallback(
+    (target: View) => {
+      if (animRef.current) {
+        animRef.current.target = target;
+        return;
+      }
+      const step = () => {
+        const anim = animRef.current;
+        if (!anim) return;
+        const v = viewRef.current;
+        const t = anim.target;
+        const settled =
+          Math.abs(t.zoom - v.zoom) < t.zoom * 0.001 &&
+          Math.abs(t.panX - v.panX) < 0.5 &&
+          Math.abs(t.panY - v.panY) < 0.5;
+        if (settled) {
+          animRef.current = null;
+          applyView(t);
+          scheduleCommit();
+          return;
+        }
+        applyView({
+          zoom: v.zoom + (t.zoom - v.zoom) * EASE,
+          panX: v.panX + (t.panX - v.panX) * EASE,
+          panY: v.panY + (t.panY - v.panY) * EASE,
+        });
+        anim.frame = requestAnimationFrame(step);
+      };
+      animRef.current = { target, frame: requestAnimationFrame(step) };
+    },
+    [applyView, scheduleCommit],
+  );
+
   useEffect(() => {
-    const sync = () => {
+    const sync = (animate: boolean) => {
       const s = useEditorStore.getState();
-      const v = viewRef.current;
+      const v = animRef.current?.target ?? viewRef.current;
       if (s.zoom !== v.zoom || s.panX !== v.panX || s.panY !== v.panY) {
-        applyView({ zoom: s.zoom, panX: s.panX, panY: s.panY });
+        const target = { zoom: s.zoom, panX: s.panX, panY: s.panY };
+        if (animate) animateTo(target);
+        else applyView(target);
       } else {
         paintGrid();
       }
     };
-    sync();
+    sync(false);
     return useEditorStore.subscribe((state, prev) => {
       if (
         state.zoom !== prev.zoom ||
@@ -130,10 +188,10 @@ export const EditorCanvas = memo(function EditorCanvas({
         state.gridSize !== prev.gridSize ||
         state.showGrid !== prev.showGrid
       ) {
-        sync();
+        sync(true);
       }
     });
-  }, [applyView, paintGrid]);
+  }, [applyView, animateTo, paintGrid]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -147,27 +205,26 @@ export const EditorCanvas = memo(function EditorCanvas({
       observer.disconnect();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+      stopAnimation();
     };
-  }, [containerRef]);
+  }, [containerRef, stopAnimation]);
 
-  // Pointer position in millimetres, read from the stage so it is right mid-gesture.
   const canvasPoint = useCallback((stage: Konva.Stage) => {
     const p = stage.getRelativePointerPosition();
     return p ? { x: p.x, y: p.y } : null;
   }, []);
 
   const zoomAround = useCallback(
-    (screenX: number, screenY: number, nextZoom: number, dx = 0, dy = 0) => {
+    (screenX: number, screenY: number, factor: number) => {
       const v = viewRef.current;
-      const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextZoom));
+      const zoom = clampZoom((animRef.current?.target.zoom ?? v.zoom) * factor);
       const oldK = v.zoom * PX_PER_MM;
       const newK = zoom * PX_PER_MM;
       const anchorX = (screenX - v.panX) / oldK;
       const anchorY = (screenY - v.panY) / oldK;
-      applyView({ zoom, panX: screenX - anchorX * newK + dx, panY: screenY - anchorY * newK + dy });
-      scheduleCommit();
+      animateTo({ zoom, panX: screenX - anchorX * newK, panY: screenY - anchorY * newK });
     },
-    [applyView, scheduleCommit],
+    [animateTo],
   );
 
   const handleWheel = useCallback(
@@ -175,11 +232,15 @@ export const EditorCanvas = memo(function EditorCanvas({
       e.evt.preventDefault();
       const pointer = stageRef.current?.getPointerPosition();
       if (!pointer) return;
-      const v = viewRef.current;
-      zoomAround(pointer.x, pointer.y, e.evt.deltaY > 0 ? v.zoom / 1.08 : v.zoom * 1.08);
+      zoomAround(pointer.x, pointer.y, e.evt.deltaY > 0 ? 1 / WHEEL_STEP : WHEEL_STEP);
     },
     [stageRef, zoomAround],
   );
+
+  const redrawPreview = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => overlayRef.current?.batchDraw());
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -188,10 +249,11 @@ export const EditorCanvas = memo(function EditorCanvas({
       const s = useEditorStore.getState();
       const threshold = 20 / (viewRef.current.zoom * PX_PER_MM);
 
-      if (e.evt.button === 1 || s.activeTool === "pan") {
+      if (e.evt.button === 1 || s.activeTool === "pan" || spaceHeldRef.current) {
+        stopAnimation();
         isPanningRef.current = true;
         lastPanPosRef.current = { x: e.evt.clientX, y: e.evt.clientY };
-        stage.container().style.cursor = "grabbing";
+        setCursor("grabbing");
         return;
       }
 
@@ -201,7 +263,7 @@ export const EditorCanvas = memo(function EditorCanvas({
       if (!point) return;
 
       if (s.activeTool === "wall") {
-        const snapped = s.snapPoint(point);
+        const { point: snapped } = s.snapWallPoint(point, { shift: e.evt.shiftKey });
         if (!s.isDrawing) {
           s.setIsDrawing(true);
           s.setCurrentWallStart(snapped);
@@ -279,7 +341,7 @@ export const EditorCanvas = memo(function EditorCanvas({
         if (e.target === stage || e.target.getParent() === stage) s.clearSelection();
       }
     },
-    [canvasPoint, stageRef],
+    [canvasPoint, stageRef, setCursor, stopAnimation],
   );
 
   const handleMouseMove = useCallback(
@@ -299,47 +361,34 @@ export const EditorCanvas = memo(function EditorCanvas({
 
       const point = canvasPoint(stage);
       if (point) {
-        mousePosRef.current = point;
+        pointerRef.current = { ...point, shift: e.evt.shiftKey };
         onCursorMove?.(point.x, point.y);
         const s = useEditorStore.getState();
-        if (s.activeTool === "wall" && s.isDrawing) {
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          rafRef.current = requestAnimationFrame(() => overlayRef.current?.batchDraw());
-        }
+        if (s.activeTool === "wall" && s.isDrawing) redrawPreview();
       }
     },
-    [canvasPoint, stageRef, onCursorMove, applyView, scheduleCommit],
+    [canvasPoint, stageRef, onCursorMove, applyView, scheduleCommit, redrawPreview],
   );
+
+  const restCursor = useCallback(() => {
+    setCursor(spaceHeldRef.current ? "grab" : cursorForTool(useEditorStore.getState().activeTool));
+  }, [setCursor]);
 
   const handleMouseUp = useCallback(() => {
     if (!isPanningRef.current) return;
     isPanningRef.current = false;
-    const stage = stageRef.current;
-    if (stage) {
-      stage.container().style.cursor =
-        useEditorStore.getState().activeTool === "pan" ? "grab" : "default";
-    }
-  }, [stageRef]);
+    restCursor();
+  }, [restCursor]);
 
   useEffect(() => {
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, [handleMouseUp]);
 
-  // The cursor style follows the tool, not the mouse.
   const activeTool = useEditorStore((s) => s.activeTool);
   useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    stage.container().style.cursor =
-      activeTool === "pan"
-        ? "grab"
-        : activeTool === "eraser"
-          ? "not-allowed"
-          : activeTool === "select"
-            ? "default"
-            : "crosshair";
-  }, [activeTool, stageRef]);
+    setCursor(cursorForTool(activeTool));
+  }, [activeTool, setCursor]);
 
   const stopDrawing = useCallback(() => {
     const s = useEditorStore.getState();
@@ -351,6 +400,20 @@ export const EditorCanvas = memo(function EditorCanvas({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target as HTMLElement | null)) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (!e.repeat) {
+          spaceHeldRef.current = true;
+          if (!isPanningRef.current) setCursor("grab");
+        }
+        return;
+      }
+      if (e.key === "Shift" && pointerRef.current) {
+        pointerRef.current = { ...pointerRef.current, shift: true };
+        redrawPreview();
+        return;
+      }
       if (e.key !== "Escape") return;
       const s = useEditorStore.getState();
       if (s.isDrawing) {
@@ -360,9 +423,28 @@ export const EditorCanvas = memo(function EditorCanvas({
         s.clearSelection();
       }
     };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        spaceHeldRef.current = false;
+        if (!isPanningRef.current) restCursor();
+      } else if (e.key === "Shift" && pointerRef.current) {
+        pointerRef.current = { ...pointerRef.current, shift: false };
+        redrawPreview();
+      }
+    };
+    const handleBlur = () => {
+      spaceHeldRef.current = false;
+      if (!isPanningRef.current) restCursor();
+    };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [setCursor, restCursor, redrawPreview]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -378,6 +460,7 @@ export const EditorCanvas = memo(function EditorCanvas({
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
       e.preventDefault();
+      stopAnimation();
       isTouchPanningRef.current = true;
       lastTouchDistRef.current = dist(e.touches[0], e.touches[1]);
       lastTouchCenterRef.current = center(e.touches[0], e.touches[1]);
@@ -390,13 +473,19 @@ export const EditorCanvas = memo(function EditorCanvas({
       const newDist = dist(e.touches[0], e.touches[1]);
       const newCenter = center(e.touches[0], e.touches[1]);
       const v = viewRef.current;
-      zoomAround(
-        newCenter.x - rect.left,
-        newCenter.y - rect.top,
-        v.zoom * (newDist / (lastTouchDistRef.current || 1)),
-        newCenter.x - lastTouchCenterRef.current.x,
-        newCenter.y - lastTouchCenterRef.current.y,
-      );
+      const zoom = clampZoom(v.zoom * (newDist / (lastTouchDistRef.current || 1)));
+      const oldK = v.zoom * PX_PER_MM;
+      const newK = zoom * PX_PER_MM;
+      const sx = newCenter.x - rect.left;
+      const sy = newCenter.y - rect.top;
+      const anchorX = (sx - v.panX) / oldK;
+      const anchorY = (sy - v.panY) / oldK;
+      applyView({
+        zoom,
+        panX: sx - anchorX * newK + (newCenter.x - lastTouchCenterRef.current.x),
+        panY: sy - anchorY * newK + (newCenter.y - lastTouchCenterRef.current.y),
+      });
+      scheduleCommit();
       lastTouchDistRef.current = newDist;
       lastTouchCenterRef.current = newCenter;
     };
@@ -413,10 +502,8 @@ export const EditorCanvas = memo(function EditorCanvas({
       container.removeEventListener("touchmove", handleTouchMove);
       container.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [containerRef, zoomAround]);
+  }, [containerRef, applyView, scheduleCommit, stopAnimation]);
 
-  // Props carry the last committed view; the effect below re-applies the live one after any
-  // re-render (a resize, a tool change) so a mid-gesture render cannot snap the stage back.
   const zoom = useEditorStore((s) => s.zoom);
   const panX = useEditorStore((s) => s.panX);
   const panY = useEditorStore((s) => s.panY);
@@ -442,17 +529,18 @@ export const EditorCanvas = memo(function EditorCanvas({
       onContextMenu={(e) => e.evt.preventDefault()}
     >
       <Layer>
-        <Group listening={false}>
-          <RoomShapes />
-        </Group>
+        <RoomShapes />
         <WallShapes openingPriorityRef={openingPriorityRef} />
         <OpeningShapes />
       </Layer>
       <Layer>
         <FurnitureShapes />
       </Layer>
+      <Layer listening={false}>
+        <RoomLabels />
+      </Layer>
       <Layer ref={overlayRef} listening={false} name={EXPORT_HIDDEN_LAYER_NAME}>
-        <WallPreview mousePosRef={mousePosRef} />
+        <WallPreview pointerRef={pointerRef} />
         <CollaboratorCursors />
       </Layer>
     </Stage>

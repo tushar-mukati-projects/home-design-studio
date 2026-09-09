@@ -40,7 +40,6 @@ model User {
   @@map("users")
 }
 
-// canvas_data holds the whole drawing. Walls, rooms and furniture are not tables.
 model Subscription {
   id                   String              @id @default(uuid())
   userId               String              @unique @map("user_id")
@@ -140,8 +139,6 @@ model DesignLink {
   @@map("design_links")
 }
 
-// The catalog of placeable items. id is a slug ("sofa") so templates and the AI can
-// name items without knowing this database. size is [width, depth, height] in mm.
 model FurnitureItem {
   id       String @id
   name     String

@@ -1,7 +1,3 @@
-// The grid is a CSS background on the canvas container, not a Konva layer: it costs nothing
-// to repaint while panning, never enters an export, and follows the stage through
-// background-position and background-size alone.
-
 export interface View {
   zoom: number;
   panX: number;
@@ -26,7 +22,6 @@ export const applyGrid = (
   const scale = view.zoom * pxPerMm;
   const minor = gridMm * scale;
   const major = minor * 5;
-  // Below ~8 px the minor lines turn to mud; show only every fifth line.
   const drawMinor = minor >= 8;
 
   const line = (color: string, period: number) =>

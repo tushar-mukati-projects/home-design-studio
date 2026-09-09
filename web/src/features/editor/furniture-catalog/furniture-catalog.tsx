@@ -30,7 +30,6 @@ export const FurnitureCatalog = () => {
   const setCatalog = useEditorStore((s) => s.setCatalog);
   const { data: catalog = [] } = useFetchFurniture();
 
-  // The store resolves sizes and colours from the catalog, so it needs a copy.
   useEffect(() => {
     if (catalog.length) setCatalog(catalog);
   }, [catalog, setCatalog]);

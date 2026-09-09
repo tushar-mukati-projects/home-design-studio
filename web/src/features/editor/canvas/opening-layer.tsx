@@ -3,110 +3,124 @@
 import { memo, useRef, useEffect, useCallback } from "react";
 import { Shape, Line, Rect, Group, Transformer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
-import { PX_PER_MM } from "@/lib/constants";
 import { wallAngle, pointOnWall, offsetAlongWall, clampOpeningOffset } from "@/lib/canvas";
+import { ACCENT } from "./wall-layer";
+import { useHover } from "./hover";
 import type { Opening, Wall } from "@/types";
 import type Konva from "konva";
 
 const flat = { perfectDrawEnabled: false, shadowForStrokeEnabled: false } as const;
+const hairline = { strokeScaleEnabled: false, listening: false, ...flat } as const;
+const JAMB = "#6b6b78";
+const LEAF = "#b89a78";
+const LEAF_EDGE = "#8a6f52";
+const SWING = "#a3a3ad";
+const GLASS = "#cfe4f5";
+const FRAME = "#5b9bd5";
 
-const arc = (hingeX: number, radius: number, startDeg: number, px: number) => (
-  <Shape
-    sceneFunc={(ctx, shape) => {
-      const start = (startDeg * Math.PI) / 180;
-      ctx.beginPath();
-      ctx.moveTo(hingeX, 0);
-      ctx.arc(hingeX, 0, radius, start, start + Math.PI / 2, false);
-      ctx.closePath();
-      ctx.fillStrokeShape(shape);
-    }}
-    stroke="#9c9ca6"
-    strokeWidth={1.5}
-    strokeScaleEnabled={false}
-    dash={[px * 4, px * 3]}
-    listening={false}
-    {...flat}
-  />
-);
+const canvasBackground = () =>
+  typeof window === "undefined"
+    ? "#f8f9fb"
+    : getComputedStyle(document.documentElement).getPropertyValue("--canvas-bg").trim() ||
+      "#f8f9fb";
 
-const Door = ({ opening, wall, px }: { opening: Opening; wall: Wall; px: number }) => {
+const Door = ({ opening, wall, bg }: { opening: Opening; wall: Wall; bg: string }) => {
   const half = opening.width / 2;
-  const t = wall.thickness * 0.3;
-  const hingeRight = opening.hinge === "right";
-  const swingOut = opening.swing === "out";
-  const hingeX = hingeRight ? half : -half;
-  const singleStart = hingeRight ? (swingOut ? 90 : 180) : swingOut ? 0 : -90;
+  const t = wall.thickness / 2;
+  const side = opening.swing === "out" ? -1 : 1;
+  const double = opening.variant === "double";
+  const leafLength = double ? half : opening.width;
+  const leaves: [number, 1 | -1][] = double
+    ? [
+        [-half, 1],
+        [half, -1],
+      ]
+    : opening.hinge === "right"
+      ? [[half, -1]]
+      : [[-half, 1]];
 
   return (
     <>
-      <Line
-        points={[-half, 0, half, 0]}
-        stroke="#f4f5f7"
-        strokeWidth={wall.thickness + 40}
-        listening={false}
-        {...flat}
-      />
-      <Rect x={-half} y={-t} width={opening.width} height={t * 2} fill="#a08870" {...flat} />
-      <Line
-        points={[-half, -t, -half, t]}
-        stroke="#8a7560"
-        strokeWidth={2}
-        strokeScaleEnabled={false}
-        listening={false}
-        {...flat}
-      />
-      <Line
-        points={[half, -t, half, t]}
-        stroke="#8a7560"
-        strokeWidth={2}
-        strokeScaleEnabled={false}
-        listening={false}
-        {...flat}
-      />
-      {(opening.variant ?? "single") === "single" && arc(hingeX, opening.width, singleStart, px)}
-      {opening.variant === "double" && (
-        <>
-          {arc(-half, half, swingOut ? 0 : -90, px)}
-          {arc(half, half, swingOut ? 90 : 180, px)}
-        </>
-      )}
-    </>
-  );
-};
-
-const Window = ({ opening, wall }: { opening: Opening; wall: Wall }) => {
-  const half = opening.width / 2;
-  const t = wall.thickness * 0.4;
-  const frame = {
-    stroke: "#87CEEB",
-    strokeWidth: 1.5,
-    strokeScaleEnabled: false,
-    listening: false,
-    ...flat,
-  };
-  return (
-    <>
-      <Line
-        points={[-half, 0, half, 0]}
-        stroke="#f4f5f7"
-        strokeWidth={wall.thickness + 20}
-        listening={false}
+      <Rect
+        x={-half}
+        y={-t - 2}
+        width={opening.width}
+        height={wall.thickness + 4}
+        fill={bg}
         {...flat}
       />
       <Rect
         x={-half}
-        y={-t}
+        y={side > 0 ? 0 : -opening.width}
         width={opening.width}
-        height={t * 2}
-        fill="#87CEEB"
-        opacity={0.4}
+        height={opening.width}
+        fill="rgba(0, 0, 0, 0)"
         {...flat}
       />
-      <Line points={[-half, -t, half, -t]} {...frame} />
-      <Line points={[-half, t, half, t]} {...frame} />
-      <Line points={[-half, -t, -half, t]} {...frame} />
-      <Line points={[half, -t, half, t]} {...frame} />
-      <Line points={[0, -t, 0, t]} {...frame} strokeWidth={1} />
+      {[-half, half].map((x) => (
+        <Line key={x} points={[x, -t, x, t]} stroke={JAMB} strokeWidth={2} {...hairline} />
+      ))}
+      {leaves.map(([hx, dir]) => {
+        const tip = side * leafLength;
+        return (
+          <Group key={hx} x={hx} y={side * t} listening={false}>
+            <Shape
+              sceneFunc={(ctx, shape) => {
+                ctx.beginPath();
+                ctx.arc(
+                  0,
+                  0,
+                  leafLength,
+                  (side * Math.PI) / 2,
+                  dir === 1 ? 0 : Math.PI,
+                  side * dir === 1,
+                );
+                ctx.strokeShape(shape);
+              }}
+              stroke={SWING}
+              strokeWidth={1}
+              {...hairline}
+            />
+            <Rect
+              x={-20}
+              y={Math.min(0, tip)}
+              width={40}
+              height={Math.abs(tip)}
+              fill={LEAF}
+              stroke={LEAF_EDGE}
+              strokeWidth={1}
+              {...hairline}
+            />
+          </Group>
+        );
+      })}
+    </>
+  );
+};
+
+const Window = ({ opening, wall, bg }: { opening: Opening; wall: Wall; bg: string }) => {
+  const half = opening.width / 2;
+  const t = wall.thickness / 2;
+  const g = Math.max(30, wall.thickness * 0.3);
+  const frame = { stroke: FRAME, strokeWidth: 1.5, ...hairline };
+
+  return (
+    <>
+      <Rect
+        x={-half}
+        y={-t - 2}
+        width={opening.width}
+        height={wall.thickness + 4}
+        fill={bg}
+        {...flat}
+      />
+      <Rect x={-half} y={-g / 2} width={opening.width} height={g} fill={GLASS} {...hairline} />
+      <Line points={[-half, -g / 2, half, -g / 2]} {...frame} />
+      <Line points={[-half, g / 2, half, g / 2]} {...frame} />
+      <Line points={[0, -g / 2, 0, g / 2]} {...frame} />
+      {[-half, half].map((x) => (
+        <Line key={x} points={[x, -t, x, t]} stroke={JAMB} strokeWidth={2} {...hairline} />
+      ))}
     </>
   );
 };
@@ -116,7 +130,7 @@ interface OpeningItemProps {
   wall: Wall;
   isSelected: boolean;
   draggable: boolean;
-  px: number;
+  bg: string;
   register: (id: string, node: Konva.Group | null) => void;
 }
 
@@ -125,9 +139,11 @@ const OpeningItem = memo(function OpeningItem({
   wall,
   isSelected,
   draggable,
-  px,
+  bg,
   register,
 }: OpeningItemProps) {
+  const { hovered, ...hover } = useHover();
+  const groupRef = useRef<Konva.Group | null>(null);
   const [x, y] = pointOnWall(wall, opening.offset);
   const angleDeg = (wallAngle(wall) * 180) / Math.PI;
 
@@ -150,13 +166,27 @@ const OpeningItem = memo(function OpeningItem({
     if (s.activeTool === "select") s.setSelectedElement(opening.id);
   };
 
+  const slideAlongWall = (pos: Konva.Vector2d) => {
+    const stage = groupRef.current?.getStage();
+    if (!stage) return pos;
+    const k = stage.scaleX();
+    const mm = { x: (pos.x - stage.x()) / k, y: (pos.y - stage.y()) / k };
+    const offset = clampOpeningOffset(opening, wall, offsetAlongWall(wall, mm.x, mm.y));
+    const [wx, wy] = pointOnWall(wall, offset);
+    return { x: wx * k + stage.x(), y: wy * k + stage.y() };
+  };
+
   return (
     <Group
-      ref={(node) => register(opening.id, node)}
+      ref={(node) => {
+        groupRef.current = node;
+        register(opening.id, node);
+      }}
       x={x}
       y={y}
       rotation={angleDeg}
       draggable={draggable}
+      dragBoundFunc={slideAlongWall}
       onClick={select}
       onTap={select}
       onDragEnd={(e) => settle(e.target, {})}
@@ -166,23 +196,23 @@ const OpeningItem = memo(function OpeningItem({
         );
         settle(e.target, { width });
       }}
+      {...hover}
     >
       {opening.kind === "door" ? (
-        <Door opening={opening} wall={wall} px={px} />
+        <Door opening={opening} wall={wall} bg={bg} />
       ) : (
-        <Window opening={opening} wall={wall} />
+        <Window opening={opening} wall={wall} bg={bg} />
       )}
-      {isSelected && (
+      {(isSelected || hovered) && (
         <Rect
           x={-opening.width / 2}
           y={-wall.thickness / 2}
           width={opening.width}
           height={wall.thickness}
-          stroke="#52525b"
-          strokeWidth={2}
-          strokeScaleEnabled={false}
-          listening={false}
-          {...flat}
+          stroke={ACCENT}
+          strokeWidth={isSelected ? 2 : 1.5}
+          opacity={isSelected ? 1 : 0.6}
+          {...hairline}
         />
       )}
     </Group>
@@ -192,12 +222,13 @@ const OpeningItem = memo(function OpeningItem({
 export const OpeningShapes = memo(function OpeningShapes() {
   const walls = useEditorStore((s) => s.walls);
   const openings = useEditorStore((s) => s.openings);
-  const zoom = useEditorStore((s) => s.zoom);
   const activeTool = useEditorStore((s) => s.activeTool);
   const canEdit = useEditorStore((s) => s.canEdit);
   const selectedElementId = useEditorStore((s) => s.selectedElementId);
+  const zoom = useEditorStore((s) => s.zoom);
+  const anchorSize = Math.max(8, Math.min(12, 10 * Math.sqrt(zoom)));
 
-  const px = 1 / (zoom * PX_PER_MM);
+  const bg = canvasBackground();
   const transformerRef = useRef<Konva.Transformer>(null);
   const nodes = useRef<Map<string, Konva.Group>>(new Map());
   const wallMap = new Map(walls.map((w) => [w.id, w]));
@@ -228,7 +259,7 @@ export const OpeningShapes = memo(function OpeningShapes() {
             wall={wall}
             isSelected={selectedElementId === opening.id}
             draggable={canEdit && activeTool === "select"}
-            px={px}
+            bg={bg}
             register={register}
           />
         );
@@ -237,12 +268,12 @@ export const OpeningShapes = memo(function OpeningShapes() {
         ref={transformerRef}
         rotateEnabled={false}
         enabledAnchors={["middle-left", "middle-right"]}
-        borderStroke="#52525b"
-        borderStrokeWidth={2}
-        anchorFill="#52525b"
-        anchorStroke="#ffffff"
-        anchorSize={10}
-        anchorCornerRadius={2}
+        borderEnabled={false}
+        anchorFill="#ffffff"
+        anchorStroke={ACCENT}
+        anchorStrokeWidth={2}
+        anchorSize={anchorSize}
+        anchorCornerRadius={anchorSize / 2}
         keepRatio={false}
         boundBoxFunc={(oldBox, newBox) => (newBox.width < 20 ? oldBox : newBox)}
       />

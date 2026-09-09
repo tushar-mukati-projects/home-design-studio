@@ -11,7 +11,6 @@ export const serializeFurnitureItem = (item: FurnitureItem): CatalogItem => ({
   color: item.color,
 });
 
-// rooms and furniture are derived from canvasData so they can never be a stale copy.
 export const serializeDesign = (design: Design) => {
   const canvas = (design.canvasData ?? {}) as Partial<Canvas>;
 

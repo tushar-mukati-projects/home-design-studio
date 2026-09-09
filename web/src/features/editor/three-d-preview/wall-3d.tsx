@@ -37,8 +37,6 @@ interface Segment {
   glass?: boolean;
 }
 
-// One wall becomes a row of boxes: solid runs, lintels above doors, and the
-// sill/glass/lintel stack of each window.
 const segmentsFor = (wall: Wall, openings: Opening[]): Segment[] => {
   const total = wallLength(wall) * SCALE;
   const H = wall.height * SCALE;

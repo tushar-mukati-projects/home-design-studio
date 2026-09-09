@@ -69,7 +69,6 @@ const Row = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-// A metres input that commits on blur or Enter, in whole millimetres.
 const MetresInput = ({
   id,
   mm,

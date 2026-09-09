@@ -1,6 +1,3 @@
-// Mirrors server/src/schemas/canvas.schema.ts. Every length is an integer millimetre,
-// every coordinate an [x, y] pair, every reference the bare id of what it points at.
-
 export type Vec2 = [number, number];
 export type Size3 = [number, number, number];
 

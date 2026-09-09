@@ -71,7 +71,6 @@ export const pointOnWall = (wall: Pick<Wall, "from" | "to">, offset: number): Ve
   ];
 };
 
-// Distance along the wall from its `from` end to the projection of (x, y).
 export const offsetAlongWall = (wall: Pick<Wall, "from" | "to">, x: number, y: number): number => {
   const dx = wall.to[0] - wall.from[0];
   const dy = wall.to[1] - wall.from[1];
@@ -116,7 +115,6 @@ export const rectPolygon = (x: number, y: number, w: number, h: number): Vec2[] 
   [x, y + h],
 ];
 
-// A placement's own size wins; otherwise the catalog's. Unknown items get a 600 mm cube.
 export const furnitureSize = (piece: Furniture, catalog: CatalogItem[]): Size3 =>
   piece.size ?? catalog.find((c) => c.id === piece.item)?.size ?? [600, 600, 600];
 
@@ -161,3 +159,52 @@ export const boundsOf = (canvas: Pick<Canvas, "walls" | "rooms" | "furniture">):
 
 export const toPoint = (v: Vec2): Point => ({ x: v[0], y: v[1] });
 export const toVec = (p: Point): Vec2 => [Math.round(p.x), Math.round(p.y)];
+
+export const snapToEndpoints = (
+  point: Point,
+  walls: Wall[],
+  threshold: number,
+  ignoreWallId?: string,
+): Vec2 | null => {
+  let best: { p: Vec2; d: number } | null = null;
+  for (const wall of walls) {
+    if (wall.id === ignoreWallId) continue;
+    for (const end of [wall.from, wall.to]) {
+      const d = Math.hypot(point.x - end[0], point.y - end[1]);
+      if (d <= threshold && (!best || d < best.d)) best = { p: end, d };
+    }
+  }
+  return best?.p ?? null;
+};
+
+export const constrainAngle = (from: Point, to: Point, stepDeg = 45): Point => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return to;
+  const step = (stepDeg * Math.PI) / 180;
+  const angle = Math.round(Math.atan2(dy, dx) / step) * step;
+  return {
+    x: Math.round(from.x + Math.cos(angle) * length),
+    y: Math.round(from.y + Math.sin(angle) * length),
+  };
+};
+
+export const wallJunctions = (walls: Wall[]): { at: Vec2; thickness: number }[] => {
+  const seen = new Map<string, { at: Vec2; thickness: number; count: number }>();
+  for (const wall of walls) {
+    for (const end of [wall.from, wall.to]) {
+      const key = `${end[0]},${end[1]}`;
+      const entry = seen.get(key);
+      if (entry) {
+        entry.count += 1;
+        entry.thickness = Math.max(entry.thickness, wall.thickness);
+      } else {
+        seen.set(key, { at: end, thickness: wall.thickness, count: 1 });
+      }
+    }
+  }
+  return [...seen.values()]
+    .filter((e) => e.count > 1)
+    .map(({ at, thickness }) => ({ at, thickness }));
+};

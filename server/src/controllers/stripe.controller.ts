@@ -4,8 +4,6 @@ import * as stripeService from "../services/stripe.service";
 import { config } from "../lib/config";
 import { logger } from "../lib/logger";
 
-// There is one paid price, so the server names it. A client-supplied one could
-// only ever be accepted if it already matched this.
 export const createCheckout = async (req: Request, res: Response) => {
   const { userId } = (req as AuthenticatedRequest).auth!;
 

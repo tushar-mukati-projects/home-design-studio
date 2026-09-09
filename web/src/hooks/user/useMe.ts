@@ -10,8 +10,6 @@ export interface Me {
   createdAt: string;
 }
 
-// The first request a signed-in page makes. AuthGuard renders nothing else until it
-// succeeds, so a dead API or a rejected session shows one screen, not a dozen toasts.
 export const useMe = (enabled = true) =>
   useQuery({
     queryKey: USER_QUERY_KEYS.me,

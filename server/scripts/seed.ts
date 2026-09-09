@@ -2,8 +2,6 @@ import { prisma } from "../src/lib/db";
 import { seedFurniture } from "../src/services/furniture.service";
 import { seedTemplates } from "../src/services/template.service";
 
-// Seeds the catalog and templates without booting the API. The server also runs
-// both on start, so this is only needed after a reset.
 await seedFurniture();
 await seedTemplates();
 

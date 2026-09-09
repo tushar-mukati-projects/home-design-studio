@@ -63,7 +63,6 @@ const hocuspocus = new Hocuspocus({
 
         if (!design) return null;
 
-        // The live document is rebuilt from canvas_data every time it is opened.
         const doc = new Y.Doc();
         Y.applyUpdate(doc, buildYjsState(design.canvasData as Partial<Canvas>));
 
@@ -104,8 +103,6 @@ const hocuspocus = new Hocuspocus({
   ],
 });
 
-// The write path for a design's canvas: an open document would otherwise flush its own
-// stale copy over a direct column write.
 export const applyToCollabDoc = async (
   designId: string,
   update: { canvas?: Canvas; name?: string },

@@ -15,8 +15,6 @@ interface Options {
 
 const SWEEP_INTERVAL_MS = 60_000;
 
-// In-process, so it protects a single instance. Move to Redis before running
-// more than one replica.
 export const rateLimit = ({ windowMs, max, name }: Options) => {
   const buckets = new Map<string, Bucket>();
 

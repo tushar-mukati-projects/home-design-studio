@@ -110,8 +110,6 @@ const applySubscription = async (userId: string, subscription: Stripe.Subscripti
 };
 
 export const handleWebhookEvent = async (event: Stripe.Event) => {
-  // Stripe retries delivery, so the same event can arrive more than once. The
-  // unique stripe_event_id makes a repeat a no-op instead of a double apply.
   const seen = await prisma.billingEvent.findUnique({
     where: { stripeEventId: event.id },
     select: { id: true },

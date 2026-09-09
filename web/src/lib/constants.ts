@@ -1,5 +1,3 @@
-// The drawing is stored in millimetres; this is only how big a millimetre is on screen
-// at zoom 1. A 6 m wall renders as 600 px.
 export const PX_PER_MM = 0.1;
 
 export const GRID_MM = 200;

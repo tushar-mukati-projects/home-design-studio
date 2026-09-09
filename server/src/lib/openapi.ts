@@ -14,7 +14,6 @@ interface RouteInfo {
   optionalAuth: boolean;
 }
 
-// Express stores the mount prefix as a regex; recover "/designs" from it.
 const mountPath = (source: string): string =>
   source
     .replace(/^\^/, "")
@@ -43,7 +42,6 @@ const walk = (layers: RouterLayer[], prefix: string, out: RouteInfo[]): void => 
       continue;
     }
 
-    // Routers nest: app -> /api -> /designs -> route
     if (layer.handle?.stack) {
       walk(layer.handle.stack, prefix + mountPath(layer.regexp?.source ?? ""), out);
     }

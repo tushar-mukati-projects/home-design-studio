@@ -19,8 +19,6 @@ interface HasId {
 
 const LOCAL_ORIGIN = "local";
 
-// The store is immutable, so an item that was not edited is the same object as before;
-// only items whose reference changed are written.
 const syncArrayToYMap = <T extends HasId>(
   doc: Y.Doc,
   yMap: Y.Map<unknown>,
@@ -76,9 +74,6 @@ export const useCollaboration = (designId: string, enabled: boolean) => {
   });
   const [error, setError] = useState<string | null>(null);
   const [hasSyncedOnce, setHasSyncedOnce] = useState(false);
-  // Bumped on a dropped connection so the effect below starts a fresh document. The server
-  // rebuilds its copy from canvas_data with no edit history, so merging our old document into
-  // it would resurrect deleted elements; adopting the server copy is the predictable rule.
   const [generation, setGeneration] = useState(0);
   const canEditRef = useRef(true);
   const cursorsRef = useRef<Map<number, CollaboratorCursor>>(new Map());
