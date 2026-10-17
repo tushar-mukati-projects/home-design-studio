@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: home-design-studio-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: server
+    buildCommand: bun install && bun prisma generate
+    startCommand: bun src/index.ts
+    healthCheckPath: /health
+    autoDeploy: true
