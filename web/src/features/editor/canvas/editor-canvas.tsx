@@ -3,7 +3,7 @@
 import { memo, useRef, useState, useCallback, useEffect } from "react";
 import { Stage, Layer } from "react-konva";
 import { useEditorStore } from "@/stores/editor-store";
-import { EXPORT_HIDDEN_LAYER_NAME, PX_PER_MM } from "@/lib/constants";
+import { CATALOG_ITEM_DRAG_TYPE, EXPORT_HIDDEN_LAYER_NAME, PX_PER_MM } from "@/lib/constants";
 import {
   DEFAULTS,
   clampOpeningOffset,
@@ -20,6 +20,7 @@ import { WallShapes, WallPreview, type PointerState } from "./wall-layer";
 import { OpeningShapes } from "./opening-layer";
 import { FurnitureShapes } from "./furniture-layer";
 import { CollaboratorCursors } from "../collaboration/collaborator-cursors";
+import { addToPlan } from "../furniture-catalog/furniture-catalog";
 import { isTypingTarget } from "../keyboard-shortcuts";
 import type { EditorTool, Opening, Wall } from "@/types";
 import type Konva from "konva";
@@ -503,6 +504,39 @@ export const EditorCanvas = memo(function EditorCanvas({
       container.removeEventListener("touchend", handleTouchEnd);
     };
   }, [containerRef, applyView, scheduleCommit, stopAnimation]);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const container = stage.container();
+
+    const handleDragOver = (e: DragEvent) => {
+      if (
+        useEditorStore.getState().canEdit &&
+        e.dataTransfer?.types.includes(CATALOG_ITEM_DRAG_TYPE)
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const s = useEditorStore.getState();
+      const id = e.dataTransfer?.getData(CATALOG_ITEM_DRAG_TYPE);
+      const item = s.catalog.find((c) => c.id === id);
+      stage.setPointersPositions(e);
+      const point = canvasPoint(stage);
+      if (!item || !point) return;
+      addToPlan(item, toVec(s.snapPoint(point)));
+    };
+
+    container.addEventListener("dragover", handleDragOver);
+    container.addEventListener("drop", handleDrop);
+    return () => {
+      container.removeEventListener("dragover", handleDragOver);
+      container.removeEventListener("drop", handleDrop);
+    };
+  }, [stageRef, canvasPoint]);
 
   const zoom = useEditorStore((s) => s.zoom);
   const panX = useEditorStore((s) => s.panX);

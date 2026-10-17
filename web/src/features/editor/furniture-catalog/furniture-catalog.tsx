@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEditorStore } from "@/stores/editor-store";
 import { useFetchFurniture } from "@/hooks/furniture";
-import { FURNITURE_CATEGORIES, type CatalogItem, type FurnitureCategory } from "@/types";
+import { FURNITURE_CATEGORIES, type CatalogItem, type FurnitureCategory, type Vec2 } from "@/types";
 import { ROOM_USAGE_LABELS, boundsOf, newId } from "@/lib/canvas";
 import { FurnitureCard } from "./furniture-card";
 
@@ -22,12 +22,16 @@ const CATEGORY_TABS: { id: CategoryFilter; label: string }[] = [
   ...FURNITURE_CATEGORIES.map((id) => ({ id, label: ROOM_USAGE_LABELS[id] })),
 ];
 
+export const addToPlan = (item: CatalogItem, at: Vec2) => {
+  useEditorStore.getState().addFurniture({ id: newId(), item: item.id, at, rotation: 0 });
+  toast.success(`${item.name} added to the plan`);
+};
+
 export const FurnitureCatalog = () => {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
-  const addFurniture = useEditorStore((s) => s.addFurniture);
   const { data: catalog = [], isLoading } = useFetchFurniture();
 
   const filteredItems = useMemo(() => {
@@ -40,18 +44,14 @@ export const FurnitureCatalog = () => {
     return items;
   }, [catalog, activeCategory, search]);
 
-  const handleQuickAdd = useCallback(
-    (item: CatalogItem) => {
-      const state = useEditorStore.getState();
-      const bounds = boundsOf(state);
-      const at: [number, number] = bounds
-        ? [Math.round((bounds.minX + bounds.maxX) / 2), Math.round((bounds.minY + bounds.maxY) / 2)]
-        : [3000, 2000];
-      addFurniture({ id: newId(), item: item.id, at, rotation: 0 });
-      toast.success(`${item.name} added to the plan`);
-    },
-    [addFurniture],
-  );
+  const handleQuickAdd = useCallback((item: CatalogItem) => {
+    const state = useEditorStore.getState();
+    const bounds = boundsOf(state);
+    const at: [number, number] = bounds
+      ? [Math.round((bounds.minX + bounds.maxX) / 2), Math.round((bounds.minY + bounds.maxY) / 2)]
+      : [3000, 2000];
+    addToPlan(item, at);
+  }, []);
 
   const scrollCategories = (direction: "left" | "right") => {
     categoryScrollRef.current?.scrollBy({

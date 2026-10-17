@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { CatalogItem } from "@/types";
 import { ROOM_USAGE_LABELS } from "@/lib/canvas";
+import { CATALOG_ITEM_DRAG_TYPE } from "@/lib/constants";
 
 const ICONS: Record<string, LucideIcon> = {
   sofa: Sofa,
@@ -84,7 +85,7 @@ export const FurnitureCard = ({ item, onQuickAdd }: FurnitureCardProps) => {
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
     setIsDragging(true);
-    e.dataTransfer.setData("application/json", JSON.stringify(item));
+    e.dataTransfer.setData(CATALOG_ITEM_DRAG_TYPE, item.id);
     e.dataTransfer.effectAllowed = "copy";
   };
 

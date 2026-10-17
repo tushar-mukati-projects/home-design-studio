@@ -281,8 +281,6 @@ connects to it as an ordinary Postgres database.
 
 - Sharing is keyed on a **verified** email. Someone whose provider has not verified their
   address cannot open a design shared with them until they verify.
-- Dragging a furniture card onto the canvas does nothing — the card is `draggable` but the
-  canvas has no drop handler. Clicking a card (quick-add) is the working path.
 - The editor has **no React error boundary**, so one malformed element in `canvas_data`
   blanks the whole page rather than one shape.
 - Restoring a version **overwrites the current canvas with no undo** — nothing snapshots
