@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { PLANS } from "@/lib/constants";
+import { PLANS } from "@/shared/canvas";
 
 describe("PLANS", () => {
   test("free is limited and has no sharing or AI", () => {

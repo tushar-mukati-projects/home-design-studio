@@ -1,78 +1,65 @@
-import type { Prisma } from "@prisma/client";
+import { applyToCollabDoc, closeCollabConnections } from "../collaboration/hocuspocus";
 import { prisma } from "../lib/db";
-import { serializeDesign, serializeDesignSummary } from "../lib/serializers";
-import { applyToCollabDoc } from "../collaboration/hocuspocus";
 import {
-  findDesignByLinkCode,
-  findEditableDesign,
+  designWhere,
   getDesignPermission,
-  readableDesignWhere,
+  requireDesign,
+  type DesignRef,
 } from "../lib/design-access";
-import { createDesignFromTemplate } from "./template.service";
-import { emptyCanvas, type Canvas } from "../schemas/canvas.schema";
+import { httpError } from "../lib/http-error";
+import { logger } from "../lib/logger";
+import { planOf } from "../lib/plan";
+import { serializeDesign, serializeDesignSummary } from "../lib/serializers";
+import { DESIGN_PERMISSIONS, PLANS, emptyCanvas, type DesignPermission } from "../shared/canvas";
+import type { Prisma } from "@prisma/client";
+import type {
+  CreateDesignBody,
+  ListDesignsQuery,
+  UpdateDesignBody,
+} from "../schemas/design.schema";
+
+const DESIGN_CREATE_TX_TIMEOUT_MS = 15_000;
+
+type Viewer = { userId?: string; email?: string; code?: string };
+type DesignSource = Pick<Prisma.DesignUncheckedCreateInput, "canvasData" | "description">;
 
 const withOwner = (email?: string) => ({
   user: { select: { name: true, email: true } },
   members: { where: { email: email ?? "" }, select: { permission: true } },
 });
 
-export const createDesign = async (
-  data: {
-    name: string;
-    description?: string;
-    templateId?: string;
-    duplicateOf?: string;
-  },
-  userId: string,
-  email?: string,
-) => {
-  if (data.templateId) return createDesignFromTemplate(data.templateId, userId, data.name);
+export const createDesign = async (body: CreateDesignBody, userId: string, email?: string) => {
+  const source = await designSource(body, userId, email);
 
-  let canvasData: Prisma.InputJsonValue = emptyCanvas();
-  if (data.duplicateOf) {
-    const source = await prisma.design.findFirst({
-      where: readableDesignWhere(data.duplicateOf, userId, email),
-      select: { canvasData: true },
-    });
-    if (!source) return null;
-    canvasData = source.canvasData as Prisma.InputJsonValue;
-  }
-
-  const design = await prisma.design.create({
-    data: {
-      name: data.name,
-      description: data.description,
-      canvasData,
-      userId,
+  const design = await prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+      const { designLimit } = PLANS[await planOf(userId, tx)];
+      const count = await tx.design.count({ where: { userId } });
+      if (count >= designLimit) {
+        logger.warn("Design limit reached", { userId, designLimit });
+        throw httpError(403, "DESIGN_LIMIT_REACHED", { limit: designLimit });
+      }
+      return tx.design.create({ data: { ...source, name: body.name, userId } });
     },
-  });
+    { timeout: DESIGN_CREATE_TX_TIMEOUT_MS },
+  );
 
   return serializeDesign(design);
 };
 
-export const getDesignById = async (
-  id: string,
-  viewer: { userId?: string; email?: string; code?: string },
-) => {
-  if (viewer.code) {
-    const link = await findDesignByLinkCode(viewer.code);
-    if (!link || link.design.id !== id) return null;
-
-    const { user, ...design } = link.design;
-    return { ...serializeDesign(design), permission: link.permission, ownerName: user.name };
-  }
-
-  if (!viewer.userId) return null;
-
+export const getDesignById = async (id: string, viewer: Viewer) => {
   const found = await prisma.design.findUnique({
     where: { id },
     include: { user: { select: { name: true } } },
   });
+  if (!found) throw httpError(404, "DESIGN_NOT_FOUND");
 
-  if (!found) return null;
-
-  const permission = await getDesignPermission(found, viewer.userId, viewer.email);
-  if (!permission) return null;
+  const permission = await viewerPermission(found, viewer);
+  if (!permission) {
+    logger.warn("Design access refused", { designId: id, userId: viewer.userId });
+    throw httpError(404, "DESIGN_NOT_FOUND");
+  }
 
   const { user, ...design } = found;
   return { ...serializeDesign(design), permission, ownerName: user.name };
@@ -81,45 +68,17 @@ export const getDesignById = async (
 export const listDesigns = async (
   userId: string,
   email: string | undefined,
-  filters: {
-    scope?: string;
-    search?: string;
-    sortBy?: string;
-    order?: string;
-    limit?: string;
-    offset?: string;
-  },
+  query: ListDesignsQuery,
 ) => {
-  const sortBy = filters.sortBy || "updatedAt";
-  const order = filters.order || "desc";
-  const limit = Math.min(filters.limit ? parseInt(filters.limit, 10) : 50, 100);
-  const offset = filters.offset ? parseInt(filters.offset, 10) : 0;
-
-  const scope = filters.scope ?? "owned";
-  const reach: Prisma.DesignWhereInput[] = [];
-  if (scope !== "shared") reach.push({ userId });
-  if (scope !== "owned" && email) reach.push({ members: { some: { email } } });
-
-  if (!reach.length) return { designs: [], total: 0, limit, offset };
-
-  const where: Prisma.DesignWhereInput = { OR: reach };
-
-  if (filters.search) {
-    where.AND = [
-      {
-        OR: [
-          { name: { contains: filters.search, mode: "insensitive" } },
-          { description: { contains: filters.search, mode: "insensitive" } },
-        ],
-      },
-    ];
-  }
+  const { limit, offset } = query;
+  const where = listFilter(userId, email, query);
+  if (!where) return { designs: [], total: 0, limit, offset };
 
   const [designs, total] = await Promise.all([
     prisma.design.findMany({
       where,
       include: withOwner(email),
-      orderBy: { [sortBy]: order },
+      orderBy: { [query.sortBy]: query.order },
       take: limit,
       skip: offset,
     }),
@@ -141,40 +100,105 @@ export const listDesigns = async (
 
 export const updateDesign = async (
   id: string,
-  data: {
-    name?: string;
-    description?: string | null;
-    thumbnail?: string | null;
-    canvasData?: Canvas;
-  },
+  body: UpdateDesignBody,
   userId: string,
   email?: string,
 ) => {
-  const existing = await findEditableDesign(id, userId, email);
-  if (!existing) return null;
+  await requireDesign(
+    designWhere(id, userId, email, "readwrite"),
+    { id: true },
+    "DESIGN_NOT_FOUND",
+  );
 
-  const updateData: Prisma.DesignUpdateInput = {};
-  if (data.name !== undefined) updateData.name = data.name;
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.thumbnail !== undefined) updateData.thumbnail = data.thumbnail;
+  const { canvasData, ...fields } = body;
+  await prisma.design.update({ where: { id }, data: fields });
 
-  await prisma.design.update({ where: { id }, data: updateData });
-
-  if (data.canvasData !== undefined || data.name !== undefined) {
-    await applyToCollabDoc(id, { canvas: data.canvasData, name: data.name });
+  if (canvasData !== undefined || body.name !== undefined) {
+    await applyToCollabDoc(id, { canvas: canvasData, name: body.name });
   }
 
-  const fresh = await prisma.design.findUnique({ where: { id } });
-  return fresh ? serializeDesign(fresh) : null;
+  return serializeDesign(await prisma.design.findUniqueOrThrow({ where: { id } }));
 };
 
 export const deleteDesign = async (id: string, userId: string) => {
-  const existing = await prisma.design.findFirst({
-    where: { id, userId },
+  const { count } = await prisma.design.deleteMany({ where: { id, userId } });
+  if (count === 0) throw httpError(404, "DESIGN_NOT_FOUND");
+  closeCollabConnections(id);
+};
+
+const designSource = async (
+  body: CreateDesignBody,
+  userId: string,
+  email?: string,
+): Promise<DesignSource> => {
+  if (body.templateId) {
+    const template = await prisma.designTemplate.findUnique({
+      where: { id: body.templateId },
+      select: { canvasData: true, description: true },
+    });
+    if (!template) throw httpError(404, "TEMPLATE_NOT_FOUND");
+    return {
+      canvasData: template.canvasData as Prisma.InputJsonValue,
+      description: template.description,
+    };
+  }
+
+  if (body.duplicateOf) {
+    const copied = await requireDesign(
+      designWhere(body.duplicateOf, userId, email, "readonly"),
+      { canvasData: true },
+      "COPY_SOURCE_NOT_FOUND",
+    );
+    return {
+      canvasData: copied.canvasData as Prisma.InputJsonValue,
+      description: body.description,
+    };
+  }
+
+  return { canvasData: emptyCanvas(), description: body.description };
+};
+
+const viewerPermission = async (
+  design: DesignRef,
+  viewer: Viewer,
+): Promise<DesignPermission | null> => {
+  const granted = await Promise.all([
+    viewer.userId ? getDesignPermission(design, viewer.userId, viewer.email) : null,
+    viewer.code ? linkPermission(design.id, viewer.code) : null,
+  ]);
+  return DESIGN_PERMISSIONS.find((permission) => granted.includes(permission)) ?? null;
+};
+
+const linkPermission = async (designId: string, code: string) => {
+  const link = await prisma.designLink.findUnique({
+    where: { code },
+    select: { designId: true, permission: true, expiresAt: true },
   });
+  if (!link || link.designId !== designId) return null;
+  if (link.expiresAt && link.expiresAt <= new Date()) return null;
+  return link.permission;
+};
 
-  if (!existing) return false;
+const listFilter = (
+  userId: string,
+  email: string | undefined,
+  query: ListDesignsQuery,
+): Prisma.DesignWhereInput | null => {
+  const reach: Prisma.DesignWhereInput[] = [];
+  if (query.scope !== "shared") reach.push({ userId });
+  if (query.scope !== "owned" && email) reach.push({ members: { some: { email } } });
+  if (!reach.length) return null;
 
-  await prisma.design.delete({ where: { id } });
-  return true;
+  const where: Prisma.DesignWhereInput = { OR: reach };
+  if (query.search) {
+    where.AND = [
+      {
+        OR: [
+          { name: { contains: query.search, mode: "insensitive" } },
+          { description: { contains: query.search, mode: "insensitive" } },
+        ],
+      },
+    ];
+  }
+  return where;
 };

@@ -1,12 +1,13 @@
-import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db";
 import { FURNITURE_CATALOG } from "../lib/seed-data/furniture";
 import { serializeFurnitureItem } from "../lib/serializers";
+import type { Prisma } from "@prisma/client";
+import type { ListFurnitureQuery } from "../schemas/furniture.schema";
 
-export const listFurnitureItems = async (filters: { category?: string; search?: string }) => {
+export const listFurnitureItems = async (query: ListFurnitureQuery) => {
   const where: Prisma.FurnitureItemWhereInput = {};
-  if (filters.category) where.category = filters.category;
-  if (filters.search) where.name = { contains: filters.search, mode: "insensitive" };
+  if (query.category) where.category = query.category;
+  if (query.search) where.name = { contains: query.search, mode: "insensitive" };
 
   const items = await prisma.furnitureItem.findMany({
     where,

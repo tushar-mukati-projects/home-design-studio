@@ -1,18 +1,22 @@
 import multer from "multer";
+import { IMPORT_IMAGE_MAX_BYTES, IMPORT_IMAGE_TYPES } from "../shared/canvas";
 
-const storage = multer.memoryStorage();
+const UNSUPPORTED_IMAGE_MESSAGE = "Only JPEG, PNG, WebP, and GIF images are allowed";
+const UPLOAD_MAX_FILES = 1;
+const UPLOAD_MAX_FIELDS = 5;
+
+const allowedTypes: readonly string[] = IMPORT_IMAGE_TYPES;
 
 export const uploadImage = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: IMPORT_IMAGE_MAX_BYTES, files: UPLOAD_MAX_FILES, fields: UPLOAD_MAX_FIELDS },
   fileFilter: (_req, file, cb) => {
-    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (allowed.includes(file.mimetype)) {
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
-    } else {
-      const err = new multer.MulterError("LIMIT_UNEXPECTED_FILE");
-      err.message = "Only JPEG, PNG, WebP, and GIF images are allowed";
-      cb(err);
+      return;
     }
+    const err = new multer.MulterError("LIMIT_UNEXPECTED_FILE");
+    err.message = UNSUPPORTED_IMAGE_MESSAGE;
+    cb(err);
   },
 });

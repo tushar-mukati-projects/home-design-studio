@@ -1,50 +1,70 @@
 import crypto from "crypto";
+import { Prisma } from "@prisma/client";
+import { closeMemberConnections } from "../collaboration/hocuspocus";
 import { prisma } from "../lib/db";
+import { requireOwnedDesign } from "../lib/design-access";
+import { httpError } from "../lib/http-error";
+import { logger } from "../lib/logger";
 import { sendShareInviteEmail } from "./email.service";
+import type { AddMemberBody, CreateLinkBody } from "../schemas/share.schema";
 
-type SharePermission = "readonly" | "readwrite";
+const LINK_CODE_BYTES = 24;
+const FALLBACK_INVITER_NAME = "Someone";
+const RECORD_NOT_FOUND = "P2025";
 
-const ownedDesign = (designId: string, ownerUserId: string) =>
-  prisma.design.findFirst({ where: { id: designId, userId: ownerUserId } });
-
-export const addMember = async (
-  designId: string,
-  ownerUserId: string,
-  email: string,
-  permission: SharePermission,
-) => {
-  const design = await prisma.design.findFirst({
-    where: { id: designId, userId: ownerUserId },
-    include: { user: { select: { name: true, email: true } } },
-  });
-  if (!design) return { error: "Design not found or not owned by you" };
-  if (design.user.email === email) return { error: "Cannot share with yourself" };
+export const addMember = async (designId: string, ownerUserId: string, body: AddMemberBody) => {
+  const [design, previous] = await Promise.all([
+    requireOwnedDesign(designId, ownerUserId, 400, "DESIGN_NOT_OWNED"),
+    prisma.designMember.findUnique({
+      where: { designId_email: { designId, email: body.email } },
+      select: { permission: true },
+    }),
+  ]);
+  if (design.user.email === body.email) throw httpError(400, "SHARE_SELF");
 
   const member = await prisma.designMember.upsert({
-    where: { designId_email: { designId, email } },
-    update: { permission },
-    create: { designId, email, permission },
+    where: { designId_email: { designId, email: body.email } },
+    update: { permission: body.permission },
+    create: { designId, email: body.email, permission: body.permission },
   });
 
-  await sendShareInviteEmail(
-    email,
-    design.name,
-    design.user.name ?? design.user.email ?? "Someone",
-    permission,
-    designId,
-  );
+  if (previous && previous.permission !== member.permission) {
+    closeMemberConnections(designId, member.email);
+  }
+  if (!previous) {
+    void sendShareInviteEmail({
+      to: body.email,
+      designName: design.name,
+      inviterName: design.user.name ?? design.user.email ?? FALLBACK_INVITER_NAME,
+      permission: body.permission,
+      designId,
+    });
+  }
 
-  return { member };
+  return member;
 };
 
 export const removeMember = async (designId: string, memberId: string, ownerUserId: string) => {
-  if (!(await ownedDesign(designId, ownerUserId))) return false;
-  const { count } = await prisma.designMember.deleteMany({ where: { id: memberId, designId } });
-  return count > 0;
+  const removed = await prisma.designMember
+    .delete({
+      where: { id: memberId, designId, design: { userId: ownerUserId } },
+      select: { email: true },
+    })
+    .catch((error: unknown) => {
+      const missing =
+        error instanceof Prisma.PrismaClientKnownRequestError && error.code === RECORD_NOT_FOUND;
+      if (!missing) throw error;
+      return null;
+    });
+  if (!removed) {
+    logger.warn("Member removal refused", { designId, memberId, userId: ownerUserId });
+    throw httpError(404, "NOT_FOUND");
+  }
+  closeMemberConnections(designId, removed.email);
 };
 
 export const listAccess = async (designId: string, ownerUserId: string) => {
-  if (!(await ownedDesign(designId, ownerUserId))) return null;
+  await requireOwnedDesign(designId, ownerUserId, 404, "NOT_FOUND");
 
   const [members, links] = await Promise.all([
     prisma.designMember.findMany({ where: { designId }, orderBy: { createdAt: "desc" } }),
@@ -54,21 +74,25 @@ export const listAccess = async (designId: string, ownerUserId: string) => {
   return { members, links };
 };
 
-export const createLink = async (
-  designId: string,
-  ownerUserId: string,
-  permission: SharePermission,
-  expiresAt?: Date,
-) => {
-  if (!(await ownedDesign(designId, ownerUserId))) return null;
+export const createLink = async (designId: string, ownerUserId: string, body: CreateLinkBody) => {
+  await requireOwnedDesign(designId, ownerUserId, 404, "NOT_FOUND");
 
   return prisma.designLink.create({
-    data: { designId, code: crypto.randomBytes(24).toString("base64url"), permission, expiresAt },
+    data: {
+      designId,
+      code: crypto.randomBytes(LINK_CODE_BYTES).toString("base64url"),
+      permission: body.permission,
+      expiresAt: body.expiresAt,
+    },
   });
 };
 
 export const revokeLink = async (designId: string, linkId: string, ownerUserId: string) => {
-  if (!(await ownedDesign(designId, ownerUserId))) return false;
-  const { count } = await prisma.designLink.deleteMany({ where: { id: linkId, designId } });
-  return count > 0;
+  const { count } = await prisma.designLink.deleteMany({
+    where: { id: linkId, designId, design: { userId: ownerUserId } },
+  });
+  if (count === 0) {
+    logger.warn("Link revoke refused", { designId, linkId, userId: ownerUserId });
+    throw httpError(404, "NOT_FOUND");
+  }
 };

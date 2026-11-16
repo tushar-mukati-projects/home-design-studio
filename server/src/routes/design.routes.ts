@@ -1,8 +1,19 @@
 import { Router } from "express";
-import { requireAuth, optionalAuth } from "../middleware/auth";
-import { validate, responds } from "../middleware/validate";
+import * as designController from "../controllers/design.controller";
+import * as shareController from "../controllers/share.controller";
+import * as versionController from "../controllers/version.controller";
 import { asyncHandler } from "../middleware/async-handler";
-import { checkDesignLimit } from "../middleware/plan-gate";
+import { requireAuth, optionalAuth } from "../middleware/auth";
+import { requirePlanFeature } from "../middleware/plan-gate";
+import { rateLimit } from "../middleware/rate-limit";
+import { validate, responds } from "../middleware/validate";
+import {
+  createDesignSchema,
+  getDesignSchema,
+  listDesignsSchema,
+  updateDesignSchema,
+  deleteDesignSchema,
+} from "../schemas/design.schema";
 import {
   accessResponse,
   designListResponse,
@@ -14,13 +25,6 @@ import {
   versionListResponse,
   versionResponse,
 } from "../schemas/response.schema";
-import {
-  createDesignSchema,
-  getDesignSchema,
-  listDesignsSchema,
-  updateDesignSchema,
-  deleteDesignSchema,
-} from "../schemas/design.schema";
 import {
   addMemberSchema,
   removeMemberSchema,
@@ -34,11 +38,17 @@ import {
   restoreVersionSchema,
   deleteVersionSchema,
 } from "../schemas/version.schema";
-import * as designController from "../controllers/design.controller";
-import * as shareController from "../controllers/share.controller";
-import * as versionController from "../controllers/version.controller";
+
+const MEMBER_INVITE_RATE_WINDOW_MS = 60 * 60_000;
+const MEMBER_INVITE_RATE_MAX_PER_WINDOW = 20;
 
 const router = Router();
+
+const memberInviteLimit = rateLimit({
+  windowMs: MEMBER_INVITE_RATE_WINDOW_MS,
+  max: MEMBER_INVITE_RATE_MAX_PER_WINDOW,
+  name: "member-invite",
+});
 
 router.get(
   "/",
@@ -50,7 +60,6 @@ router.get(
 router.post(
   "/",
   requireAuth,
-  asyncHandler(checkDesignLimit),
   validate(createDesignSchema),
   responds(designResponse),
   asyncHandler(designController.create),
@@ -88,6 +97,8 @@ router.get(
 router.post(
   "/:id/members",
   requireAuth,
+  memberInviteLimit,
+  asyncHandler(requirePlanFeature("canShare", "SHARE_PRO_REQUIRED")),
   validate(addMemberSchema),
   responds(memberResponse),
   asyncHandler(shareController.addMember),
@@ -102,6 +113,7 @@ router.delete(
 router.post(
   "/:id/links",
   requireAuth,
+  asyncHandler(requirePlanFeature("canShare", "SHARE_PRO_REQUIRED")),
   validate(createLinkSchema),
   responds(linkResponse),
   asyncHandler(shareController.createLink),
@@ -132,7 +144,7 @@ router.post(
   "/:id/versions/:versionId/restore",
   requireAuth,
   validate(restoreVersionSchema),
-  responds(designResponse),
+  responds(designResponse, 200),
   asyncHandler(versionController.restore),
 );
 router.delete(

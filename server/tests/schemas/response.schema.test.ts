@@ -9,7 +9,7 @@ import {
   successResponse,
   planResponse,
 } from "@/schemas/response.schema";
-import { emptyCanvas } from "@/schemas/canvas.schema";
+import { emptyCanvas } from "@/shared/canvas";
 
 const designRow = {
   id: "11111111-1111-4111-8111-111111111111",

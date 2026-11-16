@@ -1,16 +1,17 @@
 import { z } from "zod";
+import { designNameSchema } from "../shared/canvas";
+import { designIdParams } from "./design.schema";
 
-const designId = z.object({ id: z.string().uuid() });
-const versionId = z.object({ id: z.string().uuid(), versionId: z.string().uuid() });
+const versionId = designIdParams.extend({ versionId: z.string().uuid() });
 
 export const createVersionSchema = z.object({
-  params: designId,
+  params: designIdParams,
   body: z.object({
-    name: z.string().min(1).max(255).optional(),
+    name: designNameSchema.optional(),
   }),
 });
 
-export const listVersionsSchema = z.object({ params: designId });
+export const listVersionsSchema = z.object({ params: designIdParams });
 
 export const restoreVersionSchema = z.object({ params: versionId });
 

@@ -34,10 +34,24 @@ describe("TtlCache", () => {
     expect(cache.get("a")).toBe(2);
   });
 
-  test("delete removes immediately", () => {
-    const cache = new TtlCache<string, number>(1000);
+  test("expired entries are swept once the cache grows past the cap", () => {
+    const c = clock();
+    const cache = new TtlCache<string, number>(1000, c.now, 2);
     cache.set("a", 1);
-    cache.delete("a");
-    expect(cache.get("a")).toBeUndefined();
+    cache.set("b", 2);
+    c.advance(1000);
+    cache.set("c", 3);
+    expect(cache.size).toBe(1);
+    expect(cache.get("c")).toBe(3);
+  });
+
+  test("fresh entries survive a sweep", () => {
+    const c = clock();
+    const cache = new TtlCache<string, number>(1000, c.now, 2);
+    cache.set("a", 1);
+    c.advance(999);
+    cache.set("b", 2);
+    cache.set("c", 3);
+    expect(cache.size).toBe(3);
   });
 });

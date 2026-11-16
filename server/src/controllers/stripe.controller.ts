@@ -1,61 +1,42 @@
-import type { Request, Response } from "express";
-import type { AuthenticatedRequest } from "../lib/types";
-import * as stripeService from "../services/stripe.service";
 import { config } from "../lib/config";
+import { httpError } from "../lib/http-error";
 import { logger } from "../lib/logger";
+import { authOf } from "../middleware/auth";
+import * as stripeService from "../services/stripe.service";
+import type { Request, Response } from "express";
+
+const CHECKOUT_SUCCESS_PATH = "/dashboard?checkout=success";
+const CHECKOUT_CANCELLED_PATH = "/dashboard?checkout=cancelled";
+const PORTAL_RETURN_PATH = "/dashboard";
+const SIGNATURE_HEADER = "stripe-signature";
 
 export const createCheckout = async (req: Request, res: Response) => {
-  const { userId } = (req as AuthenticatedRequest).auth!;
-
-  if (!config.stripeProPriceId) {
-    res.status(503).json({ error: "Billing is not configured" });
-    return;
-  }
-
-  const origin = config.frontendUrl;
   const session = await stripeService.createCheckoutSession(
-    userId,
-    config.stripeProPriceId,
-    `${origin}/dashboard?checkout=success`,
-    `${origin}/dashboard?checkout=cancelled`,
+    authOf(req).userId,
+    `${config.frontendUrl}${CHECKOUT_SUCCESS_PATH}`,
+    `${config.frontendUrl}${CHECKOUT_CANCELLED_PATH}`,
   );
-
   res.json({ url: session.url });
 };
 
 export const createPortal = async (req: Request, res: Response) => {
-  const { userId } = (req as AuthenticatedRequest).auth!;
-
   const session = await stripeService.createPortalSession(
-    userId,
-    `${config.frontendUrl}/dashboard`,
+    authOf(req).userId,
+    `${config.frontendUrl}${PORTAL_RETURN_PATH}`,
   );
   res.json({ url: session.url });
 };
 
 export const webhook = async (req: Request, res: Response) => {
-  const signature = req.headers["stripe-signature"] as string | undefined;
+  const signature = req.header(SIGNATURE_HEADER);
+  if (!signature) throw httpError(400, "WEBHOOK_SIGNATURE_MISSING");
 
-  if (!signature) {
-    res.status(400).json({ error: "Missing stripe-signature header" });
-    return;
-  }
-
-  try {
-    const event = await stripeService.constructWebhookEvent(req.body as Buffer, signature);
-    logger.info("Stripe webhook received", { type: event.type, id: event.id });
-    await stripeService.handleWebhookEvent(event);
-    res.json({ received: true });
-  } catch (err) {
-    logger.error("Webhook failed", {
-      error: err instanceof Error ? err.message : String(err),
-    });
-    res.status(400).json({ error: "Webhook error" });
-  }
+  const event = await stripeService.constructWebhookEvent(req.body as Buffer, signature);
+  logger.info("Stripe webhook received", { type: event.type, id: event.id });
+  await stripeService.handleWebhookEvent(event);
+  res.json({ received: true });
 };
 
 export const getPlan = async (req: Request, res: Response) => {
-  const { userId } = (req as AuthenticatedRequest).auth!;
-  const plan = await stripeService.getUserPlan(userId);
-  res.json(plan);
+  res.json(await stripeService.getUserPlan(authOf(req).userId));
 };

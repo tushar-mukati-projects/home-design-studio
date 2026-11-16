@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test";
+import { errorHandler } from "@/middleware/error";
 import { rateLimit } from "@/middleware/rate-limit";
 
 const makeRes = () => {
@@ -27,15 +28,21 @@ const makeRes = () => {
   };
 };
 
-const call = (limiter: ReturnType<typeof rateLimit>, userId: string) => {
-  const req = { auth: { userId }, ip: "1.1.1.1" } as never;
+const send = (limiter: ReturnType<typeof rateLimit>, req: object) => {
   const res = makeRes();
   let passed = false;
-  limiter(req, res as never, () => {
-    passed = true;
-  });
+  try {
+    limiter(req as never, res as never, () => {
+      passed = true;
+    });
+  } catch (error) {
+    errorHandler(error as Error, req as never, res as never, () => {});
+  }
   return { passed, res };
 };
+
+const call = (limiter: ReturnType<typeof rateLimit>, userId: string) =>
+  send(limiter, { auth: { userId }, ip: "1.1.1.1" });
 
 describe("rateLimit", () => {
   test("allows requests up to the limit", () => {
@@ -53,7 +60,10 @@ describe("rateLimit", () => {
 
     expect(passed).toBe(false);
     expect(res.statusCode).toBe(429);
-    expect(String((res.body as { error: string }).error)).toContain("Too many requests");
+    expect(res.body).toEqual({
+      error: "Too many requests. Please wait 60s and try again.",
+      code: "RATE_LIMITED",
+    });
   });
 
   test("counts each user separately", () => {
@@ -87,15 +97,7 @@ describe("rateLimit", () => {
 
   test("falls back to the IP for unauthenticated callers", () => {
     const limiter = rateLimit({ windowMs: 60_000, max: 1, name: "t" });
-    const anon = () => {
-      const res = makeRes();
-      let passed = false;
-      limiter({ ip: "9.9.9.9" } as never, res as never, () => {
-        passed = true;
-      });
-      return passed;
-    };
-    expect(anon()).toBe(true);
-    expect(anon()).toBe(false);
+    expect(send(limiter, { ip: "9.9.9.9" }).passed).toBe(true);
+    expect(send(limiter, { ip: "9.9.9.9" }).passed).toBe(false);
   });
 });

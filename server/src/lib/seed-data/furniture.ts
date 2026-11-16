@@ -1,4 +1,4 @@
-import type { CatalogItem } from "../../schemas/canvas.schema";
+import type { CatalogItem } from "../../shared/canvas";
 
 export const FURNITURE_CATALOG: CatalogItem[] = [
   { id: "sofa", name: "Sofa", category: "living_room", size: [2000, 900, 850], color: "#b9a99a" },

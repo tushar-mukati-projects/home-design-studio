@@ -1,7 +1,5 @@
 import type { Design, FurnitureItem } from "@prisma/client";
-import type { Canvas, CatalogItem } from "../schemas/canvas.schema";
-
-export const serializeDate = (date: Date): string => date.toISOString();
+import type { Canvas, CatalogItem } from "../shared/canvas";
 
 export const serializeFurnitureItem = (item: FurnitureItem): CatalogItem => ({
   id: item.id,
@@ -21,8 +19,8 @@ export const serializeDesign = (design: Design) => {
     thumbnail: design.thumbnail,
     canvasData: design.canvasData,
     userId: design.userId,
-    createdAt: serializeDate(design.createdAt),
-    updatedAt: serializeDate(design.updatedAt),
+    createdAt: design.createdAt.toISOString(),
+    updatedAt: design.updatedAt.toISOString(),
     rooms: Array.isArray(canvas.rooms) ? canvas.rooms : [],
     furniture: Array.isArray(canvas.furniture) ? canvas.furniture : [],
   };

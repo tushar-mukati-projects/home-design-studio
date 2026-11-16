@@ -1,16 +1,28 @@
 import { z } from "zod";
-import { canvasSchema, catalogItemSchema, roomSchema, furnitureSchema } from "./canvas.schema";
+import {
+  canvasSchema,
+  catalogItemSchema,
+  roomSchema,
+  furnitureSchema,
+  DESIGN_PERMISSIONS,
+  PLAN_NAMES,
+  SHARE_PERMISSIONS,
+} from "../shared/canvas";
 
-const permission = z.enum(["readonly", "readwrite"]);
+const SUBSCRIPTION_STATUSES = ["active", "trialing", "past_due", "canceled", "incomplete"] as const;
+
+const sharePermission = z.enum(SHARE_PERMISSIONS);
+const designPermission = z.enum(DESIGN_PERMISSIONS);
+const planName = z.enum(PLAN_NAMES);
 const isoDate = z.string().datetime();
 
-export const errorResponse = z.object({ error: z.string() });
+export const errorResponse = z.object({ error: z.string(), code: z.string().optional() });
 
 export const meResponse = z.object({
   id: z.string().uuid(),
   email: z.string().email().nullable(),
   name: z.string().nullable(),
-  plan: z.enum(["free", "pro"]),
+  plan: planName,
   createdAt: isoDate,
 });
 export const successResponse = z.object({ success: z.literal(true) });
@@ -32,12 +44,12 @@ export const designResponse = designSummaryResponse.extend({
 });
 
 export const designWithPermissionResponse = designResponse.extend({
-  permission: z.enum(["owner", "readwrite", "readonly"]),
+  permission: designPermission,
   ownerName: z.string().nullable(),
 });
 
 const designListItemResponse = designSummaryResponse.extend({
-  permission: z.enum(["owner", "readwrite", "readonly"]),
+  permission: designPermission,
   ownerName: z.string().nullable(),
   ownerEmail: z.string().nullable(),
 });
@@ -80,7 +92,7 @@ export const memberResponse = z.object({
   id: z.string().uuid(),
   designId: z.string().uuid(),
   email: z.string().email(),
-  permission,
+  permission: sharePermission,
   createdAt: isoDate,
 });
 
@@ -88,7 +100,7 @@ export const linkResponse = z.object({
   id: z.string().uuid(),
   designId: z.string().uuid(),
   code: z.string(),
-  permission,
+  permission: sharePermission,
   expiresAt: isoDate.nullable(),
   createdAt: isoDate,
 });
@@ -99,13 +111,13 @@ export const accessResponse = z.object({
 });
 
 export const planResponse = z.object({
-  plan: z.enum(["free", "pro"]),
+  plan: planName,
   canCreateDesign: z.boolean(),
   canShare: z.boolean(),
   canUseAI: z.boolean(),
   designLimit: z.number().int().nullable(),
   designCount: z.number().int(),
-  status: z.enum(["active", "trialing", "past_due", "canceled", "incomplete"]).nullable(),
+  status: z.enum(SUBSCRIPTION_STATUSES).nullable(),
   currentPeriodEnd: isoDate.nullable(),
   cancelAtPeriodEnd: z.boolean(),
 });

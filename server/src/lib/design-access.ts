@@ -1,40 +1,62 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { httpError, type ErrorCode } from "./http-error";
+import { logger } from "./logger";
+import type { DesignPermission, SharePermission } from "../shared/canvas";
 
-type DesignPermission = "owner" | "readwrite" | "readonly";
+export type DesignRef = { id: string; userId: string };
 
-const memberFilter = (email: string | undefined, permission?: "readwrite") =>
-  email ? { some: { email, ...(permission ? { permission } : {}) } } : undefined;
-
-export const editableDesignWhere = (
+export const designWhere = (
   designId: string,
   userId: string,
-  email?: string,
-): Prisma.DesignWhereInput => {
-  const members = memberFilter(email, "readwrite");
-  return {
-    id: designId,
-    OR: [{ userId }, ...(members ? [{ members }] : [])],
-  };
+  email: string | undefined,
+  access: SharePermission,
+): Prisma.DesignWhereInput => ({
+  id: designId,
+  OR: [
+    { userId },
+    ...(email
+      ? [
+          {
+            members: { some: { email, ...(access === "readwrite" ? { permission: access } : {}) } },
+          },
+        ]
+      : []),
+  ],
+});
+
+export const requireDesign = async <Select extends Prisma.DesignSelect>(
+  where: Prisma.DesignWhereInput,
+  select: Select,
+  notFoundCode: ErrorCode,
+) => {
+  const design = await prisma.design.findFirst({ where, select });
+  if (!design) {
+    logger.warn("Design lookup refused", { designId: where.id, code: notFoundCode });
+    throw httpError(404, notFoundCode);
+  }
+  return design;
 };
 
-export const readableDesignWhere = (
+export const requireOwnedDesign = async (
   designId: string,
   userId: string,
-  email?: string,
-): Prisma.DesignWhereInput => {
-  const members = memberFilter(email);
-  return {
-    id: designId,
-    OR: [{ userId }, ...(members ? [{ members }] : [])],
-  };
+  status: number,
+  code: ErrorCode,
+) => {
+  const design = await prisma.design.findFirst({
+    where: { id: designId, userId },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  if (!design) {
+    logger.warn("Owner-only action refused", { designId, userId, code });
+    throw httpError(status, code);
+  }
+  return design;
 };
-
-export const findEditableDesign = (designId: string, userId: string, email?: string) =>
-  prisma.design.findFirst({ where: editableDesignWhere(designId, userId, email) });
 
 export const getDesignPermission = async (
-  design: { id: string; userId: string },
+  design: DesignRef,
   userId: string,
   email?: string,
 ): Promise<DesignPermission | null> => {
@@ -47,16 +69,4 @@ export const getDesignPermission = async (
   });
 
   return member?.permission ?? null;
-};
-
-export const findDesignByLinkCode = async (code: string) => {
-  const link = await prisma.designLink.findUnique({
-    where: { code },
-    include: { design: { include: { user: { select: { name: true } } } } },
-  });
-
-  if (!link) return null;
-  if (link.expiresAt && link.expiresAt <= new Date()) return null;
-
-  return { design: link.design, permission: link.permission };
 };

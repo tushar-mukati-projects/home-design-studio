@@ -2,12 +2,14 @@ import { describe, test, expect } from "bun:test";
 import {
   canvasSchema,
   catalogItemSchema,
+  collabDocumentName,
+  designIdFromDocumentName,
   emptyCanvas,
   polygonArea,
   wallLength,
   CANVAS_COLLECTIONS,
-} from "@/schemas/canvas.schema";
-import { DEFAULT_TEMPLATES } from "@/lib/seed-data/templates";
+} from "@/shared/canvas";
+import DEFAULT_TEMPLATES from "@/lib/seed-data/templates.json";
 import { FURNITURE_CATALOG } from "@/lib/seed-data/furniture";
 
 const wall = { id: "w1", from: [0, 0], to: [4000, 0], thickness: 120, height: 2700 };
@@ -141,5 +143,22 @@ describe("geometry helpers", () => {
       [0, 3000],
     ]);
     expect(area).toBe(12_000_000);
+  });
+});
+
+describe("designIdFromDocumentName", () => {
+  test.each([
+    ["design:d1", "d1"],
+    [
+      collabDocumentName("0b9f0c1e-1111-4222-8333-944445555666"),
+      "0b9f0c1e-1111-4222-8333-944445555666",
+    ],
+    ["design:", ""],
+    ["other:d1", null],
+    ["d1", null],
+    ["xdesign:d1", null],
+    ["", null],
+  ])("reads %j as %j", (documentName, designId) => {
+    expect(designIdFromDocumentName(documentName)).toBe(designId);
   });
 });

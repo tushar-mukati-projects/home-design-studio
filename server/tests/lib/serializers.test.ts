@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { serializeDate, serializeDesign, serializeFurnitureItem } from "@/lib/serializers";
-import { emptyCanvas } from "@/schemas/canvas.schema";
+import { serializeDesign, serializeFurnitureItem } from "@/lib/serializers";
+import { emptyCanvas } from "@/shared/canvas";
 
 const furnitureRow = {
   id: "sofa",
@@ -81,11 +81,5 @@ describe("serializeDesign", () => {
 describe("serializeFurnitureItem", () => {
   test("passes the catalog fields through unchanged", () => {
     expect(serializeFurnitureItem(furnitureRow as never)).toEqual(furnitureRow as never);
-  });
-});
-
-describe("serializeDate", () => {
-  test("formats as ISO 8601", () => {
-    expect(serializeDate(new Date("2026-08-27T12:00:00.000Z"))).toBe("2026-08-27T12:00:00.000Z");
   });
 });

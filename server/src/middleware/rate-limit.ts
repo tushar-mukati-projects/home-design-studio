@@ -1,21 +1,22 @@
-import type { Request, Response, NextFunction } from "express";
-import type { AuthenticatedRequest } from "../lib/types";
+import { httpError } from "../lib/http-error";
 import { logger } from "../lib/logger";
+import type { Request, Response, NextFunction } from "express";
 
-interface Bucket {
+type Bucket = {
   count: number;
   resetAt: number;
-}
+};
 
-interface Options {
+type RateLimitOptions = {
   windowMs: number;
   max: number;
   name: string;
-}
+};
 
 const SWEEP_INTERVAL_MS = 60_000;
+const ANONYMOUS_KEY = "anonymous";
 
-export const rateLimit = ({ windowMs, max, name }: Options) => {
+export const rateLimit = ({ windowMs, max, name }: RateLimitOptions) => {
   const buckets = new Map<string, Bucket>();
 
   const sweep = setInterval(() => {
@@ -27,7 +28,7 @@ export const rateLimit = ({ windowMs, max, name }: Options) => {
   sweep.unref?.();
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = (req as AuthenticatedRequest).auth?.userId ?? req.ip ?? "anonymous";
+    const key = req.auth?.userId ?? req.ip ?? ANONYMOUS_KEY;
     const now = Date.now();
 
     let bucket = buckets.get(key);
@@ -47,10 +48,9 @@ export const rateLimit = ({ windowMs, max, name }: Options) => {
       const retryAfter = Math.ceil((bucket.resetAt - now) / 1000);
       res.setHeader("Retry-After", String(retryAfter));
       logger.warn("Rate limit exceeded", { limiter: name, key, count: bucket.count });
-      res.status(429).json({
-        error: `Too many requests. Please wait ${retryAfter}s and try again.`,
-      });
-      return;
+      const error = httpError(429, "RATE_LIMITED");
+      error.message = `Too many requests. Please wait ${retryAfter}s and try again.`;
+      throw error;
     }
 
     next();

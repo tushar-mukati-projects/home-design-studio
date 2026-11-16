@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
 import { validate, responds } from "../middleware/validate";
 import { asyncHandler } from "../middleware/async-handler";
 import { furnitureListResponse } from "../schemas/response.schema";
@@ -10,7 +9,6 @@ const router = Router();
 
 router.get(
   "/",
-  requireAuth,
   validate(listFurnitureSchema),
   responds(furnitureListResponse),
   asyncHandler(furnitureController.listItems),

@@ -1,11 +1,13 @@
-import type { Request } from "express";
-
-export interface AuthInfo {
+export type AuthInfo = {
   userId: string;
   authSub: string;
   email?: string;
-}
+};
 
-export interface AuthenticatedRequest extends Request {
-  auth?: AuthInfo;
+declare global {
+  namespace Express {
+    interface Request {
+      auth?: AuthInfo;
+    }
+  }
 }

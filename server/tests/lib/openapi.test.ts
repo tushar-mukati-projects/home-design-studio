@@ -25,6 +25,12 @@ const buildApp = () => {
     ),
     (_q, _s) => {},
   );
+  designs.post(
+    "/:id/restore",
+    requireAuth,
+    responds(z.object({ id: z.string().uuid() }), 200),
+    (_q, _s) => {},
+  );
   designs.get(
     "/:id",
     optionalAuth,
@@ -115,6 +121,18 @@ describe("response schemas", () => {
   test("a POST documents 201 rather than 200", () => {
     const post = doc().paths["/api/designs"].post as { responses: Record<string, unknown> };
     expect(Object.keys(post.responses)).toContain("201");
+  });
+
+  test("a POST that declares 200 documents 200 instead of 201", () => {
+    const post = doc().paths["/api/designs/{id}/restore"].post as {
+      responses: Record<string, unknown>;
+    };
+    expect(Object.keys(post.responses)).toContain("200");
+    expect(Object.keys(post.responses)).not.toContain("201");
+  });
+
+  test("the shared Error schema requires the error text", () => {
+    expect(doc().components.schemas.Error).toMatchObject({ required: ["error"] });
   });
 
   test("every operation documents its error responses against a shared Error schema", () => {

@@ -1,53 +1,47 @@
-import type { Prisma } from "@prisma/client";
+import { applyToCollabDoc, currentCanvas } from "../collaboration/hocuspocus";
+import { canvasFromRow } from "../collaboration/yjs-doc";
 import { prisma } from "../lib/db";
-import { applyToCollabDoc, readCollabCanvas } from "../collaboration/hocuspocus";
+import { designWhere, requireDesign } from "../lib/design-access";
+import { httpError } from "../lib/http-error";
 import { serializeDesign } from "../lib/serializers";
-import { editableDesignWhere, readableDesignWhere } from "../lib/design-access";
-import type { Canvas } from "../schemas/canvas.schema";
+
+const VERSION_PAGE_SIZE = 100;
+const DEFAULT_VERSION_NAME = "Auto-save";
 
 export const createVersion = async (
   designId: string,
   userId: string,
-  name?: string,
+  name: string | undefined,
   email?: string,
 ) => {
-  const design = await prisma.design.findFirst({
-    where: editableDesignWhere(designId, userId, email),
-    select: { canvasData: true },
-  });
+  const design = await requireDesign(
+    designWhere(designId, userId, email, "readwrite"),
+    { canvasData: true },
+    "DESIGN_NOT_FOUND",
+  );
 
-  if (!design) return null;
-
-  const live = await readCollabCanvas(designId);
-  const canvasData = live
-    ? { ...((design.canvasData ?? {}) as Record<string, unknown>), ...live }
-    : (design.canvasData ?? {});
-
-  const version = await prisma.designVersion.create({
+  return prisma.designVersion.create({
     data: {
       designId,
-      name: name || "Auto-save",
-      canvasData: canvasData as Prisma.InputJsonValue,
+      name: name ?? DEFAULT_VERSION_NAME,
+      canvasData: currentCanvas(designId, design.canvasData),
       createdById: userId,
     },
   });
-
-  return version;
 };
 
 export const listVersions = async (designId: string, userId: string, email?: string) => {
-  const design = await prisma.design.findFirst({
-    where: readableDesignWhere(designId, userId, email),
-  });
+  await requireDesign(
+    designWhere(designId, userId, email, "readonly"),
+    { id: true },
+    "DESIGN_NOT_FOUND",
+  );
 
-  if (!design) return null;
-
-  const versions = await prisma.designVersion.findMany({
+  return prisma.designVersion.findMany({
     where: { designId },
     orderBy: { createdAt: "desc" },
+    take: VERSION_PAGE_SIZE,
   });
-
-  return versions;
 };
 
 export const restoreVersion = async (
@@ -56,28 +50,23 @@ export const restoreVersion = async (
   userId: string,
   email?: string,
 ) => {
-  const design = await prisma.design.findFirst({
-    where: editableDesignWhere(designId, userId, email),
-  });
+  await requireDesign(
+    designWhere(designId, userId, email, "readwrite"),
+    { id: true },
+    "DESIGN_OR_VERSION_NOT_FOUND",
+  );
 
-  if (!design) return null;
+  const version = await prisma.designVersion.findFirst({ where: { id: versionId, designId } });
+  if (!version) throw httpError(404, "DESIGN_OR_VERSION_NOT_FOUND");
 
-  const version = await prisma.designVersion.findFirst({
-    where: { id: versionId, designId },
-  });
+  await applyToCollabDoc(designId, { canvas: canvasFromRow(version.canvasData) });
 
-  if (!version) return null;
-
-  await applyToCollabDoc(designId, { canvas: version.canvasData as Canvas });
-
-  const updated = await prisma.design.findUnique({ where: { id: designId } });
-  return updated ? serializeDesign(updated) : null;
+  return serializeDesign(await prisma.design.findUniqueOrThrow({ where: { id: designId } }));
 };
 
 export const deleteVersion = async (designId: string, versionId: string, userId: string) => {
-  const design = await prisma.design.findFirst({ where: { id: designId, userId } });
-  if (!design) return false;
-
-  const { count } = await prisma.designVersion.deleteMany({ where: { id: versionId, designId } });
-  return count > 0;
+  const { count } = await prisma.designVersion.deleteMany({
+    where: { id: versionId, designId, design: { userId } },
+  });
+  if (count === 0) throw httpError(404, "VERSION_NOT_FOUND");
 };

@@ -1,155 +1,53 @@
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { errorResponse } from "../schemas/response.schema";
 import type { Express, RequestHandler } from "express";
 import type { ZodSchema } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 type JsonSchema = Record<string, unknown>;
 
-interface RouteInfo {
+type RouteInfo = {
   method: string;
   path: string;
   schema?: ZodSchema;
   responseSchema?: ZodSchema;
+  responseStatus?: number;
   eventStream?: string;
   requiresAuth: boolean;
   optionalAuth: boolean;
-}
-
-const mountPath = (source: string): string =>
-  source
-    .replace(/^\^/, "")
-    .replace(/\\\/\?\(\?=\\\/\|\$\)$/, "")
-    .replace(/\$$/, "")
-    .replace(/\\\//g, "/");
-
-const DOC_ROUTES = new Set(["/api/docs", "/api/openapi.json"]);
-
-const toOpenApiPath = (path: string): string =>
-  path.replace(/:([A-Za-z0-9_]+)/g, "{$1}").replace(/(.)\/$/, "$1");
-
-const walk = (layers: RouterLayer[], prefix: string, out: RouteInfo[]): void => {
-  for (const layer of layers) {
-    if (layer.route) {
-      const handlers = layer.route.stack.map((s) => s.handle);
-      out.push({
-        method: Object.keys(layer.route.methods)[0],
-        path: prefix + layer.route.path,
-        schema: handlers.map((h) => h?.schema).find(Boolean),
-        responseSchema: handlers.map((h) => h?.responseSchema).find(Boolean),
-        eventStream: handlers.map((h) => h?.eventStream).find(Boolean),
-        requiresAuth: handlers.some((h) => h?.name === "requireAuth"),
-        optionalAuth: handlers.some((h) => h?.name === "optionalAuth"),
-      });
-      continue;
-    }
-
-    if (layer.handle?.stack) {
-      walk(layer.handle.stack, prefix + mountPath(layer.regexp?.source ?? ""), out);
-    }
-  }
 };
 
-const collectRoutes = (app: Express): RouteInfo[] => {
-  const stack = (app as unknown as { _router?: { stack: RouterLayer[] } })._router?.stack ?? [];
-  const routes: RouteInfo[] = [];
-  walk(stack, "", routes);
-  return routes;
+type RouteHandler = RequestHandler & {
+  schema?: ZodSchema;
+  responseSchema?: ZodSchema;
+  responseStatus?: number;
+  eventStream?: string;
+  name?: string;
 };
 
-interface RouterLayer {
+type RouterLayer = {
   regexp?: { source: string };
   handle?: { stack?: RouterLayer[] };
   route?: {
     path: string;
     methods: Record<string, boolean>;
-    stack: {
-      handle?: RequestHandler & {
-        schema?: ZodSchema;
-        responseSchema?: ZodSchema;
-        eventStream?: string;
-        name?: string;
-      };
-    }[];
+    stack: { handle?: RouteHandler }[];
   };
-}
-
-const partOf = (schema: JsonSchema | undefined, key: string): JsonSchema | undefined => {
-  const props = schema?.properties as Record<string, JsonSchema> | undefined;
-  return props?.[key];
 };
 
-const parametersFrom = (part: JsonSchema | undefined, location: "path" | "query") => {
-  const props = (part?.properties ?? {}) as Record<string, JsonSchema>;
-  const required = (part?.required ?? []) as string[];
+type AppWithRouter = Express & { _router?: { stack: RouterLayer[] } };
 
-  return Object.entries(props).map(([name, schema]) => ({
-    name,
-    in: location,
-    required: location === "path" ? true : required.includes(name),
-    schema,
-  }));
-};
-
-const errorRef = (description: string) => ({
-  description,
-  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-});
+const DOC_ROUTES = new Set(["/api/docs", "/api/openapi.json"]);
+const CREATED_STATUS = "201";
+const OK_STATUS = "200";
 
 export const buildOpenApiDocument = (app: Express, baseUrl: string) => {
   const paths: Record<string, Record<string, unknown>> = {};
 
   for (const route of collectRoutes(app)) {
     if (DOC_ROUTES.has(route.path)) continue;
-
-    const json = route.schema
-      ? (zodToJsonSchema(route.schema, { target: "openApi3" }) as JsonSchema)
-      : undefined;
-
-    const body = partOf(json, "body");
-    const openApiPath = toOpenApiPath(route.path);
-
-    const operation: Record<string, unknown> = {
-      tags: [route.path.split("/")[2] || route.path.split("/")[1] || "root"],
-      parameters: [
-        ...parametersFrom(partOf(json, "params"), "path"),
-        ...parametersFrom(partOf(json, "query"), "query"),
-      ],
-      responses: {
-        [route.method === "post" && !route.eventStream ? "201" : "200"]: {
-          description: route.eventStream ?? "Success",
-          ...(route.eventStream
-            ? { content: { "text/event-stream": { schema: { type: "string" } } } }
-            : {}),
-          ...(route.responseSchema
-            ? {
-                content: {
-                  "application/json": {
-                    schema: zodToJsonSchema(route.responseSchema, {
-                      target: "openApi3",
-                    }) as JsonSchema,
-                  },
-                },
-              }
-            : {}),
-        },
-        "400": errorRef("Invalid request"),
-        ...(route.requiresAuth
-          ? { "401": errorRef("Not signed in"), "403": errorRef("Not allowed") }
-          : {}),
-        "404": errorRef("Not found"),
-      },
-      ...(route.requiresAuth ? { security: [{ bearerAuth: [] }] } : {}),
-      ...(route.optionalAuth ? { security: [{ bearerAuth: [] }, {}] } : {}),
-    };
-
-    if (body) {
-      operation.requestBody = {
-        required: true,
-        content: { "application/json": { schema: body } },
-      };
-    }
-
+    const openApiPath = route.path.replace(/:([A-Za-z0-9_]+)/g, "{$1}").replace(/(.)\/$/, "$1");
     paths[openApiPath] ??= {};
-    paths[openApiPath][route.method] = operation;
+    paths[openApiPath][route.method] = operationFor(route);
   }
 
   return {
@@ -157,18 +55,11 @@ export const buildOpenApiDocument = (app: Express, baseUrl: string) => {
     info: {
       title: "Home Design Studio API",
       version: "1.0.0",
-      description:
-        "Generated from the live Express router and its Zod schemas, so it cannot drift from the code.",
+      description: "Generated from the live Express router and its Zod schemas.",
     },
     servers: [{ url: baseUrl }],
     components: {
-      schemas: {
-        Error: {
-          type: "object",
-          properties: { error: { type: "string" } },
-          required: ["error"],
-        },
-      },
+      schemas: { Error: toJsonSchema(errorResponse) },
       securitySchemes: {
         bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "Firebase ID token" },
       },
@@ -193,3 +84,109 @@ export const swaggerHtml = (specUrl: string) => `<!doctype html>
     </script>
   </body>
 </html>`;
+
+const toJsonSchema = (schema: ZodSchema): JsonSchema =>
+  zodToJsonSchema(schema, { target: "openApi3" }) as JsonSchema;
+
+const mountPath = (source: string): string =>
+  source
+    .replace(/^\^/, "")
+    .replace(/\\\/\?\(\?=\\\/\|\$\)$/, "")
+    .replace(/\$$/, "")
+    .replace(/\\\//g, "/");
+
+const walk = (layers: RouterLayer[], prefix: string, out: RouteInfo[]): void => {
+  for (const layer of layers) {
+    if (layer.route) {
+      const handlers = layer.route.stack.map((s) => s.handle);
+      out.push({
+        method: Object.keys(layer.route.methods)[0],
+        path: prefix + layer.route.path,
+        schema: handlers.map((h) => h?.schema).find(Boolean),
+        responseSchema: handlers.map((h) => h?.responseSchema).find(Boolean),
+        responseStatus: handlers.map((h) => h?.responseStatus).find(Boolean),
+        eventStream: handlers.map((h) => h?.eventStream).find(Boolean),
+        requiresAuth: handlers.some((h) => h?.name === "requireAuth"),
+        optionalAuth: handlers.some((h) => h?.name === "optionalAuth"),
+      });
+      continue;
+    }
+
+    if (layer.handle?.stack) {
+      walk(layer.handle.stack, prefix + mountPath(layer.regexp?.source ?? ""), out);
+    }
+  }
+};
+
+const collectRoutes = (app: Express): RouteInfo[] => {
+  const routes: RouteInfo[] = [];
+  walk((app as AppWithRouter)._router?.stack ?? [], "", routes);
+  return routes;
+};
+
+const partOf = (schema: JsonSchema | undefined, key: string): JsonSchema | undefined => {
+  const props = schema?.properties as Record<string, JsonSchema> | undefined;
+  return props?.[key];
+};
+
+const parametersFrom = (part: JsonSchema | undefined, location: "path" | "query") => {
+  const props = (part?.properties ?? {}) as Record<string, JsonSchema>;
+  const required = (part?.required ?? []) as string[];
+
+  return Object.entries(props).map(([name, schema]) => ({
+    name,
+    in: location,
+    required: location === "path" ? true : required.includes(name),
+    schema,
+  }));
+};
+
+const errorRef = (description: string) => ({
+  description,
+  content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+});
+
+const successResponseFor = (route: RouteInfo) => {
+  const status =
+    route.responseStatus?.toString() ??
+    (route.method === "post" && !route.eventStream ? CREATED_STATUS : OK_STATUS);
+  const content = route.eventStream
+    ? { "text/event-stream": { schema: { type: "string" } } }
+    : route.responseSchema
+      ? { "application/json": { schema: toJsonSchema(route.responseSchema) } }
+      : undefined;
+
+  return {
+    [status]: {
+      description: route.eventStream ?? "Success",
+      ...(content ? { content } : {}),
+    },
+  };
+};
+
+const operationFor = (route: RouteInfo) => {
+  const json = route.schema ? toJsonSchema(route.schema) : undefined;
+  const body = partOf(json, "body");
+  const parts = route.path.split("/").filter(Boolean);
+
+  return {
+    tags: [parts[1] ?? parts[0] ?? "root"],
+    parameters: [
+      ...parametersFrom(partOf(json, "params"), "path"),
+      ...parametersFrom(partOf(json, "query"), "query"),
+    ],
+    responses: {
+      ...successResponseFor(route),
+      "400": errorRef("Invalid request"),
+      ...(route.requiresAuth
+        ? { "401": errorRef("Not signed in"), "403": errorRef("Not allowed") }
+        : {}),
+      "404": errorRef("Not found"),
+    },
+    ...(route.requiresAuth ? { security: [{ bearerAuth: [] }] } : {}),
+    ...(route.optionalAuth ? { security: [{ bearerAuth: [] }, {}] } : {}),
+    ...(body
+      ? { requestBody: { required: true, content: { "application/json": { schema: body } } } }
+      : {}),
+  };
+};
