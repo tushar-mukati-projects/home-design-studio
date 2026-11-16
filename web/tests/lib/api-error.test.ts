@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
 import { AxiosError, AxiosHeaders } from "axios";
-import { getApiErrorMessage, sessionErrorMessage } from "@/lib/api-error";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 const axiosError = (status: number, data: unknown): AxiosError => {
   const err = new AxiosError("Request failed");
@@ -24,11 +24,13 @@ describe("getApiErrorMessage", () => {
     );
   });
 
-  test("falls back to a readable message per status", () => {
-    expect(getApiErrorMessage(axiosError(401, {}))).toContain("Sign in again");
-    expect(getApiErrorMessage(axiosError(403, {}))).toContain("permission");
-    expect(getApiErrorMessage(axiosError(404, {}))).toContain("no longer exists");
-    expect(getApiErrorMessage(axiosError(503, {}))).toContain("Try again");
+  test.each([
+    [401, "Sign in again"],
+    [403, "permission"],
+    [404, "no longer exists"],
+    [503, "Try again"],
+  ])("falls back to a readable message for a %i", (status, fragment) => {
+    expect(getApiErrorMessage(axiosError(status, {}))).toContain(fragment);
   });
 
   test("explains an unreachable server rather than blaming the user", () => {
@@ -56,31 +58,5 @@ describe("getApiErrorMessage", () => {
     expect(getApiErrorMessage(axiosError(500, { error: { nested: true } }))).not.toContain(
       "object",
     );
-  });
-});
-
-describe("sessionErrorMessage", () => {
-  const axiosError = (status?: number) => {
-    const err = new AxiosError("boom");
-    if (status) {
-      err.response = { status, data: {}, statusText: "", headers: {}, config: err.config! };
-    }
-    return err;
-  };
-
-  test("no response at all means the server is not reachable", () => {
-    expect(sessionErrorMessage(axiosError())).toContain("can't connect");
-  });
-
-  test("a 401 tells the user to sign in again", () => {
-    expect(sessionErrorMessage(axiosError(401))).toContain("Sign in again");
-  });
-
-  test("a 503 is the database, not the user", () => {
-    expect(sessionErrorMessage(axiosError(503))).toContain("try again");
-  });
-
-  test("anything else carries the generic message through", () => {
-    expect(sessionErrorMessage(new Error("weird"))).toBe("We couldn't load your account. weird");
   });
 });

@@ -1,3 +1,12 @@
+export type DesignScope = "owned" | "shared" | "all";
+
+export type DesignListFilters = {
+  scope?: DesignScope;
+  search?: string;
+  limit?: number;
+  offset?: number;
+};
+
 export const API_ROUTES = {
   designs: "/designs",
   design: (id: string) => `/designs/${id}`,
@@ -14,7 +23,7 @@ export const API_ROUTES = {
 export const QUERY_KEYS = {
   all: ["designs"] as const,
   lists: () => [...QUERY_KEYS.all, "list"] as const,
-  list: (filters?: unknown) => [...QUERY_KEYS.lists(), filters] as const,
+  list: (filters: DesignListFilters) => [...QUERY_KEYS.lists(), filters] as const,
   details: () => [...QUERY_KEYS.all, "detail"] as const,
   detail: (id: string) => [...QUERY_KEYS.details(), id] as const,
 };

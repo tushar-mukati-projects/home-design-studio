@@ -1,112 +1,45 @@
-export type Vec2 = [number, number];
-export type Size3 = [number, number, number];
+import type {
+  Canvas,
+  DesignPermission,
+  Furniture,
+  PlanName,
+  Room,
+  SharePermission,
+} from "@/shared/canvas";
 
-export interface Wall {
-  id: string;
-  from: Vec2;
-  to: Vec2;
-  thickness: number;
-  height: number;
-  color?: string;
-}
-
-export type OpeningKind = "door" | "window";
-export type DoorVariant = "single" | "double" | "sliding";
-
-export interface Opening {
-  id: string;
-  kind: OpeningKind;
-  wall: string;
-  offset: number;
-  width: number;
-  height: number;
-  sill?: number;
-  variant?: DoorVariant;
-  hinge?: "left" | "right";
-  swing?: "in" | "out";
-}
-
-export const ROOM_USAGES = [
-  "living_room",
-  "bedroom",
-  "kitchen",
-  "bathroom",
-  "dining",
-  "office",
-  "hallway",
-  "closet",
-  "garage",
-  "laundry",
-  "generic",
-] as const;
-export type RoomUsage = (typeof ROOM_USAGES)[number];
-
-export interface Room {
+export type DesignSummary = {
   id: string;
   name: string;
-  usage: RoomUsage;
-  polygon: Vec2[];
-}
-
-export interface Furniture {
-  id: string;
-  item: string;
-  at: Vec2;
-  rotation: number;
-  size?: Size3;
-  color?: string;
-}
-
-export interface Canvas {
-  version: 1;
-  units: "mm";
-  walls: Wall[];
-  openings: Opening[];
-  rooms: Room[];
-  furniture: Furniture[];
-}
-
-export const FURNITURE_CATEGORIES = [
-  "living_room",
-  "bedroom",
-  "kitchen",
-  "bathroom",
-  "office",
-] as const;
-export type FurnitureCategory = (typeof FURNITURE_CATEGORIES)[number];
-
-export interface CatalogItem {
-  id: string;
-  name: string;
-  category: FurnitureCategory;
-  size: Size3;
-  color: string;
-}
-
-export type DesignPermission = "owner" | "readwrite" | "readonly";
-
-export interface Design {
-  id: string;
-  name: string;
-  description?: string | null;
-  thumbnail?: string | null;
-  canvasData: Canvas;
-  rooms: Room[];
-  furniture: Furniture[];
-  permission?: DesignPermission;
+  description: string | null;
+  thumbnail: string | null;
+  userId: string;
   createdAt: string;
   updatedAt: string;
-}
+  rooms: Room[];
+  furniture: Furniture[];
+};
 
-export type DesignSummary = Omit<Design, "canvasData">;
+export type Design = DesignSummary & { canvasData: Canvas };
 
-export interface DesignListItem extends DesignSummary {
+export type DesignWithPermission = Design & {
+  permission: DesignPermission;
+  ownerName: string | null;
+};
+
+export type DesignListItem = DesignSummary & {
   permission: DesignPermission;
   ownerName: string | null;
   ownerEmail: string | null;
-}
+};
 
-export interface DesignTemplate {
+export type DesignListResponse = {
+  designs: DesignListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type DesignTemplate = {
   id: string;
   name: string;
   description: string | null;
@@ -114,11 +47,56 @@ export interface DesignTemplate {
   thumbnail: string | null;
   canvasData: Canvas;
   sortOrder: number;
-}
+};
+
+export type DesignVersion = {
+  id: string;
+  name: string;
+  canvasData: Canvas;
+  designId: string;
+  createdById: string | null;
+  createdAt: string;
+};
+
+export type DesignMember = {
+  id: string;
+  designId: string;
+  email: string;
+  permission: SharePermission;
+  createdAt: string;
+};
+
+export type DesignLink = {
+  id: string;
+  designId: string;
+  code: string;
+  permission: SharePermission;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export type DesignAccess = {
+  members: DesignMember[];
+  links: DesignLink[];
+};
+
+export type PlanStatus = "active" | "trialing" | "past_due" | "canceled" | "incomplete";
+
+export type Plan = {
+  plan: PlanName;
+  canCreateDesign: boolean;
+  canShare: boolean;
+  canUseAI: boolean;
+  designLimit: number | null;
+  designCount: number;
+  status: PlanStatus | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+};
 
 export type EditorTool = "select" | "wall" | "door" | "window" | "eraser" | "pan";
 
-export interface Point {
+export type Point = {
   x: number;
   y: number;
-}
+};

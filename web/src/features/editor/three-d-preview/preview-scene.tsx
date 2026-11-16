@@ -1,245 +1,91 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, type ComponentRef } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import { MeshStandardMaterial } from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useEditorStore } from "@/stores/editor-store";
+import { boundsOf } from "@/lib/canvas";
+import { M_PER_MM } from "@/lib/constants";
+import {
+  AMBIENT_LIGHT,
+  FILL_LIGHT,
+  HEMISPHERE_GROUND,
+  HEMISPHERE_SKY,
+  SCENE_BACKGROUND,
+  SCENE_GRADIENT,
+  SCENE_GRID,
+  SCENE_GRID_CENTER,
+  SUN_LIGHT,
+} from "@/features/editor/canvas/palette";
 import { Wall3D } from "./wall-3d";
 import { Furniture3D } from "./furniture-3d";
 import { Room3D } from "./room-3d";
-import { boundsOf } from "@/lib/canvas";
+import { SceneErrorBoundary } from "./scene-error-boundary";
+import { CAMERA_PRESETS, type CameraPreset, type CameraPresetId } from "./camera-presets";
 
-const SCALE = 0.001;
+const MIN_SCENE_SIZE_M = 5;
 
-interface CameraPreset {
-  position: [number, number, number];
-  target: [number, number, number];
-}
+type Bounds = NonNullable<ReturnType<typeof boundsOf>>;
 
-interface PreviewSceneProps {
-  cameraPreset: string;
+type SceneFrame = { cx: number; cz: number; size: number };
+
+type PreviewSceneProps = {
+  cameraPreset: CameraPresetId;
   showFurniture: boolean;
   showRoomColors: boolean;
   ambientIntensity: number;
   floorColor: string;
   wallColor: string;
   furnitureColor: string;
-}
-
-const InvalidateOnChange = (props: Record<string, unknown>) => {
-  const { invalidate } = useThree();
-  useEffect(() => {
-    invalidate();
-  }, [
-    props.showFurniture,
-    props.showRoomColors,
-    props.ambientIntensity,
-    props.floorColor,
-    props.wallColor,
-    props.furnitureColor,
-    invalidate,
-  ]);
-  return null;
 };
 
-const CameraRig = ({ preset }: { preset: CameraPreset }) => {
-  const camera = useThree((s) => s.camera);
-  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
-  const invalidate = useThree((s) => s.invalidate);
-  useEffect(() => {
-    camera.position.set(...preset.position);
-    if (controls) {
-      controls.target.set(...preset.target);
-      controls.update();
-    } else {
-      camera.lookAt(...preset.target);
-    }
-    invalidate();
-  }, [preset, camera, controls, invalidate]);
-  return null;
-};
+type PreviewCanvasProps = PreviewSceneProps & { frame: SceneFrame };
+type SceneContentsProps = Omit<PreviewCanvasProps, "cameraPreset">;
+type SceneLightsProps = { size: number; ambientIntensity: number };
+type CameraRigProps = { preset: CameraPreset };
+type OrbitControlsImpl = ComponentRef<typeof OrbitControls>;
 
-const SceneContents = ({
-  showFurniture,
-  showRoomColors,
-  ambientIntensity,
-  floorColor,
-  wallColor,
-  furnitureColor,
-}: Omit<PreviewSceneProps, "cameraPreset">) => {
+export const PreviewScene = (props: PreviewSceneProps) => {
   const walls = useEditorStore((s) => s.walls);
-  const openings = useEditorStore((s) => s.openings);
   const furniture = useEditorStore((s) => s.furniture);
   const rooms = useEditorStore((s) => s.rooms);
+  const bounds = useMemo(() => boundsOf({ walls, rooms, furniture }), [walls, rooms, furniture]);
 
-  const bounds = useMemo(() => {
-    const b = boundsOf({ walls, rooms, furniture });
-    if (!b) return { cx: 0, cz: 0, size: 10 };
-    const minX = b.minX * SCALE;
-    const maxX = b.maxX * SCALE;
-    const minY = b.minY * SCALE;
-    const maxY = b.maxY * SCALE;
-    return {
-      cx: (minX + maxX) / 2,
-      cz: (minY + maxY) / 2,
-      size: Math.max(maxX - minX, maxY - minY, 5),
-    };
-  }, [walls, furniture, rooms]);
-
-  const openingsByWall = useMemo(() => {
-    const map = new Map<string, typeof openings>();
-    for (const o of openings) map.set(o.wall, [...(map.get(o.wall) ?? []), o]);
-    return map;
-  }, [openings]);
-
-  const hasContent = walls.length > 0 || rooms.length > 0 || furniture.length > 0;
-
-  const floorMat = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        color: floorColor,
-        roughness: 0.8,
-        metalness: 0.05,
-      }),
-    [floorColor],
-  );
-
-  const shadowCamSize = Math.max(bounds.size * 1.2, 6);
+  if (!bounds) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-background p-4">
+        <p className="text-center text-sm text-muted-foreground">
+          Nothing to preview yet. Draw some walls first.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <InvalidateOnChange
-        showFurniture={showFurniture}
-        showRoomColors={showRoomColors}
-        ambientIntensity={ambientIntensity}
-        floorColor={floorColor}
-        wallColor={wallColor}
-        furnitureColor={furnitureColor}
-      />
-
-      <color attach="background" args={["#c8ccd4"]} />
-
-      <ambientLight intensity={ambientIntensity * 0.5} color="#e8ecf0" />
-      <directionalLight
-        position={[bounds.size * 0.7, bounds.size * 1.2, bounds.size * 0.5]}
-        intensity={1.8}
-        color="#fff8f0"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-camera-left={-shadowCamSize}
-        shadow-camera-right={shadowCamSize}
-        shadow-camera-top={shadowCamSize}
-        shadow-camera-bottom={-shadowCamSize}
-        shadow-camera-near={0.1}
-        shadow-camera-far={bounds.size * 4}
-        shadow-bias={-0.002}
-      />
-      <directionalLight
-        position={[-bounds.size * 0.5, bounds.size * 0.6, -bounds.size * 0.3]}
-        intensity={0.3}
-        color="#b8c0d0"
-      />
-      <hemisphereLight args={["#d0d4dc", "#808890", 0.4]} />
-
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
-        <planeGeometry args={[bounds.size * 3, bounds.size * 3]} />
-        <primitive object={floorMat} attach="material" />
-      </mesh>
-
-      <gridHelper
-        args={[bounds.size * 3, Math.round(bounds.size * 3), "#9098a0", "#a8b0b8"]}
-        position={[0, 0.001, 0]}
-      />
-
-      {rooms.map((room) => (
-        <Room3D
-          key={room.id}
-          room={room}
-          offsetX={bounds.cx}
-          offsetZ={bounds.cz}
-          showColor={showRoomColors}
-        />
-      ))}
-
-      {walls.map((wall) => (
-        <Wall3D
-          key={wall.id}
-          wall={wall}
-          openings={openingsByWall.get(wall.id) ?? []}
-          offsetX={bounds.cx}
-          offsetZ={bounds.cz}
-          wallColor={wallColor}
-        />
-      ))}
-
-      {showFurniture &&
-        furniture.map((f) => (
-          <Furniture3D
-            key={f.id}
-            placed={f}
-            offsetX={bounds.cx}
-            offsetZ={bounds.cz}
-            furnitureColor={furnitureColor}
-          />
-        ))}
-
-      {!hasContent && (
-        <mesh position={[0, 1.5, 0]}>
-          <planeGeometry args={[4, 0.5]} />
-          <meshBasicMaterial color="#71717a" transparent opacity={0} />
-        </mesh>
-      )}
-
-      <Environment preset="apartment" />
-    </>
+    <SceneErrorBoundary>
+      <PreviewCanvas {...props} frame={sceneFrame(bounds)} />
+    </SceneErrorBoundary>
   );
 };
 
-const CAMERA_PRESETS: Record<string, (size: number) => CameraPreset> = {
-  corner: (size) => ({
-    position: [size * 0.9, size * 0.8, size * 0.9],
-    target: [0, 0, 0],
-  }),
-  top: (size) => ({
-    position: [0, size * 2, 0.01],
-    target: [0, 0, 0],
-  }),
-  front: (size) => ({
-    position: [0, size * 0.4, size * 1.5],
-    target: [0, size * 0.3, 0],
-  }),
-  walkthrough: (size) => ({
-    position: [0, 1.6, size * 0.3],
-    target: [0, 1.6, -size * 0.3],
-  }),
+const sceneFrame = (bounds: Bounds): SceneFrame => {
+  const minX = bounds.minX * M_PER_MM;
+  const maxX = bounds.maxX * M_PER_MM;
+  const minY = bounds.minY * M_PER_MM;
+  const maxY = bounds.maxY * M_PER_MM;
+  return {
+    cx: (minX + maxX) / 2,
+    cz: (minY + maxY) / 2,
+    size: Math.max(maxX - minX, maxY - minY, MIN_SCENE_SIZE_M),
+  };
 };
 
-export const PreviewScene = ({
-  cameraPreset,
-  showFurniture,
-  showRoomColors,
-  ambientIntensity,
-  floorColor,
-  wallColor,
-  furnitureColor,
-}: PreviewSceneProps) => {
-  const walls = useEditorStore((s) => s.walls);
-  const furniture = useEditorStore((s) => s.furniture);
-  const rooms = useEditorStore((s) => s.rooms);
-
-  const sceneSize = useMemo(() => {
-    const b = boundsOf({ walls, rooms, furniture });
-    if (!b) return 5;
-    return Math.max((b.maxX - b.minX) * SCALE, (b.maxY - b.minY) * SCALE, 5);
-  }, [walls, furniture, rooms]);
-
-  const preset = useMemo(() => {
-    const fn = CAMERA_PRESETS[cameraPreset] || CAMERA_PRESETS.corner;
-    return fn(sceneSize);
-  }, [cameraPreset, sceneSize]);
+const PreviewCanvas = ({ cameraPreset, frame, ...contents }: PreviewCanvasProps) => {
+  const preset = useMemo(
+    () => CAMERA_PRESETS[cameraPreset](frame.size),
+    [cameraPreset, frame.size],
+  );
 
   return (
     <Canvas
@@ -257,7 +103,7 @@ export const PreviewScene = ({
         alpha: false,
         powerPreference: "high-performance",
       }}
-      style={{ background: "linear-gradient(180deg, #b8bcc8 0%, #a0a4b0 50%, #909498 100%)" }}
+      style={{ background: SCENE_GRADIENT }}
       onCreated={({ camera, invalidate }) => {
         camera.position.set(...preset.position);
         camera.lookAt(...preset.target);
@@ -270,17 +116,135 @@ export const PreviewScene = ({
         enableDamping
         dampingFactor={0.08}
         minDistance={0.5}
-        maxDistance={sceneSize * 5}
+        maxDistance={frame.size * 5}
         maxPolarAngle={Math.PI * 0.48}
       />
-      <SceneContents
-        showFurniture={showFurniture}
-        showRoomColors={showRoomColors}
-        ambientIntensity={ambientIntensity}
-        floorColor={floorColor}
-        wallColor={wallColor}
-        furnitureColor={furnitureColor}
-      />
+      <SceneContents frame={frame} {...contents} />
     </Canvas>
+  );
+};
+
+const CameraRig = ({ preset }: CameraRigProps) => {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    camera.position.set(...preset.position);
+    if (controls) {
+      controls.target.set(...preset.target);
+      controls.update();
+    } else {
+      camera.lookAt(...preset.target);
+    }
+    invalidate();
+  }, [preset, camera, controls, invalidate]);
+  return null;
+};
+
+const SceneContents = ({
+  frame,
+  showFurniture,
+  showRoomColors,
+  ambientIntensity,
+  floorColor,
+  wallColor,
+  furnitureColor,
+}: SceneContentsProps) => {
+  const walls = useEditorStore((s) => s.walls);
+  const openings = useEditorStore((s) => s.openings);
+  const furniture = useEditorStore((s) => s.furniture);
+  const rooms = useEditorStore((s) => s.rooms);
+
+  const openingsByWall = useMemo(() => {
+    const map = new Map<string, typeof openings>();
+    for (const o of openings) map.set(o.wall, [...(map.get(o.wall) ?? []), o]);
+    return map;
+  }, [openings]);
+
+  const floorMat = useMemo(
+    () => new MeshStandardMaterial({ color: floorColor, roughness: 0.8, metalness: 0.05 }),
+    [floorColor],
+  );
+  useEffect(() => () => floorMat.dispose(), [floorMat]);
+
+  return (
+    <>
+      <color attach="background" args={[SCENE_BACKGROUND]} />
+      <SceneLights size={frame.size} ambientIntensity={ambientIntensity} />
+
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
+        <planeGeometry args={[frame.size * 3, frame.size * 3]} />
+        <primitive object={floorMat} attach="material" />
+      </mesh>
+
+      <gridHelper
+        args={[frame.size * 3, Math.round(frame.size * 3), SCENE_GRID_CENTER, SCENE_GRID]}
+        position={[0, 0.001, 0]}
+      />
+
+      {rooms.map((room) => (
+        <Room3D
+          key={room.id}
+          room={room}
+          offsetX={frame.cx}
+          offsetZ={frame.cz}
+          showColor={showRoomColors}
+        />
+      ))}
+
+      {walls.map((wall) => (
+        <Wall3D
+          key={wall.id}
+          wall={wall}
+          openings={openingsByWall.get(wall.id) ?? []}
+          offsetX={frame.cx}
+          offsetZ={frame.cz}
+          wallColor={wallColor}
+        />
+      ))}
+
+      {showFurniture &&
+        furniture.map((f) => (
+          <Furniture3D
+            key={f.id}
+            placed={f}
+            offsetX={frame.cx}
+            offsetZ={frame.cz}
+            furnitureColor={furnitureColor}
+          />
+        ))}
+
+      <Environment preset="apartment" />
+    </>
+  );
+};
+
+const SceneLights = ({ size, ambientIntensity }: SceneLightsProps) => {
+  const shadowCamSize = Math.max(size * 1.2, 6);
+  return (
+    <>
+      <ambientLight intensity={ambientIntensity * 0.5} color={AMBIENT_LIGHT} />
+      <directionalLight
+        position={[size * 0.7, size * 1.2, size * 0.5]}
+        intensity={1.8}
+        color={SUN_LIGHT}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-left={-shadowCamSize}
+        shadow-camera-right={shadowCamSize}
+        shadow-camera-top={shadowCamSize}
+        shadow-camera-bottom={-shadowCamSize}
+        shadow-camera-near={0.1}
+        shadow-camera-far={size * 4}
+        shadow-bias={-0.002}
+      />
+      <directionalLight
+        position={[-size * 0.5, size * 0.6, -size * 0.3]}
+        intensity={0.3}
+        color={FILL_LIGHT}
+      />
+      <hemisphereLight args={[HEMISPHERE_SKY, HEMISPHERE_GROUND, 0.4]} />
+    </>
   );
 };

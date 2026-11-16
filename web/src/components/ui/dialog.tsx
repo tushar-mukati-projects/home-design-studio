@@ -83,15 +83,17 @@ const DialogContent = ({ children, className, ...props }: React.HTMLAttributes<H
         onClick={() => setOpen(false)}
       />
       <div
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          "animate-in fade-in-0 zoom-in-95 relative z-50 w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 shadow-lg duration-200",
+          "animate-in fade-in-0 zoom-in-95 relative z-50 w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg duration-200",
           className,
         )}
         {...props}
       >
         <button
           type="button"
-          className="absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2 focus:outline-none"
+          className="absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none"
           onClick={() => setOpen(false)}
         >
           <X className="h-4 w-4" />
@@ -120,7 +122,7 @@ const DialogTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingEl
 };
 
 const DialogDescription = ({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => {
-  return <p className={cn("text-sm text-[var(--muted-foreground)]", className)} {...props} />;
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
 };
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {

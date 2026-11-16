@@ -1,55 +1,34 @@
 import axios from "axios";
+import { API_URL } from "./env";
 import { auth } from "./firebase";
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: API_URL,
+  timeout: REQUEST_TIMEOUT_MS,
+  headers: { "Content-Type": "application/json" },
 });
 
-const getToken = async (forceRefresh = false): Promise<string | null> => {
+const getToken = async (): Promise<string | null> => {
   const user = auth.currentUser;
-  if (!user) return null;
+  return user ? user.getIdToken() : null;
+};
 
-  try {
-    return await user.getIdToken(forceRefresh);
-  } catch {
-    return null;
-  }
+const retryWithFreshToken = async (error: unknown) => {
+  const user = auth.currentUser;
+  if (!axios.isAxiosError(error) || !error.config || !user) throw error;
+  if (error.response?.status !== 401) throw error;
+  error.config.headers.Authorization = `Bearer ${await user.getIdToken(true)}`;
+  return axios.request(error.config);
 };
 
 axiosInstance.interceptors.request.use(async (config) => {
   const token = await getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (axios.isAxiosError(error)) {
-      const config = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
-
-      if (error.response?.status === 401 && config && !config._retry && auth.currentUser) {
-        config._retry = true;
-        const fresh = await getToken(true);
-        if (fresh) {
-          config.headers = config.headers ?? {};
-          config.headers.Authorization = `Bearer ${fresh}`;
-          return axiosInstance(config);
-        }
-      }
-
-      const message = error.response?.data?.error || error.message;
-      console.error(
-        `[API Error] ${error.config?.method?.toUpperCase()} ${error.config?.url}: ${message}`,
-      );
-    }
-    return Promise.reject(error);
-  },
-);
+axiosInstance.interceptors.response.use(undefined, retryWithFreshToken);
 
 export { axiosInstance, getToken };

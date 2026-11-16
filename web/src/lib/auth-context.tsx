@@ -15,7 +15,7 @@ import {
 import { auth } from "./firebase";
 import { getQueryClient } from "./query-client";
 
-interface AuthContextValue {
+type AuthContextValue = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
@@ -23,12 +23,15 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signInWithGithub: () => Promise<void>;
   signOut: () => Promise<void>;
-  getIdToken: () => Promise<string>;
-}
+};
+
+type AuthProviderProps = {
+  children: React.ReactNode;
+};
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const prevUidRef = useRef<string | null>(null);
@@ -53,38 +56,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(credential.user, { displayName: name });
+    await credential.user.getIdToken(true);
   }, []);
 
-  const handleSignInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async () => {
     await signInWithPopup(auth, new GoogleAuthProvider());
   }, []);
 
-  const handleSignInWithGithub = useCallback(async () => {
+  const signInWithGithub = useCallback(async () => {
     await signInWithPopup(auth, new GithubAuthProvider());
   }, []);
 
-  const handleSignOut = useCallback(async () => {
+  const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
     getQueryClient().clear();
   }, []);
 
-  const getIdToken = useCallback(async () => {
-    if (!user) throw new Error("Not authenticated");
-    return user.getIdToken();
-  }, [user]);
-
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        signIn,
-        signUp,
-        signInWithGoogle: handleSignInWithGoogle,
-        signInWithGithub: handleSignInWithGithub,
-        signOut: handleSignOut,
-        getIdToken,
-      }}
+      value={{ user, loading, signIn, signUp, signInWithGoogle, signInWithGithub, signOut }}
     >
       {children}
     </AuthContext.Provider>
@@ -93,8 +83,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };

@@ -89,7 +89,7 @@ const DropdownMenuContent = ({
   return (
     <div
       className={cn(
-        "animate-in fade-in-0 zoom-in-95 absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-[var(--border)] bg-[var(--popover)] p-1 text-[var(--popover-foreground)] shadow-md duration-100",
+        "animate-in fade-in-0 zoom-in-95 absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md duration-100",
         align === "end" && "right-0",
         align === "center" && "left-1/2 -translate-x-1/2",
         align === "start" && "left-0",
@@ -120,7 +120,7 @@ const DropdownMenuItem = ({
   return (
     <div
       className={cn(
-        "relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none hover:bg-[var(--secondary)] hover:text-[var(--secondary-foreground)] focus:bg-[var(--secondary)]",
+        "relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none hover:bg-secondary hover:text-secondary-foreground focus:bg-secondary",
         disabled && "pointer-events-none opacity-50",
         className,
       )}
@@ -138,7 +138,7 @@ const DropdownMenuItem = ({
 };
 
 const DropdownMenuSeparator = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
-  return <div className={cn("-mx-1 my-1 h-px bg-[var(--border)]", className)} {...props} />;
+  return <div className={cn("-mx-1 my-1 h-px bg-border", className)} {...props} />;
 };
 
 const DropdownMenuLabel = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {

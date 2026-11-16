@@ -4,13 +4,9 @@ import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import NProgress from "nprogress";
 
-NProgress.configure({
-  showSpinner: false,
-  trickleSpeed: 200,
-  minimum: 0.08,
-  easing: "ease",
-  speed: 400,
-});
+const PROGRESS_SPEED_MS = 400;
+
+NProgress.configure({ showSpinner: false, easing: "ease", speed: PROGRESS_SPEED_MS });
 
 export const RouteProgress = () => {
   const pathname = usePathname();

@@ -23,8 +23,8 @@ const ScrollArea = React.forwardRef<HTMLDivElement, ScrollAreaProps>(
           overflowClass[orientation],
           "[&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2",
           "[&::-webkit-scrollbar-track]:bg-transparent",
-          "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]",
-          "[&::-webkit-scrollbar-thumb:hover]:bg-[var(--muted-foreground)]",
+          "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border",
+          "[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground",
           className,
         )}
         {...props}

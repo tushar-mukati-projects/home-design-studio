@@ -1,27 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const ENABLE_MOCKS = process.env.NEXT_PUBLIC_ENABLE_MOCKS === "true";
+import { getApiErrorMessage } from "./api-error";
+import { MOCKS_ENABLED } from "./env";
 
 export const useMswReady = () => {
-  const [ready, setReady] = useState(!ENABLE_MOCKS);
+  const [ready, setReady] = useState(!MOCKS_ENABLED);
+  const [startError, setStartError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!ENABLE_MOCKS) return;
-    let cancelled = false;
+    if (!MOCKS_ENABLED) return;
     import("@/mocks/browser")
       .then(({ worker }) => worker.start({ onUnhandledRequest: "bypass" }))
-      .catch((err) => {
-        console.error("[MSW] failed to start, falling back to real API", err);
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then(
+        () => setReady(true),
+        (reason: unknown) =>
+          setStartError(new Error(`Mock API failed to start: ${getApiErrorMessage(reason)}`)),
+      );
   }, []);
 
+  if (startError) throw startError;
   return ready;
 };

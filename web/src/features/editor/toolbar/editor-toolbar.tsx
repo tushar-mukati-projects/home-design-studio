@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Undo2, Redo2, Grid3x3, Magnet, Box, Share2, Clock, Compass, ImageUp } from "lucide-react";
-import type Konva from "konva";
+import { Grid3x3, Magnet, Box, Share2, Clock, Compass, ImageUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { DEFAULT_DESIGN_NAME } from "@/lib/constants";
+import { DESIGN_NAME_MAX_CHARS } from "@/shared/canvas";
 import { useEditorStore } from "@/stores/editor-store";
-import { ExportMenu } from "../export/export-menu";
 import { PlanBadge } from "@/features/billing/plan-badge";
-import { useFetchPlan } from "@/hooks/billing";
+import { useFetchPlan } from "@/hooks/billing/useFetchPlan";
+import type { StageRef } from "../export/capture";
+import { ExportMenu } from "../export/export-menu";
+import { HistoryButtons } from "./history-buttons";
 
-interface EditorToolbarProps {
+type EditorToolbarProps = {
   designName: string;
   onNameChange: (name: string) => void;
   onToggle3DPreview: () => void;
@@ -19,10 +22,10 @@ interface EditorToolbarProps {
   onToggleHistory: () => void;
   onToggleUpgrade: () => void;
   onToggleImport: () => void;
-  stageRef: React.RefObject<Konva.Stage | null>;
-  canEdit?: boolean;
-  isOwner?: boolean;
-}
+  stageRef: StageRef;
+  canEdit: boolean;
+  isOwner: boolean;
+};
 
 export const EditorToolbar = ({
   designName,
@@ -33,51 +36,39 @@ export const EditorToolbar = ({
   onToggleUpgrade,
   onToggleImport,
   stageRef,
-  canEdit = true,
-  isOwner = false,
+  canEdit,
+  isOwner,
 }: EditorToolbarProps) => {
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(designName);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [nameValue, setNameValue] = useState("");
   const { data: planData } = useFetchPlan();
 
-  const undo = useEditorStore((s) => s.undo);
-  const redo = useEditorStore((s) => s.redo);
-  const past = useEditorStore((s) => s.past);
-  const future = useEditorStore((s) => s.future);
   const showGrid = useEditorStore((s) => s.showGrid);
   const snapToGrid = useEditorStore((s) => s.snapToGrid);
   const toggleGrid = useEditorStore((s) => s.toggleGrid);
   const toggleSnap = useEditorStore((s) => s.toggleSnap);
 
-  useEffect(() => {
+  const shownName = designName || DEFAULT_DESIGN_NAME;
+
+  const startEditingName = () => {
     setNameValue(designName);
-  }, [designName]);
+    setIsEditingName(true);
+  };
 
-  useEffect(() => {
-    if (isEditingName && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditingName]);
-
-  const handleNameSubmit = () => {
+  const submitName = () => {
     setIsEditingName(false);
-    if (nameValue.trim() && nameValue.trim() !== designName) {
-      onNameChange(nameValue.trim());
-    } else {
-      setNameValue(designName);
-    }
+    const name = nameValue.trim();
+    if (name !== "" && name !== designName) onNameChange(name);
   };
 
   return (
-    <div className="flex h-12 items-center gap-1 border-b border-[var(--border)] bg-[var(--card)] px-2 sm:gap-2 sm:px-4">
+    <div className="flex h-12 items-center gap-1 border-b border-border bg-card px-2 sm:gap-2 sm:px-4">
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <Tooltip content="Back to Dashboard" side="bottom">
           <button
             onClick={() => router.push("/dashboard")}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary)] text-white transition-colors hover:bg-[#3d3d40] sm:h-9 sm:w-9"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-accent sm:h-9 sm:w-9"
           >
             <Compass className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
@@ -85,30 +76,32 @@ export const EditorToolbar = ({
 
         <div className="hidden flex-col sm:flex">
           {!canEdit ? (
-            <span className="max-w-[120px] truncate text-sm font-semibold text-[var(--foreground)] md:max-w-[200px]">
-              {designName || "Untitled design"}
+            <span className="max-w-30 truncate text-sm font-semibold text-foreground md:max-w-50">
+              {shownName}
             </span>
           ) : isEditingName ? (
             <input
-              ref={inputRef}
+              autoFocus
               value={nameValue}
+              maxLength={DESIGN_NAME_MAX_CHARS}
               onChange={(e) => setNameValue(e.target.value)}
-              onBlur={handleNameSubmit}
+              onFocus={(e) => e.target.select()}
+              onBlur={submitName}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleNameSubmit();
+                if (e.key === "Enter") submitName();
                 if (e.key === "Escape") {
                   setNameValue(designName);
                   setIsEditingName(false);
                 }
               }}
-              className="h-7 w-28 rounded border border-[var(--input)] bg-[var(--background)] px-2 text-sm font-semibold text-[var(--foreground)] outline-none focus:ring-1 focus:ring-[var(--ring)] md:w-48"
+              className="h-7 w-28 rounded border border-input bg-background px-2 text-sm font-semibold text-foreground outline-none focus:ring-1 focus:ring-ring md:w-48"
             />
           ) : (
             <button
-              onClick={() => setIsEditingName(true)}
-              className="max-w-[120px] truncate text-left text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--muted-foreground)] md:max-w-[200px]"
+              onClick={startEditingName}
+              className="max-w-30 truncate text-left text-sm font-semibold text-foreground transition-colors hover:text-muted-foreground md:max-w-50"
             >
-              {designName || "Untitled design"}
+              {shownName}
             </button>
           )}
         </div>
@@ -116,30 +109,9 @@ export const EditorToolbar = ({
 
       {canEdit && (
         <div className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--background)] p-0.5">
-            <Tooltip content="Undo (Ctrl+Z)" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={undo}
-                disabled={past.length === 0}
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Redo (Ctrl+Shift+Z)" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={redo}
-                disabled={future.length === 0}
-              >
-                <Redo2 className="h-3.5 w-3.5" />
-              </Button>
-            </Tooltip>
-            <div className="mx-0.5 h-4 w-px bg-[var(--border)]" />
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-background p-0.5">
+            <HistoryButtons />
+            <div className="mx-0.5 h-4 w-px bg-border" />
             <Tooltip content={`Grid (G) ${showGrid ? "On" : "Off"}`} side="bottom">
               <Button
                 variant={showGrid ? "secondary" : "ghost"}
@@ -166,30 +138,13 @@ export const EditorToolbar = ({
 
       {canEdit && (
         <div className="flex items-center gap-0.5 md:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={undo}
-            disabled={past.length === 0}
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={redo}
-            disabled={future.length === 0}
-          >
-            <Redo2 className="h-3.5 w-3.5" />
-          </Button>
+          <HistoryButtons />
         </div>
       )}
 
       {!canEdit && (
         <>
-          <span className="ml-1 rounded-full bg-[var(--secondary)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted-foreground)] sm:ml-2 sm:px-3 sm:py-1 sm:text-xs">
+          <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-2xs font-medium text-muted-foreground sm:ml-2 sm:px-3 sm:py-1 sm:text-xs">
             View Only
           </span>
           <div className="flex-1" />
@@ -208,7 +163,7 @@ export const EditorToolbar = ({
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-[var(--muted-foreground)]"
+              className="gap-1.5 text-muted-foreground"
               onClick={onToggleHistory}
             >
               <Clock className="h-3.5 w-3.5" />
@@ -221,7 +176,7 @@ export const EditorToolbar = ({
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-[var(--muted-foreground)]"
+              className="gap-1.5 text-muted-foreground"
               onClick={planData?.canShare ? onToggleShare : onToggleUpgrade}
             >
               <Share2 className="h-3.5 w-3.5" />

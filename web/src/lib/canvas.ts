@@ -1,21 +1,48 @@
-import type {
-  Canvas,
-  CatalogItem,
-  Furniture,
-  Opening,
-  Point,
-  RoomUsage,
-  Size3,
-  Vec2,
-  Wall,
-} from "@/types";
+import {
+  ANGLE_STEP_DEG,
+  DEFAULT_FURNITURE_COLOR,
+  DEFAULT_FURNITURE_SIZE,
+  FIT_MARGIN_MM,
+  FIT_MAX_ZOOM,
+  FIT_PADDING_PX,
+  MIN_ZOOM,
+  PX_PER_MM,
+} from "@/lib/constants";
+import {
+  wallLength,
+  type Canvas,
+  type CatalogItem,
+  type Furniture,
+  type Opening,
+  type RoomUsage,
+  type Size3,
+  type Vec2,
+  type Wall,
+} from "@/shared/canvas";
+import type { Point } from "@/types";
 
-export const DEFAULTS = {
-  wallThickness: 120,
-  wallHeight: 2700,
-  door: { width: 900, height: 2100 },
-  window: { width: 1200, height: 1200, sill: 900 },
-} as const;
+export type View = {
+  zoom: number;
+  panX: number;
+  panY: number;
+};
+
+export type RectSize = {
+  width: number;
+  height: number;
+};
+
+type Bounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+type Endpoint = {
+  p: Vec2;
+  d: number;
+};
 
 export const ROOM_USAGE_LABELS: Record<RoomUsage, string> = {
   living_room: "Living Room",
@@ -45,22 +72,15 @@ export const ROOM_USAGE_COLORS: Record<RoomUsage, string> = {
   generic: "#8a8a94",
 };
 
-export const emptyCanvas = (): Canvas => ({
-  version: 1,
-  units: "mm",
-  walls: [],
-  openings: [],
-  rooms: [],
-  furniture: [],
-});
-
 export const newId = (): string => crypto.randomUUID();
 
-export const wallLength = (wall: Pick<Wall, "from" | "to">): number =>
-  Math.hypot(wall.to[0] - wall.from[0], wall.to[1] - wall.from[1]);
+export const toDegrees = (radians: number): number => (radians * 180) / Math.PI;
 
 export const wallAngle = (wall: Pick<Wall, "from" | "to">): number =>
   Math.atan2(wall.to[1] - wall.from[1], wall.to[0] - wall.from[0]);
+
+export const labelNormal = (angle: number): number =>
+  Math.sin(angle) >= 0 && Math.cos(angle) > 0 ? angle - Math.PI / 2 : angle + Math.PI / 2;
 
 export const pointOnWall = (wall: Pick<Wall, "from" | "to">, offset: number): Vec2 => {
   const len = wallLength(wall) || 1;
@@ -85,21 +105,65 @@ export const distanceToWall = (wall: Pick<Wall, "from" | "to">, x: number, y: nu
   return Math.hypot(x - px, y - py);
 };
 
-export const clampOpeningOffset = (opening: Pick<Opening, "width">, wall: Wall, offset: number) => {
-  const half = opening.width / 2;
+export const clampOpeningOffset = (
+  opening: Pick<Opening, "width">,
+  wall: Pick<Wall, "from" | "to">,
+  offset: number,
+): number => {
   const len = wallLength(wall);
+  if (len <= opening.width) return Math.round(len / 2);
+  const half = opening.width / 2;
   return Math.round(Math.max(half, Math.min(len - half, offset)));
 };
 
-export const polygonArea = (polygon: Vec2[]): number => {
-  let sum = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const [x1, y1] = polygon[i];
-    const [x2, y2] = polygon[(i + 1) % polygon.length];
-    sum += x1 * y2 - x2 * y1;
+export const nearestWall = (
+  x: number,
+  y: number,
+  walls: Wall[],
+  threshold: number,
+): Wall | null => {
+  let best: { wall: Wall; dist: number } | null = null;
+  for (const wall of walls) {
+    const dist = distanceToWall(wall, x, y) - wall.thickness / 2;
+    if (dist < threshold && (!best || dist < best.dist)) best = { wall, dist };
   }
-  return Math.abs(sum) / 2;
+  return best?.wall ?? null;
 };
+
+export const nearestOpening = (
+  x: number,
+  y: number,
+  openings: Opening[],
+  walls: Wall[],
+  threshold: number,
+): Opening | null => {
+  const wallMap = new Map(walls.map((w) => [w.id, w]));
+  let best: { opening: Opening; dist: number } | null = null;
+  for (const opening of openings) {
+    const wall = wallMap.get(opening.wall);
+    if (!wall) continue;
+    const [px, py] = pointOnWall(wall, opening.offset);
+    const dist = Math.hypot(x - px, y - py);
+    if (dist < threshold && (!best || dist < best.dist)) best = { opening, dist };
+  }
+  return best?.opening ?? null;
+};
+
+export const furnitureAt = (
+  x: number,
+  y: number,
+  furniture: Furniture[],
+  catalog: CatalogItem[],
+): Furniture | null =>
+  furniture.find((piece) => {
+    const [w, d] = furnitureSize(piece, catalog);
+    const rad = (piece.rotation * Math.PI) / 180;
+    const dx = x - piece.at[0];
+    const dy = y - piece.at[1];
+    const localX = dx * Math.cos(rad) + dy * Math.sin(rad);
+    const localY = -dx * Math.sin(rad) + dy * Math.cos(rad);
+    return Math.abs(localX) <= w / 2 && Math.abs(localY) <= d / 2;
+  }) ?? null;
 
 export const centroid = (polygon: Vec2[]): Vec2 => {
   if (polygon.length === 0) return [0, 0];
@@ -108,28 +172,14 @@ export const centroid = (polygon: Vec2[]): Vec2 => {
   return [sx / polygon.length, sy / polygon.length];
 };
 
-export const rectPolygon = (x: number, y: number, w: number, h: number): Vec2[] => [
-  [x, y],
-  [x + w, y],
-  [x + w, y + h],
-  [x, y + h],
-];
-
 export const furnitureSize = (piece: Furniture, catalog: CatalogItem[]): Size3 =>
-  piece.size ?? catalog.find((c) => c.id === piece.item)?.size ?? [600, 600, 600];
+  piece.size ?? catalog.find((c) => c.id === piece.item)?.size ?? DEFAULT_FURNITURE_SIZE;
 
 export const furnitureColor = (piece: Furniture, catalog: CatalogItem[]): string =>
-  piece.color ?? catalog.find((c) => c.id === piece.item)?.color ?? "#d4d4d8";
+  piece.color ?? catalog.find((c) => c.id === piece.item)?.color ?? DEFAULT_FURNITURE_COLOR;
 
 export const furnitureName = (piece: Furniture, catalog: CatalogItem[]): string =>
   catalog.find((c) => c.id === piece.item)?.name ?? piece.item;
-
-export interface Bounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
 
 export const boundsOf = (canvas: Pick<Canvas, "walls" | "rooms" | "furniture">): Bounds | null => {
   const xs: number[] = [];
@@ -157,7 +207,27 @@ export const boundsOf = (canvas: Pick<Canvas, "walls" | "rooms" | "furniture">):
   };
 };
 
-export const toPoint = (v: Vec2): Point => ({ x: v[0], y: v[1] });
+export const fitView = (bounds: Bounds | null, rect: RectSize, zoom: number): View => {
+  if (!bounds) return { zoom, panX: rect.width / 2, panY: rect.height / 2 };
+  const contentW = (bounds.maxX - bounds.minX + FIT_MARGIN_MM * 2) * PX_PER_MM;
+  const contentH = (bounds.maxY - bounds.minY + FIT_MARGIN_MM * 2) * PX_PER_MM;
+  const fitZoom = Math.max(
+    MIN_ZOOM,
+    Math.min(
+      FIT_MAX_ZOOM,
+      (rect.width - FIT_PADDING_PX * 2) / contentW,
+      (rect.height - FIT_PADDING_PX * 2) / contentH,
+    ),
+  );
+  const cx = ((bounds.minX + bounds.maxX) / 2) * PX_PER_MM;
+  const cy = ((bounds.minY + bounds.maxY) / 2) * PX_PER_MM;
+  return {
+    zoom: fitZoom,
+    panX: rect.width / 2 - cx * fitZoom,
+    panY: rect.height / 2 - cy * fitZoom,
+  };
+};
+
 export const toVec = (p: Point): Vec2 => [Math.round(p.x), Math.round(p.y)];
 
 export const snapToEndpoints = (
@@ -166,7 +236,7 @@ export const snapToEndpoints = (
   threshold: number,
   ignoreWallId?: string,
 ): Vec2 | null => {
-  let best: { p: Vec2; d: number } | null = null;
+  let best: Endpoint | null = null;
   for (const wall of walls) {
     if (wall.id === ignoreWallId) continue;
     for (const end of [wall.from, wall.to]) {
@@ -177,16 +247,17 @@ export const snapToEndpoints = (
   return best?.p ?? null;
 };
 
-export const constrainAngle = (from: Point, to: Point, stepDeg = 45): Point => {
+export const constrainAngle = (from: Point, to: Point, lengthStep = 1): Point => {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy);
   if (length === 0) return to;
-  const step = (stepDeg * Math.PI) / 180;
+  const step = (ANGLE_STEP_DEG * Math.PI) / 180;
   const angle = Math.round(Math.atan2(dy, dx) / step) * step;
+  const snapped = Math.round(length / lengthStep) * lengthStep;
   return {
-    x: Math.round(from.x + Math.cos(angle) * length),
-    y: Math.round(from.y + Math.sin(angle) * length),
+    x: Math.round(from.x + Math.cos(angle) * snapped),
+    y: Math.round(from.y + Math.sin(angle) * snapped),
   };
 };
 

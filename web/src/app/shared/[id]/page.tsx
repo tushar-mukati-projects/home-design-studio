@@ -1,58 +1,18 @@
-"use client";
+import type { Metadata } from "next";
+import { SharedDesignView } from "@/features/shared/shared-design-view";
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
-import { useFetchDesign } from "@/hooks/designs/useFetchDesign";
+export const metadata: Metadata = {
+  title: "Shared design",
+};
 
-const EditorView = dynamic(
-  () =>
-    import("@/features/editor/editor-view").then((mod) => ({
-      default: mod.EditorView,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
-      </div>
-    ),
-  },
-);
+type SharedDesignPageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-const SharedDesignPage = () => {
-  const { id } = useParams<{ id: string }>();
-  const code = useSearchParams().get("code") ?? "";
-  const router = useRouter();
-  const { data: design, isLoading, error } = useFetchDesign(code ? (id ?? "") : "", code);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" />
-      </div>
-    );
-  }
-
-  if (error || !design) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <div className="space-y-4 text-center">
-          <p className="text-[var(--muted-foreground)]">
-            This shared link is invalid or has been disabled.
-          </p>
-          <button
-            onClick={() => router.push("/")}
-            className="text-sm text-[var(--primary)] hover:underline"
-          >
-            Go Home
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return <EditorView designId={design.id} preloadedDesign={design} permissionOverride="readonly" />;
+const SharedDesignPage = async ({ params, searchParams }: SharedDesignPageProps) => {
+  const [{ id }, { code }] = await Promise.all([params, searchParams]);
+  return <SharedDesignView id={id} code={typeof code === "string" ? code : ""} />;
 };
 
 export default SharedDesignPage;

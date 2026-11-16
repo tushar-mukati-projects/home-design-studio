@@ -50,7 +50,7 @@ const Tooltip = ({
         <div
           role="tooltip"
           className={cn(
-            "animate-in fade-in-0 zoom-in-95 absolute z-50 rounded-md border border-[var(--border)] bg-[var(--popover)] px-3 py-1.5 text-xs whitespace-nowrap text-[var(--popover-foreground)] shadow-md duration-100",
+            "animate-in fade-in-0 zoom-in-95 absolute z-50 rounded-md border border-border bg-popover px-3 py-1.5 text-xs whitespace-nowrap text-popover-foreground shadow-md duration-100",
             positionClasses[side],
             className,
           )}

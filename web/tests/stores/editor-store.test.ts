@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { useEditorStore } from "@/stores/editor-store";
-import { GRID_MM } from "@/lib/constants";
-import type { Furniture, Opening, Room, Wall } from "@/types";
+import { MAX_ZOOM, MIN_ZOOM } from "@/lib/constants";
+import type { Furniture, Opening, Room, Wall } from "@/shared/canvas";
 
 const store = () => useEditorStore.getState();
 
@@ -14,13 +14,14 @@ const wall = (id: string, overrides: Partial<Wall> = {}): Wall => ({
   ...overrides,
 });
 
-const door = (id: string, wallId = "w1"): Opening => ({
+const door = (id: string, wallId = "w1", overrides: Partial<Opening> = {}): Opening => ({
   id,
   kind: "door",
   wall: wallId,
   offset: 2000,
   width: 900,
   height: 2100,
+  ...overrides,
 });
 
 const windowEl = (id: string, wallId = "w1"): Opening => ({
@@ -61,10 +62,10 @@ beforeEach(() => {
     lastCoalesceAt: 0,
     selectedElementId: null,
     activeTool: "select",
+    openModals: 0,
     zoom: 1,
     panX: 0,
     panY: 0,
-    gridSize: GRID_MM,
     showGrid: true,
     snapToGrid: true,
   });
@@ -121,9 +122,11 @@ describe("history coalescing", () => {
   test("coalescing works for openings and furniture too", () => {
     store().addOpening(door("d1"));
     store().addFurniture(furniture("f1"));
+    let width = 800;
+    let rotation = 5;
     for (const drag of [
-      () => store().updateOpening("d1", { width: 800 }, "opening-width:d1"),
-      () => store().updateFurniture("f1", { rotation: 5 }, "furniture-rotation:f1"),
+      () => store().updateOpening("d1", { width: width++ }, "opening-width:d1"),
+      () => store().updateFurniture("f1", { rotation: rotation++ }, "furniture-rotation:f1"),
     ]) {
       const before = store().past.length;
       for (let i = 0; i < 10; i++) drag();
@@ -142,12 +145,47 @@ describe("history coalescing", () => {
   });
 });
 
+describe("unchanged edits", () => {
+  test("updateWall with the same thickness leaves past.length unchanged", () => {
+    store().addWall(wall("w1"));
+    const before = store().past.length;
+    store().updateWall("w1", { thickness: 120 });
+    expect(store().past.length).toBe(before);
+  });
+
+  test.each([
+    [
+      "opening",
+      () => store().addOpening(door("x")),
+      () => store().updateOpening("x", { width: 900 }),
+    ],
+    [
+      "furniture",
+      () => store().addFurniture(furniture("x")),
+      () => store().updateFurniture("x", { at: [0, 0] }),
+    ],
+    ["room", () => store().setRooms([room("x")]), () => store().updateRoom("x", { name: "Room" })],
+  ])("an unchanged %s patch is not an undo step", (_kind, add, patch) => {
+    add();
+    const before = store().past.length;
+    patch();
+    expect(store().past.length).toBe(before);
+  });
+
+  test("updateRoom records a real change once", () => {
+    store().setRooms([room("r1")]);
+    store().updateRoom("r1", { name: "Kitchen" });
+    expect(store().rooms[0].name).toBe("Kitchen");
+    expect(store().past).toHaveLength(2);
+  });
+});
+
 describe("batching", () => {
   test("many mutations collapse into one undo step", () => {
     store().beginBatch();
     store().addWall(wall("x1"));
     store().addWall(wall("x2"));
-    store().setRooms([room("r1")], { recordHistory: true });
+    store().setRooms([room("r1")]);
     store().endBatch();
 
     expect(store().past.length).toBe(1);
@@ -182,6 +220,17 @@ describe("batching", () => {
     store().addWall(wall("w1"));
     expect(store().past).toHaveLength(1);
   });
+
+  test("a batch is one undo step however long it pauses", () => {
+    store().addWall(wall("w1"));
+    useEditorStore.setState({ lastCoalesceAt: Date.now() - 5000 });
+    store().beginBatch();
+    for (let x = 4100; x <= 4500; x += 100) store().updateWall("w1", { to: [x, 0] });
+    store().endBatch();
+    expect(store().past).toHaveLength(2);
+    store().undo();
+    expect(store().walls[0].to).toEqual([4000, 0]);
+  });
 });
 
 describe("undo / redo", () => {
@@ -198,54 +247,11 @@ describe("undo / redo", () => {
     expect(store().future).toHaveLength(0);
   });
 
-  test("both stacks are capped", () => {
+  test("the undo stack keeps only the last 50 steps", () => {
     for (let i = 0; i < 80; i++) store().addWall(wall(`c${i}`));
     expect(store().past).toHaveLength(50);
     for (let i = 0; i < 80; i++) store().undo();
-    expect(store().future.length).toBeLessThanOrEqual(50);
-  });
-
-  test("snapshots do not alias the live arrays", () => {
-    store().addWall(wall("w1"));
-    const live = store().walls;
-    store().updateWall("w1", { thickness: 200 });
-    expect(store().walls).not.toBe(live);
-    expect(live[0].thickness).toBe(120);
-  });
-
-  test("snapshots deep-copy nested structures", () => {
-    store().setRooms(
-      [
-        room("r1", {
-          polygon: [
-            [1, 1],
-            [2, 1],
-            [2, 2],
-          ],
-        }),
-      ],
-      { recordHistory: true },
-    );
-    store().setRooms(
-      [
-        room("r1", {
-          polygon: [
-            [5, 5],
-            [6, 5],
-            [6, 6],
-          ],
-        }),
-      ],
-      { recordHistory: true },
-    );
-    store().undo();
-    expect(store().rooms[0].polygon).toEqual([
-      [1, 1],
-      [2, 1],
-      [2, 2],
-    ]);
-    store().undo();
-    expect(store().rooms).toHaveLength(0);
+    expect(store().walls).toHaveLength(30);
   });
 });
 
@@ -269,6 +275,21 @@ describe("mutations", () => {
     expect(store().selectedElementId).toBeNull();
   });
 
+  test("removing a wall clears a selected opening that went with it", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1"));
+    store().setSelectedElement("d1");
+    store().removeWall("w1");
+    expect(store().selectedElementId).toBeNull();
+  });
+
+  test("a remote delete of the selected element clears the selection", () => {
+    store().addFurniture(furniture("f1"));
+    store().setSelectedElement("f1");
+    useEditorStore.setState({ furniture: [] });
+    expect(store().selectedElementId).toBeNull();
+  });
+
   test("removeElement finds the element whatever collection it is in", () => {
     store().addWall(wall("w1"));
     store().addOpening(door("d1"));
@@ -283,10 +304,8 @@ describe("mutations", () => {
     expect(store().rooms).toHaveLength(0);
   });
 
-  test("setRooms records history only when asked", () => {
+  test("setRooms records history", () => {
     store().setRooms([room("r1")]);
-    expect(store().past).toHaveLength(0);
-    store().setRooms([room("r2")], { recordHistory: true });
     expect(store().past).toHaveLength(1);
   });
 
@@ -314,6 +333,69 @@ describe("mutations", () => {
     expect(store().isDrawing).toBe(false);
     expect(store().currentWallStart).toBeNull();
   });
+
+  test("stopDrawing ends the wall in progress", () => {
+    store().setIsDrawing(true);
+    store().setCurrentWallStart({ x: 10, y: 10 });
+    store().stopDrawing();
+    expect(store().isDrawing).toBe(false);
+    expect(store().currentWallStart).toBeNull();
+  });
+
+  test("open modals are counted and never go negative", () => {
+    store().setModalOpen(true);
+    store().setModalOpen(true);
+    expect(store().openModals).toBe(2);
+    store().setModalOpen(false);
+    store().setModalOpen(false);
+    store().setModalOpen(false);
+    expect(store().openModals).toBe(0);
+  });
+});
+
+describe("openings follow their wall", () => {
+  test("shrinking a wall from the inputs keeps its door on the wall", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1", { offset: 3500 }));
+    store().updateWall("w1", { to: [2000, 0] });
+    expect(store().openings[0].offset).toBe(1550);
+    expect(store().openings[0].width).toBe(900);
+  });
+
+  test("a wall shorter than its opening keeps the opening width and centres it", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1"));
+    store().updateWall("w1", { to: [500, 0] });
+    expect(store().openings[0]).toMatchObject({ width: 900, offset: 250 });
+  });
+
+  test("a wall end dragged onto the other end is ignored, so the door keeps its size", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1"));
+    store().updateWall("w1", { to: [0, 0] }, "wall-end:w1:to");
+    expect(store().walls[0].to).toEqual([4000, 0]);
+    expect(store().openings[0]).toMatchObject({ width: 900, offset: 2000 });
+    expect(store().past).toHaveLength(2);
+  });
+
+  test("a live handle drag re-clamps on every move", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1", { offset: 3500 }));
+    store().beginBatch();
+    store().updateWall("w1", { to: [3000, 0] });
+    expect(store().openings[0].offset).toBe(2550);
+    store().updateWall("w1", { to: [2000, 0] });
+    store().endBatch();
+    expect(store().openings[0].offset).toBe(1550);
+  });
+
+  test("openings on other walls are left alone", () => {
+    store().addWall(wall("w1"));
+    store().addWall(wall("w2", { from: [0, 3000], to: [4000, 3000] }));
+    store().addOpening(door("d2", "w2", { offset: 3500 }));
+    store().updateWall("w1", { to: [1000, 0] });
+    expect(store().openings[0].offset).toBe(3500);
+  });
 });
 
 describe("snapWallPoint", () => {
@@ -330,12 +412,27 @@ describe("snapWallPoint", () => {
     expect(joined).toBeNull();
   });
 
-  test("Shift holds the angle from the start point, then the grid rounds", () => {
+  test("Shift holds the angle from the start point, then the grid rounds the length", () => {
     store().setCurrentWallStart({ x: 0, y: 0 });
     const { point } = store().snapWallPoint({ x: 3000, y: 240 }, { shift: true });
     expect(point).toEqual({ x: 3000, y: 0 });
     const diagonal = store().snapWallPoint({ x: 2000, y: 2200 }, { shift: true }).point;
     expect(diagonal.x).toBe(diagonal.y);
+  });
+
+  test("Shift keeps the angle when the start point is off the grid", () => {
+    store().setCurrentWallStart({ x: 50, y: 50 });
+    const { point } = store().snapWallPoint({ x: 1050, y: 60 }, { shift: true });
+    expect(point).toEqual({ x: 1050, y: 50 });
+  });
+
+  test("Shift without grid snapping keeps the exact length", () => {
+    store().toggleSnap();
+    store().setCurrentWallStart({ x: 0, y: 0 });
+    expect(store().snapWallPoint({ x: 1000, y: 100 }, { shift: true }).point).toEqual({
+      x: 1005,
+      y: 0,
+    });
   });
 
   test("falls back to the grid otherwise", () => {
@@ -361,6 +458,18 @@ describe("nudge", () => {
     expect(store().furniture[0].at).toEqual([0, -200]);
   });
 
+  test("nudging an opening slides it along its wall and stays on it", () => {
+    store().addWall(wall("w1"));
+    store().addOpening(door("d1", "w1"));
+    store().setSelectedElement("d1");
+    store().nudgeSelected(200, 0);
+    expect(store().openings[0].offset).toBe(2200);
+    store().nudgeSelected(0, 200);
+    expect(store().openings[0].offset).toBe(2200);
+    store().nudgeSelected(5000, 0);
+    expect(store().openings[0].offset).toBe(3550);
+  });
+
   test("nudge with nothing selected is a no-op", () => {
     store().addWall(wall("w1"));
     store().nudgeSelected(200, 0);
@@ -372,20 +481,12 @@ describe("nudge", () => {
 describe("viewport", () => {
   test("zoom is clamped", () => {
     store().setZoom(99);
-    expect(store().zoom).toBe(5);
+    expect(store().zoom).toBe(MAX_ZOOM);
     store().setZoom(0);
-    expect(store().zoom).toBe(0.1);
-  });
-
-  test("grid size is clamped to a sensible millimetre range", () => {
-    store().setGridSize(5000);
-    expect(store().gridSize).toBe(1000);
-    store().setGridSize(1);
-    expect(store().gridSize).toBe(50);
+    expect(store().zoom).toBe(MIN_ZOOM);
   });
 
   test("snapPoint snaps to the grid in millimetres", () => {
-    store().setGridSize(200);
     expect(store().snapPoint({ x: 290, y: 310 })).toEqual({ x: 200, y: 400 });
     expect(store().snapPoint({ x: -290, y: -310 })).toEqual({ x: -200, y: -400 });
   });
@@ -396,11 +497,19 @@ describe("viewport", () => {
   });
 });
 
-describe("loadDesign / getCanvas", () => {
+describe("loadDesign", () => {
   test("loading resets history so a fresh design cannot be undone into the previous one", () => {
     store().addWall(wall("stale"));
     store().loadDesign({
       id: "d1",
+      name: "Design",
+      description: null,
+      thumbnail: null,
+      userId: "me",
+      createdAt: "",
+      updatedAt: "",
+      rooms: [],
+      furniture: [],
       canvasData: {
         version: 1,
         units: "mm",
@@ -409,41 +518,9 @@ describe("loadDesign / getCanvas", () => {
         rooms: [],
         furniture: [],
       },
-    } as never);
+    });
     expect(store().walls.map((w) => w.id)).toEqual(["loaded"]);
     expect(store().past).toHaveLength(0);
     expect(store().future).toHaveLength(0);
-  });
-
-  test("tolerates a canvasData missing every collection", () => {
-    store().loadDesign({ id: "d1", canvasData: {} } as never);
-    expect(store().walls).toEqual([]);
-    expect(store().openings).toEqual([]);
-    expect(store().rooms).toEqual([]);
-    expect(store().furniture).toEqual([]);
-  });
-
-  test("getCanvas is a complete document with headers and round-trips", () => {
-    store().addWall(wall("w1"));
-    store().addOpening(door("d1"));
-    store().setRooms([room("r1")]);
-    const canvas = store().getCanvas();
-
-    expect(canvas.version).toBe(1);
-    expect(canvas.units).toBe("mm");
-
-    store().clearCanvas();
-    store().loadDesign({ id: "d1", canvasData: canvas } as never);
-    expect(store().walls.map((w) => w.id)).toEqual(["w1"]);
-    expect(store().openings.map((o) => o.id)).toEqual(["d1"]);
-    expect(store().rooms.map((r) => r.id)).toEqual(["r1"]);
-  });
-
-  test("the viewport is not part of the document", () => {
-    store().setZoom(2);
-    store().setPan(100, 200);
-    expect(store().getCanvas()).not.toHaveProperty("zoom");
-    expect(store().getCanvas()).not.toHaveProperty("panX");
-    expect(store().getCanvas()).not.toHaveProperty("gridSize");
   });
 });

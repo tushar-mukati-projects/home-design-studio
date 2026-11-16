@@ -1,97 +1,56 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { MeshStandardMaterial } from "three";
-import { wallAngle, wallLength } from "@/lib/canvas";
-import type { Opening, Wall } from "@/types";
-
-const SCALE = 0.001;
+import { wallAngle } from "@/lib/canvas";
+import { wallLength, type Opening, type Wall } from "@/shared/canvas";
+import { M_PER_MM } from "@/lib/constants";
+import { DOOR_FRAME_3D, WINDOW_GLASS_3D } from "@/features/editor/canvas/palette";
 
 const doorFrameMaterial = new MeshStandardMaterial({
-  color: "#71717a",
+  color: DOOR_FRAME_3D,
   roughness: 0.5,
   metalness: 0.15,
 });
 
 const windowMaterial = new MeshStandardMaterial({
-  color: "#87CEEB",
+  color: WINDOW_GLASS_3D,
   roughness: 0.1,
   metalness: 0.3,
   transparent: true,
   opacity: 0.35,
 });
 
-interface Wall3DProps {
+type Wall3DProps = {
   wall: Wall;
   openings: Opening[];
   offsetX: number;
   offsetZ: number;
-  wallColor?: string;
-}
+  wallColor: string;
+};
 
-interface Segment {
+type Segment = {
   centre: number;
   length: number;
   yOffset: number;
   height: number;
   glass?: boolean;
-}
-
-const segmentsFor = (wall: Wall, openings: Opening[]): Segment[] => {
-  const total = wallLength(wall) * SCALE;
-  const H = wall.height * SCALE;
-  const sorted = [...openings]
-    .map((o) => ({
-      start: (o.offset - o.width / 2) * SCALE,
-      end: (o.offset + o.width / 2) * SCALE,
-      height: o.height * SCALE,
-      sill: (o.sill ?? 0) * SCALE,
-      kind: o.kind,
-    }))
-    .sort((a, b) => a.start - b.start);
-
-  if (sorted.length === 0) return [{ centre: total / 2, length: total, yOffset: H / 2, height: H }];
-
-  const out: Segment[] = [];
-  let cursor = 0;
-
-  for (const o of sorted) {
-    const start = Math.max(0, o.start);
-    const end = Math.min(total, o.end);
-    if (start > cursor) {
-      out.push({ centre: (cursor + start) / 2, length: start - cursor, yOffset: H / 2, height: H });
-    }
-    const centre = (start + end) / 2;
-    const length = end - start;
-    const top = o.sill + o.height;
-    if (o.kind === "window") {
-      out.push({ centre, length, yOffset: o.sill / 2, height: o.sill });
-      out.push({ centre, length, yOffset: o.sill + o.height / 2, height: o.height, glass: true });
-    }
-    if (top < H) out.push({ centre, length, yOffset: top + (H - top) / 2, height: H - top });
-    cursor = Math.max(cursor, end);
-  }
-
-  if (cursor < total) {
-    out.push({ centre: (cursor + total) / 2, length: total - cursor, yOffset: H / 2, height: H });
-  }
-  return out;
 };
 
 export const Wall3D = ({ wall, openings, offsetX, offsetZ, wallColor }: Wall3DProps) => {
   const wallMaterial = useMemo(
-    () =>
-      new MeshStandardMaterial({ color: wallColor || "#e8e8e8", roughness: 0.8, metalness: 0.02 }),
+    () => new MeshStandardMaterial({ color: wallColor, roughness: 0.8, metalness: 0.02 }),
     [wallColor],
   );
+  useEffect(() => () => wallMaterial.dispose(), [wallMaterial]);
 
   const geometry = useMemo(
     () => ({
-      length: wallLength(wall) * SCALE,
+      length: wallLength(wall) * M_PER_MM,
       angle: wallAngle(wall),
-      thickness: wall.thickness * SCALE,
-      centerX: ((wall.from[0] + wall.to[0]) / 2) * SCALE - offsetX,
-      centerZ: ((wall.from[1] + wall.to[1]) / 2) * SCALE - offsetZ,
+      thickness: wall.thickness * M_PER_MM,
+      centerX: ((wall.from[0] + wall.to[0]) / 2) * M_PER_MM - offsetX,
+      centerZ: ((wall.from[1] + wall.to[1]) / 2) * M_PER_MM - offsetZ,
     }),
     [wall, offsetX, offsetZ],
   );
@@ -116,9 +75,9 @@ export const Wall3D = ({ wall, openings, offsetX, offsetZ, wallColor }: Wall3DPr
       ))}
 
       {doors.map((door) => {
-        const localX = door.offset * SCALE - geometry.length / 2;
-        const width = door.width * SCALE;
-        const height = door.height * SCALE;
+        const localX = door.offset * M_PER_MM - geometry.length / 2;
+        const width = door.width * M_PER_MM;
+        const height = door.height * M_PER_MM;
         const panelThickness = geometry.thickness * 0.15;
         const hingeRight = door.hinge === "right";
         const swingOut = door.swing === "out";
@@ -172,4 +131,45 @@ export const Wall3D = ({ wall, openings, offsetX, offsetZ, wallColor }: Wall3DPr
       })}
     </group>
   );
+};
+
+const segmentsFor = (wall: Wall, openings: Opening[]): Segment[] => {
+  const total = wallLength(wall) * M_PER_MM;
+  const H = wall.height * M_PER_MM;
+  const sorted = [...openings]
+    .map((o) => ({
+      start: (o.offset - o.width / 2) * M_PER_MM,
+      end: (o.offset + o.width / 2) * M_PER_MM,
+      height: o.height * M_PER_MM,
+      sill: (o.sill ?? 0) * M_PER_MM,
+      kind: o.kind,
+    }))
+    .sort((a, b) => a.start - b.start);
+
+  if (sorted.length === 0) return [{ centre: total / 2, length: total, yOffset: H / 2, height: H }];
+
+  const out: Segment[] = [];
+  let cursor = 0;
+
+  for (const o of sorted) {
+    const start = Math.max(0, o.start);
+    const end = Math.min(total, o.end);
+    if (start > cursor) {
+      out.push({ centre: (cursor + start) / 2, length: start - cursor, yOffset: H / 2, height: H });
+    }
+    const centre = (start + end) / 2;
+    const length = end - start;
+    const top = o.sill + o.height;
+    if (o.kind === "window") {
+      out.push({ centre, length, yOffset: o.sill / 2, height: o.sill });
+      out.push({ centre, length, yOffset: o.sill + o.height / 2, height: o.height, glass: true });
+    }
+    if (top < H) out.push({ centre, length, yOffset: top + (H - top) / 2, height: H - top });
+    cursor = Math.max(cursor, end);
+  }
+
+  if (cursor < total) {
+    out.push({ centre: (cursor + total) / 2, length: total - cursor, yOffset: H / 2, height: H });
+  }
+  return out;
 };

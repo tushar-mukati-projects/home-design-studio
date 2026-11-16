@@ -2,31 +2,25 @@ import { describe, test, expect } from "bun:test";
 import {
   EXPORT_HIDDEN_LAYER_NAME,
   GRID_MM,
-  PX_PER_MM,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  clampZoom,
   formatArea,
   formatLength,
-  mmToPx,
-  pxToMm,
 } from "@/lib/constants";
 
 describe("render scale", () => {
-  test("a 6 m wall is 600 px at zoom 1", () => {
-    expect(mmToPx(6000)).toBe(600);
-  });
-
-  test("mmToPx and pxToMm are inverses", () => {
-    for (const mm of [0, 1, 120, 4064, 12345.5]) {
-      expect(pxToMm(mmToPx(mm))).toBeCloseTo(mm, 10);
-    }
-  });
-
   test("the grid is a whole number of millimetres that divides a metre", () => {
     expect(Number.isInteger(GRID_MM)).toBe(true);
     expect(1000 % GRID_MM).toBe(0);
   });
 
-  test("PX_PER_MM is the only place the screen scale lives", () => {
-    expect(PX_PER_MM).toBe(0.1);
+  test.each([
+    [0, MIN_ZOOM],
+    [1, 1],
+    [99, MAX_ZOOM],
+  ])("clampZoom(%p) is %p", (zoom, expected) => {
+    expect(clampZoom(zoom)).toBe(expected);
   });
 });
 

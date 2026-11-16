@@ -1,4 +1,4 @@
-import type { CatalogItem } from "@/types";
+import type { CatalogItem } from "@/shared/canvas";
 
 export const mockFurnitureItems: CatalogItem[] = [
   { id: "sofa", name: "Sofa", category: "living_room", size: [2000, 900, 850], color: "#9ca3af" },

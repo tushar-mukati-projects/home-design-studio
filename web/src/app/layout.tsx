@@ -1,51 +1,31 @@
 import type { Metadata } from "next";
 import { DM_Sans, Inter } from "next/font/google";
-import { AuthProvider } from "@/lib/auth-context";
 import { Providers } from "@/components/layout/providers";
+import { AuthProvider } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-});
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Home Design Studio",
+  title: { default: "Home Design Studio", template: "%s · Home Design Studio" },
   description:
     "Design beautiful floor plans, arrange furniture, and visualize your dream home in 2D and 3D.",
-  icons: {
-    icon: "/favicon.ico",
-  },
 };
 
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
-  userScalable: true,
-};
-
-interface RootLayoutProps {
+type RootLayoutProps = {
   children: React.ReactNode;
-}
-
-const RootLayout = ({ children }: RootLayoutProps) => {
-  return (
-    <html lang="en" className={`${dmSans.variable} ${inter.variable}`} suppressHydrationWarning>
-      <body className="min-h-screen bg-[var(--background)] font-sans antialiased">
-        <Providers>
-          <AuthProvider>{children}</AuthProvider>
-        </Providers>
-      </body>
-    </html>
-  );
 };
+
+const RootLayout = ({ children }: RootLayoutProps) => (
+  <html lang="en" className={cn(dmSans.variable, inter.variable)}>
+    <body className="min-h-screen bg-background antialiased">
+      <Providers>
+        <AuthProvider>{children}</AuthProvider>
+      </Providers>
+    </body>
+  </html>
+);
 
 export default RootLayout;

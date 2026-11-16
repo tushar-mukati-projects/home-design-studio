@@ -1,1 +1,0 @@
-export { useFetchFurniture } from "./useFetchFurniture";

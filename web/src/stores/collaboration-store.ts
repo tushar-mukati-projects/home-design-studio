@@ -1,40 +1,30 @@
 import { create } from "zustand";
 
-export interface CollaboratorCursor {
-  id: string;
+export type Collaborator = {
+  id: number;
   name: string;
   color: string;
   x: number;
   y: number;
   lastSeen: number;
-}
+};
 
-interface CollaborationState {
+type CollaborationState = {
   isConnected: boolean;
   isSynced: boolean;
-  collaborators: CollaboratorCursor[];
-
-  setConnected: (connected: boolean) => void;
-  setSynced: (synced: boolean) => void;
-  setCollaborators: (collaborators: CollaboratorCursor[]) => void;
-  updateCursorPosition: (id: string, x: number, y: number) => void;
-}
+  collaborators: Collaborator[];
+  setConnected: (isConnected: boolean) => void;
+  setSynced: (isSynced: boolean) => void;
+  setCollaborators: (collaborators: Collaborator[]) => void;
+  reset: () => void;
+};
 
 export const useCollaborationStore = create<CollaborationState>()((set) => ({
   isConnected: false,
   isSynced: false,
   collaborators: [],
-
-  setConnected: (connected) => set({ isConnected: connected }),
-
-  setSynced: (synced) => set({ isSynced: synced }),
-
+  setConnected: (isConnected) => set({ isConnected }),
+  setSynced: (isSynced) => set({ isSynced }),
   setCollaborators: (collaborators) => set({ collaborators }),
-
-  updateCursorPosition: (id, x, y) =>
-    set((state) => ({
-      collaborators: state.collaborators.map((c) =>
-        c.id === id ? { ...c, x, y, lastSeen: Date.now() } : c,
-      ),
-    })),
+  reset: () => set({ isConnected: false, isSynced: false, collaborators: [] }),
 }));

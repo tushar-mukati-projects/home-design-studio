@@ -9,7 +9,7 @@ mock.module("sonner", () => ({
   },
 }));
 
-const { makeQueryClient } = await import("@/lib/query-client");
+const { makeQueryClient, shouldRetryQuery } = await import("@/lib/query-client");
 
 const serverError = (status: number, message: string): AxiosError => {
   const err = new AxiosError("Request failed");
@@ -23,16 +23,43 @@ const serverError = (status: number, message: string): AxiosError => {
   return err;
 };
 
-const runFailingMutation = async (error: unknown, meta?: Record<string, unknown>) => {
+const runFailingMutation = async (error: unknown) => {
   const client = makeQueryClient();
   const observerLess = client
     .getMutationCache()
-    .build(client, { mutationFn: async () => Promise.reject(error), meta });
+    .build(client, { mutationFn: async () => Promise.reject(error) });
   await observerLess.execute(undefined).catch(() => undefined);
 };
 
 beforeEach(() => {
   errorToasts.length = 0;
+});
+
+describe("shouldRetryQuery", () => {
+  test.each([
+    ["first failure of a 500", 0, serverError(500, "boom"), true],
+    ["first failure of a 503", 0, serverError(503, ""), true],
+    ["first failure with no response", 0, new AxiosError("Network Error"), true],
+    ["second failure of a 500", 1, serverError(500, "boom"), false],
+    ["a plain error", 0, new Error("weird"), false],
+    ["a 400", 0, serverError(400, "Invalid design"), false],
+    ["a 401", 0, serverError(401, ""), false],
+    ["a 403", 0, serverError(403, "Pro plan required"), false],
+    ["a 404", 0, serverError(404, ""), false],
+    ["a 409", 0, serverError(409, ""), false],
+    ["a 422", 0, serverError(422, ""), false],
+    ["a 429", 0, serverError(429, ""), false],
+  ])("%s", (_label, failureCount, error, expected) => {
+    expect(shouldRetryQuery(failureCount, error)).toBe(expected);
+  });
+
+  test("the query client uses it as the default retry", () => {
+    expect(makeQueryClient().getDefaultOptions().queries?.retry).toBe(shouldRetryQuery);
+  });
+
+  test("mutations never retry", () => {
+    expect(makeQueryClient().getDefaultOptions().mutations?.retry).toBe(false);
+  });
 });
 
 describe("global mutation error handling", () => {
@@ -51,11 +78,6 @@ describe("global mutation error handling", () => {
   test("still reports when the server sends no message", async () => {
     await runFailingMutation(serverError(503, ""));
     expect(errorToasts[0]).toContain("Try again");
-  });
-
-  test("a caller can opt out with meta.skipErrorToast", async () => {
-    await runFailingMutation(serverError(400, "handled locally"), { skipErrorToast: true });
-    expect(errorToasts).toHaveLength(0);
   });
 
   test("a successful mutation says nothing", async () => {

@@ -1,18 +1,10 @@
 import { http, HttpResponse, delay } from "msw";
-import { _furnitureItems } from "../store";
-import { mockUrl } from "../config";
+import { MOCK_DELAY_MS, mockUrl } from "../config";
+import { furnitureItems } from "../store";
 
 export const furnitureHandlers = [
-  http.get(mockUrl("/furniture"), async ({ request }) => {
-    await delay(200);
-    const url = new URL(request.url);
-    const category = url.searchParams.get("category");
-
-    let results = _furnitureItems;
-    if (category && category !== "all") {
-      results = results.filter((f) => f.category === category);
-    }
-
-    return HttpResponse.json(results);
+  http.get(mockUrl("/furniture"), async () => {
+    await delay(MOCK_DELAY_MS);
+    return HttpResponse.json(furnitureItems);
   }),
 ];

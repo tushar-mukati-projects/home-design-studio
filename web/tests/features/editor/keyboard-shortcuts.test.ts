@@ -1,15 +1,19 @@
 import { describe, test, expect } from "bun:test";
 import {
-  TOOL_SHORTCUTS,
   isTypingTarget,
   resolveShortcut,
   shortcutForTool,
   shouldPreventDefault,
+  spaceStartsPan,
 } from "@/features/editor/keyboard-shortcuts";
-import type { ShortcutEvent } from "@/features/editor/keyboard-shortcuts";
 import type { EditorTool } from "@/types";
 
-const resolve = (event: ShortcutEvent, canEdit = true) => resolveShortcut(event, { canEdit });
+type ShortcutEvent = Parameters<typeof resolveShortcut>[0];
+
+const TOOLS: EditorTool[] = ["select", "wall", "door", "window", "eraser", "pan"];
+
+const resolve = (event: ShortcutEvent, canEdit = true, muted = false) =>
+  resolveShortcut(event, { canEdit, muted });
 
 describe("resolveShortcut - undo/redo", () => {
   test("Ctrl+Z undoes", () => {
@@ -53,6 +57,18 @@ describe("resolveShortcut - modifiers must not hijack browser combos", () => {
   });
 });
 
+describe("resolveShortcut - muted while a modal is open", () => {
+  test.each([
+    { key: "Backspace" },
+    { key: "w" },
+    { key: "z", ctrlKey: true },
+    { key: "Escape" },
+    { key: "ArrowLeft" },
+  ])("%j is inert while muted", (event) => {
+    expect(resolve(event, true, true)).toBeNull();
+  });
+});
+
 describe("isTypingTarget", () => {
   test("text-like inputs, textareas, selects and editable nodes swallow shortcuts", () => {
     expect(isTypingTarget({ tagName: "INPUT" })).toBe(true);
@@ -70,6 +86,20 @@ describe("isTypingTarget", () => {
     ).toEqual({
       action: "undo",
     });
+  });
+});
+
+describe("spaceStartsPan", () => {
+  test.each([
+    [null, true],
+    [{ tagName: "BODY" }, true],
+    [{ tagName: "DIV" }, true],
+    [{ tagName: "BUTTON" }, false],
+    [{ tagName: "A" }, false],
+    [{ tagName: "INPUT" }, false],
+    [{ tagName: "TEXTAREA" }, false],
+  ])("Space on %j starts a pan: %p", (target, expected) => {
+    expect(spaceStartsPan(target)).toBe(expected);
   });
 });
 
@@ -100,32 +130,24 @@ describe("resolveShortcut - nudge", () => {
 });
 
 describe("resolveShortcut - tools", () => {
-  const toolKeys: [string, EditorTool][] = [
-    ["v", "select"],
-    ["w", "wall"],
-    ["d", "door"],
-    ["n", "window"],
-    ["e", "eraser"],
-    ["h", "pan"],
-  ];
+  test.each(TOOLS)("the tooltip key for %s selects it", (tool) => {
+    const key = shortcutForTool(tool);
+    expect(key).toMatch(/^[A-Z]$/);
+    expect(resolve({ key: key.toLowerCase() })).toEqual({ action: "setTool", tool });
+  });
 
-  test.each(toolKeys)("%s selects the %s tool", (key, tool) => {
-    expect(resolve({ key })).toEqual({ action: "setTool", tool });
+  test("every tool has a distinct shortcut key", () => {
+    const keys = TOOLS.map(shortcutForTool);
+    expect(new Set(keys).size).toBe(TOOLS.length);
   });
 
   test("uppercase keys work too", () => {
     expect(resolve({ key: "W" })).toEqual({ action: "setTool", tool: "wall" });
   });
 
-  test("every tool has a distinct shortcut key", () => {
-    const keys = Object.keys(TOOL_SHORTCUTS);
-    expect(new Set(keys).size).toBe(keys.length);
-    expect(new Set(Object.values(TOOL_SHORTCUTS)).size).toBe(keys.length);
-  });
-
   test("shortcut keys do not collide with the grid/snap keys", () => {
-    expect(Object.keys(TOOL_SHORTCUTS)).not.toContain("g");
-    expect(Object.keys(TOOL_SHORTCUTS)).not.toContain("s");
+    expect(TOOLS.map(shortcutForTool)).not.toContain("G");
+    expect(TOOLS.map(shortcutForTool)).not.toContain("S");
   });
 
   test("unmapped keys resolve to nothing", () => {
@@ -153,14 +175,14 @@ describe("resolveShortcut - toggles and selection", () => {
     expect(resolve({ key: "Backspace" })).toEqual({ action: "deleteSelected" });
   });
 
-  test("Escape clears the selection", () => {
-    expect(resolve({ key: "Escape" })).toEqual({ action: "clearSelection" });
+  test("Escape is the one escape action", () => {
+    expect(resolve({ key: "Escape" })).toEqual({ action: "escape" });
   });
 });
 
 describe("resolveShortcut - read-only viewers", () => {
   test("Escape still works without edit rights", () => {
-    expect(resolve({ key: "Escape" }, false)).toEqual({ action: "clearSelection" });
+    expect(resolve({ key: "Escape" }, false)).toEqual({ action: "escape" });
   });
 
   test.each(["z", "y", "v", "w", "d", "n", "e", "h", "g", "s", "Delete", "Backspace"])(
@@ -204,7 +226,7 @@ describe("shouldPreventDefault", () => {
   });
 
   test("leaves harmless actions alone", () => {
-    expect(shouldPreventDefault({ action: "clearSelection" })).toBe(false);
+    expect(shouldPreventDefault({ action: "escape" })).toBe(false);
     expect(shouldPreventDefault({ action: "toggleGrid" })).toBe(false);
     expect(shouldPreventDefault({ action: "setTool", tool: "wall" })).toBe(false);
   });
@@ -214,11 +236,5 @@ describe("shortcutForTool", () => {
   test("returns the uppercase key shown in tooltips", () => {
     expect(shortcutForTool("select")).toBe("V");
     expect(shortcutForTool("window")).toBe("N");
-  });
-
-  test("round-trips with the shortcut table so tooltips cannot drift", () => {
-    for (const [key, tool] of Object.entries(TOOL_SHORTCUTS)) {
-      expect(shortcutForTool(tool)).toBe(key.toUpperCase());
-    }
   });
 });

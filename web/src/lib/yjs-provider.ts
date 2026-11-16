@@ -1,40 +1,30 @@
+import { HocuspocusProvider, HocuspocusProviderWebsocket } from "@hocuspocus/provider";
 import * as Y from "yjs";
-import { HocuspocusProvider } from "@hocuspocus/provider";
 
-const getWsUrl = (): string => {
-  if (process.env.NEXT_PUBLIC_WS_URL) {
-    return process.env.NEXT_PUBLIC_WS_URL;
-  }
+import { WS_URL } from "@/lib/env";
+import { collabDocumentName } from "@/shared/canvas";
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
-  const base = apiUrl.replace(/\/api\/?$/, "");
-  const wsBase = base.replace(/^http/, "ws");
-  return `${wsBase}/collaboration`;
-};
+const RECONNECT_MAX_ATTEMPTS = 20;
+const RECONNECT_MAX_DELAY_MS = 30_000;
 
-interface CollaborationProvider {
-  doc: Y.Doc;
-  provider: HocuspocusProvider;
-  awareness: HocuspocusProvider["awareness"];
-}
+type TokenGetter = () => Promise<string>;
 
 export const createCollaborationProvider = (
   designId: string,
-  token: string | (() => Promise<string>),
-): CollaborationProvider => {
-  const doc = new Y.Doc();
-
-  const provider = new HocuspocusProvider({
-    url: getWsUrl(),
-    name: `design:${designId}`,
-    document: doc,
-    token,
+  getToken: TokenGetter,
+): HocuspocusProvider =>
+  new HocuspocusProvider({
+    name: collabDocumentName(designId),
+    document: new Y.Doc(),
+    token: getToken,
+    websocketProvider: new HocuspocusProviderWebsocket({
+      url: WS_URL,
+      maxAttempts: RECONNECT_MAX_ATTEMPTS,
+      maxDelay: RECONNECT_MAX_DELAY_MS,
+    }),
   });
 
-  return { doc, provider, awareness: provider.awareness };
-};
-
 export const destroyProvider = (provider: HocuspocusProvider): void => {
-  provider.disconnect();
   provider.destroy();
+  provider.configuration.websocketProvider.destroy();
 };

@@ -1,21 +1,30 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { Tooltip } from "@/components/ui/tooltip";
-import type { CollaboratorCursor } from "@/stores/collaboration-store";
+import { cn } from "@/lib/utils";
+import type { Collaborator } from "@/stores/collaboration-store";
 
-interface ConnectionStatusProps {
+const AVATAR_LIMIT = 5;
+const INITIALS_MAX_CHARS = 2;
+
+type Connection = "synced" | "syncing" | "offline";
+
+const CONNECTION_LABEL = {
+  synced: "Connected",
+  syncing: "Syncing...",
+  offline: "Offline",
+} satisfies Record<Connection, string>;
+
+const CONNECTION_DOT = {
+  synced: "bg-success",
+  syncing: "bg-warning",
+  offline: "bg-destructive",
+} satisfies Record<Connection, string>;
+
+type ConnectionStatusProps = {
   isConnected: boolean;
   isSynced: boolean;
-  collaborators: CollaboratorCursor[];
-}
-
-const getInitials = (name: string): string => {
-  return name
-    .split(/[-\s]/)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 2);
+  collaborators: Collaborator[];
 };
 
 export const ConnectionStatus = ({
@@ -23,43 +32,49 @@ export const ConnectionStatus = ({
   isSynced,
   collaborators,
 }: ConnectionStatusProps) => {
-  const statusLabel = isSynced ? "Connected" : isConnected ? "Syncing..." : "Offline";
-
-  const dotColor = isSynced ? "bg-green-500" : isConnected ? "bg-yellow-500" : "bg-red-500";
-
-  const dotGlow = isSynced ? "shadow-[0_0_6px_rgba(34,197,94,0.6)]" : "";
-
-  const editorCount = collaborators.length + 1;
+  const connection: Connection = isSynced ? "synced" : isConnected ? "syncing" : "offline";
+  const memberCount = collaborators.length + 1;
+  const hiddenCount = collaborators.length - AVATAR_LIMIT;
 
   return (
     <div className="flex items-center gap-2">
       {collaborators.length > 0 && (
         <div className="flex -space-x-2">
-          {collaborators.slice(0, 5).map((c) => (
-            <Tooltip key={c.id} content={c.name.split("-").join(" ")} side="bottom">
+          {collaborators.slice(0, AVATAR_LIMIT).map((collaborator) => (
+            <Tooltip key={collaborator.id} content={collaborator.name} side="bottom">
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] text-[10px] font-semibold text-white shadow-sm transition-transform hover:z-10 hover:scale-110"
-                style={{ backgroundColor: c.color }}
+                className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card text-2xs font-semibold text-primary-foreground shadow-sm transition-transform hover:z-10 hover:scale-110"
+                style={{ backgroundColor: collaborator.color }}
               >
-                {getInitials(c.name)}
+                {initials(collaborator.name)}
               </div>
             </Tooltip>
           ))}
-          {collaborators.length > 5 && (
-            <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--card)] bg-[var(--muted)] text-[10px] font-semibold text-[var(--muted-foreground)]">
-              +{collaborators.length - 5}
+          {hiddenCount > 0 && (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-muted text-2xs font-semibold text-muted-foreground">
+              +{hiddenCount}
             </div>
           )}
         </div>
       )}
 
-      <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 shadow-sm">
-        <span className={cn("h-2 w-2 shrink-0 rounded-full", dotColor, dotGlow)} />
-        <span className="text-xs font-medium text-[var(--muted-foreground)]">{statusLabel}</span>
-        <span className="text-xs text-[var(--muted-foreground)]/60">
-          {editorCount === 1 ? "1 editor" : `${editorCount} editors`}
+      <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 shadow-sm">
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", CONNECTION_DOT[connection])} />
+        <span className="text-xs font-medium text-muted-foreground">
+          {CONNECTION_LABEL[connection]}
+        </span>
+        <span className="text-xs text-muted-foreground/60">
+          {memberCount === 1 ? "1 editor" : `${memberCount} editors`}
         </span>
       </div>
     </div>
   );
 };
+
+const initials = (name: string): string =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase())
+    .join("")
+    .slice(0, INITIALS_MAX_CHARS);

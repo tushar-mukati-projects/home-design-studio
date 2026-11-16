@@ -1,23 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
+import type { PlanName } from "@/shared/canvas";
 import { USER_API_ROUTES, USER_QUERY_KEYS } from "./constants";
 
-export interface Me {
+const ME_STALE_TIME_MS = 5 * 60 * 1000;
+
+type Me = {
   id: string;
   email: string | null;
   name: string | null;
-  plan: "free" | "pro";
+  plan: PlanName;
   createdAt: string;
-}
+};
 
-export const useMe = (enabled = true) =>
+export const useMe = (enabled: boolean) =>
   useQuery({
     queryKey: USER_QUERY_KEYS.me,
-    queryFn: async () => {
-      const response = await axiosInstance.get<Me>(USER_API_ROUTES.me);
-      return response.data;
-    },
+    queryFn: async () => (await axiosInstance.get<Me>(USER_API_ROUTES.me)).data,
     enabled,
-    retry: 1,
-    staleTime: 5 * 60 * 1000,
+    staleTime: ME_STALE_TIME_MS,
   });

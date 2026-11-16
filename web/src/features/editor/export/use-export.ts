@@ -1,80 +1,66 @@
 "use client";
 
-import { useCallback } from "react";
-import type Konva from "konva";
-import jsPDF from "jspdf";
 import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { useEditorStore } from "@/stores/editor-store";
-import { EXPORT_HIDDEN_LAYER_NAME, formatArea, formatLength } from "@/lib/constants";
-import { ROOM_USAGE_COLORS, furnitureName, polygonArea, wallLength } from "@/lib/canvas";
+import {
+  EXPORT_PIXEL_RATIO,
+  EXPORT_PIXEL_RATIO_HIGH,
+  captureStage,
+  exportFileName,
+  readyStage,
+} from "./capture";
+import type { StageRef } from "./capture";
+import { buildPdf } from "./pdf-document";
+import type { PdfExportOptions } from "./pdf-layout";
 
-type PaperSize = "a4" | "a3";
-type Orientation = "landscape" | "portrait";
-type Quality = "standard" | "high";
+const POPUP_BLOCKED_MESSAGE = "Pop-up blocked. Please allow pop-ups and try again.";
 
-interface PdfExportOptions {
-  paperSize: PaperSize;
-  orientation: Orientation;
-  includeRoomLabels: boolean;
-  includeDimensions: boolean;
-  includeFurnitureList: boolean;
-  quality: Quality;
-}
+export const useExport = () => {
+  const exportAsPng = (stageRef: StageRef, designName: string) => {
+    try {
+      const { dataUrl } = captureStage(readyStage(stageRef), EXPORT_PIXEL_RATIO);
+      download(dataUrl, `${exportFileName(designName)}-floorplan.png`);
+      toast.success("Floor plan exported as PNG");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to export as PNG"));
+    }
+  };
 
-const PAPER_DIMENSIONS: Record<PaperSize, { width: number; height: number }> = {
-  a4: { width: 297, height: 210 },
-  a3: { width: 420, height: 297 },
+  const exportAsPdf = (stageRef: StageRef, designName: string, options: PdfExportOptions) => {
+    try {
+      const pixelRatio = options.quality === "high" ? EXPORT_PIXEL_RATIO_HIGH : EXPORT_PIXEL_RATIO;
+      const capture = captureStage(readyStage(stageRef), pixelRatio);
+      const { rooms, furniture, walls, catalog } = useEditorStore.getState();
+      const doc = buildPdf(capture, options, { designName, rooms, furniture, walls, catalog });
+      doc.save(`${exportFileName(designName)}-floorplan.pdf`);
+      toast.success("Floor plan exported as PDF");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to export as PDF"));
+    }
+  };
+
+  const printFloorPlan = (stageRef: StageRef) => {
+    try {
+      const { dataUrl } = captureStage(readyStage(stageRef), EXPORT_PIXEL_RATIO);
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) throw new Error(POPUP_BLOCKED_MESSAGE);
+      printWindow.document.write(printPage(dataUrl));
+      printWindow.onload = () => {
+        toast.success("Print dialog opened");
+        printWindow.focus();
+        printWindow.print();
+      };
+      printWindow.document.close();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to print floor plan"));
+    }
+  };
+
+  return { exportAsPng, exportAsPdf, printFloorPlan };
 };
 
-interface Capture {
-  dataUrl: string;
-  width: number;
-  height: number;
-}
-
-const captureContent = (
-  stageRef: React.RefObject<Konva.Stage | null>,
-  pixelRatio: number,
-): Capture => {
-  const stage = stageRef.current;
-  if (!stage) throw new Error("The plan isn't ready to export yet. Try again in a moment.");
-
-  const prevScale = { x: stage.scaleX(), y: stage.scaleY() };
-  const prevPos = { x: stage.x(), y: stage.y() };
-  const hiddenLayers = stage.find(`.${EXPORT_HIDDEN_LAYER_NAME}`).filter((node) => node.visible());
-
-  try {
-    hiddenLayers.forEach((node) => node.visible(false));
-    stage.position({ x: 0, y: 0 });
-
-    const rect = stage.getClientRect({ skipTransform: false });
-    const pad = 40;
-    const hasContent =
-      rect.width > 0 &&
-      rect.height > 0 &&
-      Number.isFinite(rect.width) &&
-      Number.isFinite(rect.height);
-
-    const region = hasContent
-      ? {
-          x: rect.x - pad,
-          y: rect.y - pad,
-          width: rect.width + pad * 2,
-          height: rect.height + pad * 2,
-        }
-      : { x: 0, y: 0, width: stage.width(), height: stage.height() };
-
-    const dataUrl = stage.toDataURL({ pixelRatio, ...region });
-    return { dataUrl, width: region.width, height: region.height };
-  } finally {
-    hiddenLayers.forEach((node) => node.visible(true));
-    stage.scale(prevScale);
-    stage.position(prevPos);
-    stage.batchDraw();
-  }
-};
-
-const triggerDownload = (dataUrl: string, filename: string) => {
+const download = (dataUrl: string, filename: string) => {
   const link = document.createElement("a");
   link.download = filename;
   link.href = dataUrl;
@@ -83,193 +69,7 @@ const triggerDownload = (dataUrl: string, filename: string) => {
   document.body.removeChild(link);
 };
 
-const formatDate = (): string =>
-  new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric" }).format(
-    new Date(),
-  );
-
-const safeName = (designName: string) =>
-  designName.replace(/[^a-zA-Z0-9-_ ]/g, "").trim() || "untitled";
-
-export const useExport = () => {
-  const rooms = useEditorStore((s) => s.rooms);
-  const furniture = useEditorStore((s) => s.furniture);
-  const walls = useEditorStore((s) => s.walls);
-  const catalog = useEditorStore((s) => s.catalog);
-
-  const exportAsPng = useCallback(
-    (stageRef: React.RefObject<Konva.Stage | null>, designName: string) => {
-      try {
-        const { dataUrl } = captureContent(stageRef, 2);
-        triggerDownload(dataUrl, `${safeName(designName)}-floorplan.png`);
-        toast.success("Floor plan exported as PNG");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to export as PNG");
-      }
-    },
-    [],
-  );
-
-  const exportAsPdf = useCallback(
-    (
-      stageRef: React.RefObject<Konva.Stage | null>,
-      designName: string,
-      options: PdfExportOptions,
-    ) => {
-      try {
-        const pixelRatio = options.quality === "high" ? 3 : 2;
-        const {
-          dataUrl,
-          width: imgWidth,
-          height: imgHeight,
-        } = captureContent(stageRef, pixelRatio);
-
-        const dims = PAPER_DIMENSIONS[options.paperSize];
-        const pageWidth = options.orientation === "landscape" ? dims.width : dims.height;
-        const pageHeight = options.orientation === "landscape" ? dims.height : dims.width;
-
-        const doc = new jsPDF({
-          orientation: options.orientation,
-          unit: "mm",
-          format: options.paperSize,
-        });
-
-        const margin = 15;
-        const contentWidth = pageWidth - margin * 2;
-
-        doc.setFontSize(18);
-        doc.setFont("helvetica", "bold");
-        doc.text(designName || "Untitled Floor Plan", margin, margin + 5);
-
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(120, 120, 120);
-        doc.text(formatDate(), pageWidth - margin, margin + 5, { align: "right" });
-        doc.setTextColor(0, 0, 0);
-
-        const headerHeight = 15;
-        let footerReserve = 12;
-        if (options.includeRoomLabels && rooms.length > 0)
-          footerReserve += 8 + Math.ceil(rooms.length / 3) * 7;
-        if (options.includeFurnitureList && furniture.length > 0)
-          footerReserve += 8 + Math.ceil(furniture.length / 2) * 6;
-        if (options.includeDimensions && walls.length > 0) footerReserve += 14;
-
-        const maxImageHeight = pageHeight - margin * 2 - headerHeight;
-        const availableHeight = Math.max(maxImageHeight * 0.4, maxImageHeight - footerReserve);
-        const scale = Math.min(contentWidth / imgWidth, availableHeight / imgHeight, 1);
-        const renderedWidth = imgWidth * scale;
-        const renderedHeight = imgHeight * scale;
-        const imgX = margin + (contentWidth - renderedWidth) / 2;
-        const imgY = margin + headerHeight;
-
-        doc.addImage(dataUrl, "PNG", imgX, imgY, renderedWidth, renderedHeight);
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(imgX, imgY, renderedWidth, renderedHeight);
-
-        let cursorY = imgY + renderedHeight + 8;
-        const bottomLimit = pageHeight - margin - 6;
-
-        const ensureSpace = (needed: number) => {
-          if (cursorY + needed > bottomLimit) {
-            doc.addPage();
-            cursorY = margin;
-          }
-        };
-
-        const sectionHeading = (title: string) => {
-          ensureSpace(12);
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text(title, margin, cursorY);
-          cursorY += 5;
-          doc.setFontSize(8);
-          doc.setFont("helvetica", "normal");
-        };
-
-        const gridList = <T>(
-          items: T[],
-          columns: number,
-          rowHeight: number,
-          draw: (item: T, x: number, y: number) => void,
-        ) => {
-          const colWidth = contentWidth / columns;
-          for (let i = 0; i < items.length; i += columns) {
-            ensureSpace(rowHeight);
-            items
-              .slice(i, i + columns)
-              .forEach((item, col) => draw(item, margin + col * colWidth, cursorY));
-            cursorY += rowHeight;
-          }
-          cursorY += 3;
-        };
-
-        if (options.includeDimensions && walls.length > 0) {
-          sectionHeading("Dimensions");
-          const total = walls.reduce((sum, wall) => sum + wallLength(wall), 0);
-          doc.text(
-            `${walls.length} walls | Total length: ${formatLength(total)} | ${rooms.length} rooms`,
-            margin,
-            cursorY,
-          );
-          cursorY += 7;
-        }
-
-        if (options.includeRoomLabels && rooms.length > 0) {
-          sectionHeading("Rooms");
-          gridList(rooms, 3, 7, (room, x, y) => {
-            const hex = ROOM_USAGE_COLORS[room.usage].replace("#", "");
-            doc.setFillColor(
-              parseInt(hex.slice(0, 2), 16),
-              parseInt(hex.slice(2, 4), 16),
-              parseInt(hex.slice(4, 6), 16),
-            );
-            doc.rect(x, y - 3, 4, 4, "F");
-            doc.text(`${room.name} (${formatArea(polygonArea(room.polygon))})`, x + 6, y);
-          });
-        }
-
-        if (options.includeFurnitureList && furniture.length > 0) {
-          sectionHeading("Furniture");
-          gridList(furniture, 2, 6, (piece, x, y) => {
-            doc.text(`• ${furnitureName(piece, catalog)}`, x, y);
-          });
-        }
-
-        const totalPages = doc.getNumberOfPages();
-        for (let page = 1; page <= totalPages; page += 1) {
-          doc.setPage(page);
-          doc.setFontSize(7);
-          doc.setTextColor(150, 150, 150);
-          doc.text(
-            totalPages > 1
-              ? `Created with Home Design Studio | ${formatDate()} | Page ${page} of ${totalPages}`
-              : `Created with Home Design Studio | ${formatDate()}`,
-            pageWidth / 2,
-            pageHeight - 8,
-            { align: "center" },
-          );
-        }
-
-        doc.save(`${safeName(designName)}-floorplan.pdf`);
-        toast.success("Floor plan exported as PDF");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to export as PDF");
-      }
-    },
-    [rooms, furniture, walls, catalog],
-  );
-
-  const printFloorPlan = useCallback((stageRef: React.RefObject<Konva.Stage | null>) => {
-    try {
-      const { dataUrl } = captureContent(stageRef, 2);
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        toast.error("Pop-up blocked. Please allow pop-ups and try again.");
-        return;
-      }
-
-      printWindow.document.write(`<!DOCTYPE html>
+const printPage = (dataUrl: string): string => `<!DOCTYPE html>
 <html>
 <head>
 <title>Print Floor Plan</title>
@@ -279,19 +79,4 @@ export const useExport = () => {
 </style>
 </head>
 <body><img src="${dataUrl}" /></body>
-</html>`);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-      };
-      toast.success("Print dialog opened");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to print floor plan");
-    }
-  }, []);
-
-  return { exportAsPng, exportAsPdf, printFloorPlan };
-};
-
-export type { PdfExportOptions, PaperSize, Orientation, Quality };
+</html>`;

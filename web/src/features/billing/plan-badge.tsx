@@ -2,11 +2,15 @@
 
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useFetchPlan } from "@/hooks/billing";
+import { useFetchPlan } from "@/hooks/billing/useFetchPlan";
+import { cn } from "@/lib/utils";
+import type { PlanName } from "@/shared/canvas";
 
-interface PlanBadgeProps {
-  onClick?: () => void;
-}
+type PlanBadgeProps = {
+  onClick: () => void;
+};
+
+export const PLAN_LABELS = { free: "Free", pro: "Pro" } satisfies Record<PlanName, string>;
 
 export const PlanBadge = ({ onClick }: PlanBadgeProps) => {
   const { data } = useFetchPlan();
@@ -18,15 +22,16 @@ export const PlanBadge = ({ onClick }: PlanBadgeProps) => {
   return (
     <Badge
       variant={isPro ? "default" : "secondary"}
-      className={`cursor-pointer gap-1 text-xs font-medium ${
+      className={cn(
+        "cursor-pointer gap-1 text-xs font-medium",
         isPro
-          ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-      }`}
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
       onClick={onClick}
     >
-      {isPro && <Sparkles className="h-3 w-3" />}
-      {isPro ? "Pro" : "Free"}
+      {isPro && <Sparkles className="size-3" />}
+      {PLAN_LABELS[data.plan]}
     </Badge>
   );
 };
